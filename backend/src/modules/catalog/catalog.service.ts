@@ -93,24 +93,17 @@ export async function getBookDetail(idOrSlug: string) {
 }
 
 // ── Categories ───────────────────────────────────────────────────────────────
+// Single source: getCategoriesWithCount() already selects parentId + sortOrder.
 export async function getCategories() {
-  const [cats, countsRaw] = await Promise.all([
-    repo.getAllCategories(),
-    repo.getCategoriesWithCount(),
-  ]);
+  const cats = await repo.getCategoriesWithCount();
 
-  const countMap: Record<number, number> = {};
-  for (const c of countsRaw) {
-    countMap[c.id] = c.bookCount;
-  }
-
-  return cats.map((c) => ({
+  return cats.map((c: any) => ({
     id: c.id,
     slug: c.slug ?? null,
     name: c.name,
     parentId: c.parentId ?? null,
     sortOrder: c.sortOrder ?? 0,
-    bookCount: countMap[c.id] ?? 0,
+    bookCount: c.bookCount,
   }));
 }
 

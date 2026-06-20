@@ -222,9 +222,31 @@ describe('Catalog API', () => {
       expect(id1).not.toEqual(id2);
     });
 
-    it('invalid limit (too large) clamped to max 60', async () => {
+    it('invalid limit (too large) rejected with 422', async () => {
       const res = await request(app).get('/api/v1/catalog/books?limit=100');
-      expect(res.status).toBe(422); // Zod max(60) rejects
+      expect(res.status).toBe(422); // Zod max(60) rejects — value is NOT clamped, it is rejected
+    });
+
+    // ── q + author interaction (finding [1]) ───────────────────────────────
+    it('q matches author name: book with non-matching title IS returned', async () => {
+      // "Đắc Nhân Tâm" has title that does not contain "Carnegie", but its author is "Dale Carnegie"
+      const res = await request(app).get('/api/v1/catalog/books?q=Carnegie');
+      expect(res.status).toBe(200);
+      const titles = res.body.data.books.map((b: any) => b.title);
+      expect(titles).toContain('Đắc Nhân Tâm');
+    });
+
+    it('q + author slug: results do NOT leak books outside the specified author', async () => {
+      // q=Hill matches Napoleon Hill (author name). author=dale-carnegie constrains to Carnegie.
+      // Hill's book "Nghĩ Giàu Làm Giàu" must NOT appear; only Carnegie books are allowed.
+      const res = await request(app).get('/api/v1/catalog/books?q=Hill&author=dale-carnegie');
+      expect(res.status).toBe(200);
+      const authors = res.body.data.books.map((b: any) => b.authorSlug);
+      for (const slug of authors) {
+        expect(slug).toBe('dale-carnegie');
+      }
+      const titles = res.body.data.books.map((b: any) => b.title);
+      expect(titles).not.toContain('Nghĩ Giàu Làm Giàu');
     });
   });
 

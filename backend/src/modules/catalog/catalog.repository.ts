@@ -25,9 +25,9 @@ const vendorInclude = {
 
 // ── Book Card DTO mapper ─────────────────────────────────────────────────────
 // No originalPrice column in DB yet — set null per spec note
+// bookIncludes does not eager-load BookFile; read fileSizeBytes directly from Book row.
 export function toBookCard(b: Book & Record<string, any>) {
   const author = b.author as any;
-  const file = b.file as any;
   return {
     id: b.id,
     slug: b.slug,
@@ -75,7 +75,7 @@ export async function getFeatured(limit = 10): Promise<Book[]> {
   });
 }
 
-export async function getCategoriesWithCount(): Promise<Array<{ id: number; slug: string | null; name: string; bookCount: number }>> {
+export async function getCategoriesWithCount(): Promise<Array<{ id: number; slug: string | null; name: string; parentId: number | null; sortOrder: number; bookCount: number }>> {
   const categories = await Category.findAll({
     attributes: ['id', 'slug', 'name', 'parentId', 'sortOrder'],
     order: [['sort_order', 'ASC']],
@@ -98,6 +98,8 @@ export async function getCategoriesWithCount(): Promise<Array<{ id: number; slug
     id: c.id,
     slug: c.slug ?? null,
     name: c.name,
+    parentId: (c as any).parentId ?? null,
+    sortOrder: (c as any).sortOrder ?? 0,
     bookCount: countMap[c.id] ?? 0,
   }));
 }
@@ -142,11 +144,17 @@ export async function listBooks(q: ListBooksQuery): Promise<{ rows: Book[]; coun
   }
 
   // Text search: title LIKE or author name LIKE
+  // When an author slug filter is active it is a hard AND constraint; the q author-name
+  // arm must NOT widen results to authors outside that slug set.
   if (q.q) {
     const pattern = `%${q.q}%`;
-    // We do a sub-query approach: find author ids first, then use Op.or
+    // Find authors whose name matches q, honouring any active author-slug constraint.
+    const authorWhere: Record<string, any> = { name: { [Op.like]: pattern } };
+    if (q.author && q.author.length > 0) {
+      authorWhere['slug'] = { [Op.in]: q.author };
+    }
     const matchingAuthors = await Author.findAll({
-      where: { name: { [Op.like]: pattern } },
+      where: authorWhere,
       attributes: ['id'],
     });
     const authorIds = matchingAuthors.map((a) => a.id);
@@ -236,11 +244,6 @@ export async function getRelatedByCategory(book: Book, limit = 10): Promise<Book
 
 export async function incrementViewCount(bookId: number): Promise<void> {
   await Book.increment('viewCount', { where: { id: bookId } });
-}
-
-// ── Categories ───────────────────────────────────────────────────────────────
-export async function getAllCategories(): Promise<Category[]> {
-  return Category.findAll({ order: [['sort_order', 'ASC']] });
 }
 
 // ── Filters ──────────────────────────────────────────────────────────────────
