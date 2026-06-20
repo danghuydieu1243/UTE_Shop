@@ -7,6 +7,8 @@ import {
   hashToken,
   refreshExpiresAt,
   redirectForRole,
+  signResetToken,
+  verifyResetToken,
 } from './token.service';
 import { AppError } from '../../shared/errors/AppError';
 import { toPublicUser, PublicUser } from '../../shared/dto/user.dto';
@@ -129,4 +131,28 @@ export const logout = async (rawToken: string): Promise<void> => {
   if (rec && !rec.revokedAt) {
     await authRepo.revokeRefresh(rec.id);
   }
+};
+
+export const forgotPassword = async (params: { email: string }) => {
+  const user = await authRepo.findUserByEmail(params.email);
+  if (user) {
+    await otpService.issueOtp({ email: params.email, userId: user.id, purpose: 'reset_password' });
+  }
+  return { message: 'Nếu email tồn tại, mã xác thực đã được gửi.' };
+};
+
+export const verifyOtpReset = async (params: { email: string; code: string }) => {
+  await otpService.verifyOtp({ email: params.email, purpose: 'reset_password', code: params.code });
+  return { resetToken: signResetToken(params.email) };
+};
+
+export const resetPassword = async (params: { email: string; resetToken: string; newPassword: string }) => {
+  const { email } = verifyResetToken(params.resetToken);
+  if (email !== params.email) throw AppError.from('RESET_TOKEN_INVALID', 'Mã đặt lại mật khẩu không hợp lệ');
+  const user = await authRepo.findUserByEmail(email);
+  if (!user) throw AppError.from('RESET_TOKEN_INVALID', 'Mã đặt lại mật khẩu không hợp lệ');
+  const passwordHash = await bcrypt.hash(params.newPassword, SALT_ROUNDS);
+  await authRepo.updateUserPassword(user.id, passwordHash);
+  await authRepo.revokeAllUserRefresh(user.id);
+  return { success: true as const };
 };

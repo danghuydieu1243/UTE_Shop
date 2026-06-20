@@ -79,3 +79,33 @@ describe('auth.service login/refresh/logout', () => {
     await expect(authService.refresh(r.refreshToken)).rejects.toMatchObject({ code: 'REFRESH_REUSED' });
   });
 });
+
+describe('auth.service forgot/reset', () => {
+  const setupActive = async (email: string) => {
+    await authService.register({ accountType: 'user', email, password: 'Abcd@1234', fullName: 'X' });
+    await authService.verifyOtpRegister({ email, code: lastCode() });
+  };
+
+  it('forgot non-existent email returns neutral message, sends no otp', async () => {
+    mockSend.mockClear();
+    const r = await authService.forgotPassword({ email: 'nobody@x.com' });
+    expect(r.message).toBeTruthy();
+    expect(mockSend).not.toHaveBeenCalled();
+  });
+
+  it('full reset flow: forgot → verifyOtpReset → resetPassword → login with new password', async () => {
+    await setupActive('rp@x.com');
+    await authService.forgotPassword({ email: 'rp@x.com' });
+    const { resetToken } = await authService.verifyOtpReset({ email: 'rp@x.com', code: lastCode() });
+    await authService.resetPassword({ email: 'rp@x.com', resetToken, newPassword: 'NewP@ss123' });
+    const r = await authService.login({ email: 'rp@x.com', password: 'NewP@ss123' });
+    expect(r.accessToken).toBeTruthy();
+  });
+
+  it('resetPassword with invalid token → RESET_TOKEN_INVALID', async () => {
+    await setupActive('rp2@x.com');
+    await expect(
+      authService.resetPassword({ email: 'rp2@x.com', resetToken: 'bad.token.value', newPassword: 'NewP@ss123' }),
+    ).rejects.toMatchObject({ code: 'RESET_TOKEN_INVALID' });
+  });
+});
