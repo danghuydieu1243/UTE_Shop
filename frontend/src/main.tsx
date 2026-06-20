@@ -6,6 +6,10 @@ import { store } from './app/store';
 import { LoginPage } from './features/auth/pages/LoginPage';
 import { RegisterPage } from './features/auth/pages/RegisterPage';
 import { VerifyOtpPage } from './features/auth/pages/VerifyOtpPage';
+import { ForgotPasswordPage } from './features/auth/pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './features/auth/pages/ResetPasswordPage';
+import { ProfilePage } from './features/profile/pages/ProfilePage';
+import { ChangePasswordPage } from './features/profile/pages/ChangePasswordPage';
 import { RequireAuth, RequireRole } from './shared/auth/guards';
 import './index.css';
 
@@ -18,10 +22,14 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/verify-otp" element={<VerifyOtpPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
 
           {/* Protected: any authenticated user */}
           <Route element={<RequireAuth />}>
             <Route path="/" element={<div className="mx-auto max-w-container p-10 text-ink">ATHENA — authenticated</div>} />
+            <Route path="/user/profile" element={<ProfilePage />} />
+            <Route path="/user/change-password" element={<ChangePasswordPage />} />
           </Route>
 
           {/* Protected: vendor only */}
