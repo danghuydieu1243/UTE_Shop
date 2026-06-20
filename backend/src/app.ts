@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import { httpLogger } from './shared/logger';
 import { authRouter } from './modules/auth';
 import { usersRouter } from './modules/users';
+import { catalogRouter } from './modules/catalog';
 import { notFound } from './shared/middleware/notFound';
 import { errorHandler } from './shared/middleware/errorHandler';
 
@@ -20,6 +21,7 @@ export const createApp = () => {
 
   app.use('/api/v1/auth', authRouter);
   app.use('/api/v1/users', usersRouter);
+  app.use('/api/v1/catalog', catalogRouter);
 
   app.use(notFound);
   app.use(errorHandler);
