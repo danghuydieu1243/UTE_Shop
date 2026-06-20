@@ -31,7 +31,7 @@ describe('LoginForm', () => {
 
   it('shows validation errors when submitted empty', async () => {
     renderLoginForm();
-    const submitButton = screen.getByRole('button', { name: 'ĐĂNG NHẬP' });
+    const submitButton = screen.getByRole('button', { name: 'Đăng nhập' });
     await userEvent.click(submitButton);
     expect(await screen.findByText('Email không hợp lệ')).toBeInTheDocument();
     expect(await screen.findByText('Vui lòng nhập mật khẩu')).toBeInTheDocument();
@@ -41,7 +41,7 @@ describe('LoginForm', () => {
     renderLoginForm();
     const emailInput = screen.getByPlaceholderText('email@example.com');
     await userEvent.type(emailInput, 'notanemail');
-    const submitButton = screen.getByRole('button', { name: 'ĐĂNG NHẬP' });
+    const submitButton = screen.getByRole('button', { name: 'Đăng nhập' });
     await userEvent.click(submitButton);
     expect(await screen.findByText('Email không hợp lệ')).toBeInTheDocument();
   });

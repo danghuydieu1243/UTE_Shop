@@ -5,3 +5,7 @@
 
 :root { font-family: 'Inter', system-ui, sans-serif; }
 body { @apply bg-paper text-ink; font-variant-numeric: tabular-nums; }
+
+/* Hide native browser password reveal/clear buttons to prevent duplicate eye icons */
+input::-ms-reveal,
+input::-ms-clear { display: none; }
