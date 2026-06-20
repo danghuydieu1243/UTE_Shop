@@ -25,8 +25,9 @@ const rawBaseQuery: BaseQueryFn<QueryArgs, unknown, ApiError & { status?: number
       params,
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
-    // Backend bọc envelope {success,data}; trả phần data cho RTK Query.
-    return { data: res.data?.data ?? res.data };
+    // Backend bọc envelope {success,data,meta}; trả data + meta cho RTK Query.
+    // transformResponse nhận meta làm tham số thứ 2 (dùng cho catalog pagination).
+    return { data: res.data?.data ?? res.data, meta: res.data?.meta };
   } catch (e) {
     const err = e as AxiosError<{ error?: ApiError }>;
     const status = err.response?.status;
@@ -67,6 +68,6 @@ const baseQueryWithReauth: typeof rawBaseQuery = async (args, apiCtx, extra) => 
 export const baseApi = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['Me'],
+  tagTypes: ['Me', 'Book', 'VendorBook', 'Categories'],
   endpoints: () => ({}),
 });
