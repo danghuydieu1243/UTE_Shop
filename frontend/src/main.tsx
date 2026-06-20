@@ -10,6 +10,7 @@ import { ForgotPasswordPage } from './features/auth/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './features/auth/pages/ResetPasswordPage';
 import { ProfilePage } from './features/profile/pages/ProfilePage';
 import { ChangePasswordPage } from './features/profile/pages/ChangePasswordPage';
+import { HomePage } from './features/catalog/pages/HomePage';
 import { RequireAuth, RequireRole } from './shared/auth/guards';
 import './index.css';
 
@@ -18,6 +19,9 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <Provider store={store}>
       <BrowserRouter>
         <Routes>
+          {/* Public: Home (guests + logged-in users) */}
+          <Route path="/" element={<HomePage />} />
+
           {/* Auth routes (guest only) */}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
@@ -27,7 +31,6 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
 
           {/* Protected: any authenticated user */}
           <Route element={<RequireAuth />}>
-            <Route path="/" element={<div className="mx-auto max-w-container p-10 text-ink">ATHENA — authenticated</div>} />
             <Route path="/user/profile" element={<ProfilePage />} />
             <Route path="/user/change-password" element={<ChangePasswordPage />} />
           </Route>
