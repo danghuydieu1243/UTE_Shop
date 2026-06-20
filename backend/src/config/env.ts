@@ -23,6 +23,7 @@ const schema = z.object({
   SEED_ADMIN_PASSWORD: z.string().default('Admin@12345'),
   SEED_MANAGER_EMAIL: z.string().email().default('manager@uteshop.com'),
   SEED_MANAGER_PASSWORD: z.string().default('Manager@1234'),
+  UPLOAD_DIR: z.string().default('./uploads'),
 });
 
 const parsed = schema.safeParse(process.env);

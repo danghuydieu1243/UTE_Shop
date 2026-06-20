@@ -24,10 +24,15 @@ const vendorInclude = {
 };
 
 // ── Book Card DTO mapper ─────────────────────────────────────────────────────
-// No originalPrice column in DB yet — set null per spec note
 // bookIncludes does not eager-load BookFile; read fileSizeBytes directly from Book row.
 export function toBookCard(b: Book & Record<string, any>) {
   const author = b.author as any;
+  const originalPrice = b.originalPrice != null ? Number(b.originalPrice) : null;
+  const price = Number(b.price);
+  const discountPercent =
+    originalPrice != null && originalPrice > price
+      ? Math.round((1 - price / originalPrice) * 100)
+      : null;
   return {
     id: b.id,
     slug: b.slug,
@@ -35,9 +40,9 @@ export function toBookCard(b: Book & Record<string, any>) {
     author: author?.name ?? null,
     authorSlug: author?.slug ?? null,
     coverImageUrl: b.coverImageUrl ?? null,
-    price: b.price,
-    originalPrice: null,   // No DB column yet (Phase 2 note)
-    discountPercent: null, // No DB column yet (Phase 2 note)
+    price,
+    originalPrice,
+    discountPercent,
     fileFormat: b.fileFormat,
     fileSizeBytes: b.fileSizeBytes ?? null,
     ratingAvg: b.ratingAvg ? Number(b.ratingAvg) : 0,

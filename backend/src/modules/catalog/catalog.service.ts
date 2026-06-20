@@ -68,10 +68,15 @@ export async function getBookDetail(idOrSlug: string) {
     publisher: publisher ? { id: publisher.id, name: publisher.name } : null,
     category: category ? { id: category.id, name: category.name, slug: category.slug } : null,
     description: book.description ?? null,
-    tableOfContents: null, // No DB column in current schema; ready for future phase
-    price: book.price,
-    originalPrice: null,   // No DB column yet (Phase 2 note)
-    discountPercent: null, // No DB column yet (Phase 2 note)
+    tableOfContents: book.tableOfContents
+      ? book.tableOfContents.split('\n').filter((s) => s.trim() !== '')
+      : [],
+    price: Number(book.price),
+    originalPrice: book.originalPrice != null ? Number(book.originalPrice) : null,
+    discountPercent:
+      book.originalPrice != null && Number(book.originalPrice) > Number(book.price)
+        ? Math.round((1 - Number(book.price) / Number(book.originalPrice)) * 100)
+        : null,
     fileFormat: book.fileFormat,
     fileSizeBytes: file?.fileSizeBytes ?? book.fileSizeBytes ?? null,
     coverImageUrl: book.coverImageUrl ?? null,

@@ -40,6 +40,8 @@ module.exports = {
       view_count: { type: Sequelize.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
       rating_avg: { type: Sequelize.DECIMAL(3, 2), allowNull: false, defaultValue: 0 },
       rating_count: { type: Sequelize.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
+      original_price: { type: Sequelize.BIGINT.UNSIGNED, allowNull: true },
+      table_of_contents: { type: Sequelize.TEXT, allowNull: true },
       published_at: { type: Sequelize.DATE, allowNull: true },
       created_at: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') },
       updated_at: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') },

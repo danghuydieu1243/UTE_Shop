@@ -10,5 +10,7 @@ export const ERR = {
   RATE_LIMITED: ['RATE_LIMITED', 429],
   BOOK_NOT_FOUND: ['BOOK_NOT_FOUND', 404],
   CATEGORY_NOT_FOUND: ['CATEGORY_NOT_FOUND', 404],
+  FILE_TOO_LARGE: ['FILE_TOO_LARGE', 400],
+  FILE_TYPE_INVALID: ['FILE_TYPE_INVALID', 400],
 } as const;
 export type ErrKey = keyof typeof ERR;
