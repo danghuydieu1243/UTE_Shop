@@ -23,7 +23,9 @@ function assertOwnership(bookVendorUserId: number | string, requestUserId: numbe
 }
 
 function storageKeyFromFile(file: Express.Multer.File): string {
-  return path.basename(file.path);
+  // Store as "private/<filename>" (forward slashes) so Phase 3 signed-URL /
+  // download logic can reconstruct the full path without hardcoding the subdir.
+  return `private/${path.basename(file.path)}`;
 }
 
 function coverUrlFromFile(file: Express.Multer.File): string {
@@ -183,7 +185,7 @@ export async function updateBook(
 
   if (input.title !== undefined) {
     updateData.title = input.title;
-    updateData.slug = await repo.uniqueBookSlug(input.title);
+    updateData.slug = await repo.uniqueBookSlug(input.title, bookId);
   }
   if (input.description !== undefined) updateData.description = input.description ?? null;
   if (input.tableOfContents !== undefined) updateData.tableOfContents = input.tableOfContents ?? null;

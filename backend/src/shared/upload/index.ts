@@ -10,22 +10,6 @@ function ensureDir(dir: string) {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 }
 
-// ── Storage engines ──────────────────────────────────────────────────────────
-function makeStorage(subdir: string) {
-  return multer.diskStorage({
-    destination: (_req, _file, cb) => {
-      const dest = path.resolve(env.UPLOAD_DIR, subdir);
-      ensureDir(dest);
-      cb(null, dest);
-    },
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname);
-      const base = `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`;
-      cb(null, base);
-    },
-  });
-}
-
 // ── MIME validators ──────────────────────────────────────────────────────────
 const COVER_MIMES = ['image/png', 'image/jpeg'];
 const EBOOK_MIMES = ['application/pdf', 'application/epub+zip'];
@@ -107,7 +91,10 @@ export const enforceCoverSize: RequestHandler = (req: Request, _res: Response, n
   const covers = files['covers'] ?? [];
   for (const f of covers) {
     if (f.size > COVER_SIZE_LIMIT) {
-      // Remove already-saved files
+      // Intentional atomic cleanup: the entire upload is treated as one unit.
+      // If the cover is oversized we reject the whole request, so the already-
+      // saved ebook file must also be removed here. The client must re-send
+      // both files on retry — there is no partial-save to resume from.
       for (const c of covers) {
         try { fs.unlinkSync(c.path); } catch { /* ignore */ }
       }

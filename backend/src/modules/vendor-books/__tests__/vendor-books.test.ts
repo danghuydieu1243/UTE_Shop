@@ -7,6 +7,7 @@ import { User, Vendor, Category, Book, BookFile } from '../../../db/models';
 import { signAccessToken } from '../../auth/token.service';
 import * as service from '../vendor-books.service';
 import * as repo from '../vendor-books.repository';
+import { enforceCoverSize } from '../../../shared/upload';
 
 // ── Setup temp UPLOAD_DIR before anything imports env ────────────────────────
 // env.ts is imported at module load time, so we patch process.env here
@@ -330,5 +331,83 @@ describe('vendor-books routes (supertest)', () => {
       .get('/api/v1/vendor/books')
       .set('Authorization', `Bearer ${userToken}`);
     expect(res.status).toBe(403);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+describe('enforceCoverSize middleware', () => {
+  const COVER_SIZE_LIMIT = 5 * 1024 * 1024; // 5MB
+
+  function makeReq(coverSize: number, ebookPath?: string) {
+    const coverPath = path.join(TEMP_UPLOAD_DIR, 'covers', `cover-${Date.now()}.png`);
+    fs.mkdirSync(path.dirname(coverPath), { recursive: true });
+    fs.writeFileSync(coverPath, TINY_PNG);
+
+    const files: Record<string, Express.Multer.File[]> = {
+      covers: [
+        {
+          fieldname: 'covers',
+          originalname: 'cover.png',
+          encoding: '7bit',
+          mimetype: 'image/png',
+          size: coverSize,
+          destination: path.dirname(coverPath),
+          filename: path.basename(coverPath),
+          path: coverPath,
+          buffer: TINY_PNG,
+          stream: null as any,
+        },
+      ],
+    };
+
+    if (ebookPath) {
+      files['ebookFile'] = [
+        {
+          fieldname: 'ebookFile',
+          originalname: 'book.pdf',
+          encoding: '7bit',
+          mimetype: 'application/pdf',
+          size: 100,
+          destination: path.dirname(ebookPath),
+          filename: path.basename(ebookPath),
+          path: ebookPath,
+          buffer: TINY_PDF,
+          stream: null as any,
+        },
+      ];
+    }
+
+    return { files } as any;
+  }
+
+  // ── M3: cover > 5MB → FILE_TOO_LARGE AppError ────────────────────────────────
+  it('rejects cover > 5MB with FILE_TOO_LARGE and deletes saved ebook file', (done) => {
+    const ebookPath = path.join(TEMP_UPLOAD_DIR, 'private', `ebook-${Date.now()}.pdf`);
+    fs.mkdirSync(path.dirname(ebookPath), { recursive: true });
+    fs.writeFileSync(ebookPath, TINY_PDF);
+
+    const oversizedCoverSize = COVER_SIZE_LIMIT + 1;
+    const req = makeReq(oversizedCoverSize, ebookPath);
+    const res = {} as any;
+
+    enforceCoverSize(req, res, (err: any) => {
+      expect(err).toBeDefined();
+      expect(err.code).toBe('FILE_TOO_LARGE');
+      expect(err.status).toBe(400);
+      // ebook file should have been deleted as part of atomic cleanup
+      expect(fs.existsSync(ebookPath)).toBe(false);
+      done();
+    });
+  });
+
+  // ── cover exactly at limit is OK ─────────────────────────────────────────────
+  it('allows cover exactly at 5MB limit', (done) => {
+    const req = makeReq(COVER_SIZE_LIMIT);
+    const res = {} as any;
+
+    enforceCoverSize(req, res, (err: any) => {
+      expect(err).toBeUndefined();
+      done();
+    });
   });
 });

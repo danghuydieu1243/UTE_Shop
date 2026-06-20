@@ -16,15 +16,19 @@ function slugify(text: string): string {
     .slice(0, 260);
 }
 
-export async function uniqueBookSlug(base: string): Promise<string> {
+export async function uniqueBookSlug(base: string, excludeId?: number): Promise<string> {
   const candidate = slugify(base);
-  const existing = await Book.findOne({ where: { slug: candidate } });
+  const baseWhere = excludeId ? { slug: candidate, id: { [Op.ne]: excludeId } } : { slug: candidate };
+  const existing = await Book.findOne({ where: baseWhere });
   if (!existing) return candidate;
 
   // Try with numeric suffix
   for (let i = 2; i <= 999; i++) {
     const withSuffix = `${candidate}-${i}`;
-    const conflict = await Book.findOne({ where: { slug: withSuffix } });
+    const suffixWhere = excludeId
+      ? { slug: withSuffix, id: { [Op.ne]: excludeId } }
+      : { slug: withSuffix };
+    const conflict = await Book.findOne({ where: suffixWhere });
     if (!conflict) return withSuffix;
   }
   return `${candidate}-${Date.now()}`;
@@ -89,7 +93,7 @@ export async function findBookById(id: number): Promise<Book | null> {
       { model: Publisher, as: 'publisher', attributes: ['id', 'name', 'slug'] },
       { model: Category, as: 'category', attributes: ['id', 'name', 'slug'] },
       { model: BookImage, as: 'images', attributes: ['id', 'url', 'alt', 'sortOrder'] },
-      { model: BookFile, as: 'file', attributes: ['id', 'fileFormat', 'fileSizeBytes', 'version', 'storageKey'] },
+      { model: BookFile, as: 'file', attributes: ['id', 'fileFormat', 'fileSizeBytes', 'version'] },
     ],
   });
 }
