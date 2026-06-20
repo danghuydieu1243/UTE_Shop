@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Button, Alert } from '../../../shared/ui';
+import { Alert } from '../../../shared/ui';
 import { useChangePasswordMutation } from '../profileApi';
 import { passwordStrength, PASSWORD_4GROUPS } from '../../../shared/validation/password';
 
@@ -32,7 +32,22 @@ const strengthColor: Record<string, string> = {
   medium: 'bg-warning-fg',
   strong: 'bg-success-fg',
 };
+// 4 segments: weak=1, medium=2, strong=3 filled out of 4
 const strengthBars: Record<string, number> = { weak: 1, medium: 2, strong: 3 };
+
+const EyeOpenIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const EyeClosedIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+    <line x1="1" y1="1" x2="23" y2="23" />
+  </svg>
+);
 
 export const ChangePasswordForm = () => {
   const [changePassword, { isLoading }] = useChangePasswordMutation();
@@ -77,61 +92,53 @@ export const ChangePasswordForm = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-4">
+    <form onSubmit={handleSubmit(onSubmit)} noValidate className="flex flex-col gap-5">
       {successMsg && <Alert kind="success">{successMsg}</Alert>}
       {apiError && <Alert kind="danger">{apiError}</Alert>}
 
       {/* Current password */}
-      <label className="block">
-        <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[1.5px] text-ink-2">
-          Mật khẩu hiện tại
-        </span>
-        <div className="relative">
-          <input
-            type={showCurrent ? 'text' : 'password'}
-            placeholder="Nhập mật khẩu hiện tại"
-            autoComplete="current-password"
-            className={`w-full rounded border bg-surface px-3 py-2.5 pr-10 text-sm text-ink outline-none transition-colors focus:border-ink ${
-              errors.currentPassword ? 'border-danger-fg' : 'border-line'
-            }`}
-            {...register('currentPassword')}
-          />
-          <button
-            type="button"
-            onClick={() => setShowCurrent((v) => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink"
-            aria-label={showCurrent ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-          >
-            {showCurrent ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                <line x1="1" y1="1" x2="23" y2="23" />
-              </svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-            )}
-          </button>
-        </div>
+      <div>
+        <label className="block">
+          <span className="block text-[11px] font-medium uppercase tracking-[0.5px] text-ink-3 mb-1.5">
+            Mật khẩu hiện tại
+          </span>
+          <div className="relative flex">
+            <input
+              type={showCurrent ? 'text' : 'password'}
+              placeholder="Nhập mật khẩu hiện tại"
+              autoComplete="current-password"
+              className={`h-[42px] border rounded bg-surface text-[14px] text-ink outline-none w-full pr-[44px] pl-[14px] focus:border-ink transition-colors ${
+                errors.currentPassword ? 'border-danger-fg' : 'border-line'
+              }`}
+              {...register('currentPassword')}
+            />
+            <button
+              type="button"
+              onClick={() => setShowCurrent((v) => !v)}
+              className="absolute right-[14px] top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink border-none bg-transparent p-0 cursor-pointer"
+              aria-label={showCurrent ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+            >
+              {showCurrent ? <EyeClosedIcon /> : <EyeOpenIcon />}
+            </button>
+          </div>
+        </label>
         {errors.currentPassword && (
-          <span className="mt-1 block text-xs text-danger-fg">{errors.currentPassword.message}</span>
+          <span className="mt-0.5 block text-[11px] text-danger-fg">{errors.currentPassword.message}</span>
         )}
-      </label>
+      </div>
 
       {/* New password with strength bar */}
       <div>
         <label className="block">
-          <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[1.5px] text-ink-2">
+          <span className="block text-[11px] font-medium uppercase tracking-[0.5px] text-ink-3 mb-1.5">
             Mật khẩu mới
           </span>
-          <div className="relative">
+          <div className="relative flex">
             <input
               type={showNew ? 'text' : 'password'}
               placeholder="Tối thiểu 9 ký tự"
               autoComplete="new-password"
-              className={`w-full rounded border bg-surface px-3 py-2.5 pr-10 text-sm text-ink outline-none transition-colors focus:border-ink ${
+              className={`h-[42px] border rounded bg-surface text-[14px] text-ink outline-none w-full pr-[44px] pl-[14px] focus:border-ink transition-colors ${
                 errors.newPassword ? 'border-danger-fg' : 'border-line'
               }`}
               {...register('newPassword')}
@@ -139,31 +146,21 @@ export const ChangePasswordForm = () => {
             <button
               type="button"
               onClick={() => setShowNew((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink"
+              className="absolute right-[14px] top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink border-none bg-transparent p-0 cursor-pointer"
               aria-label={showNew ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
             >
-              {showNew ? (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                  <line x1="1" y1="1" x2="23" y2="23" />
-                </svg>
-              ) : (
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                  <circle cx="12" cy="12" r="3" />
-                </svg>
-              )}
+              {showNew ? <EyeClosedIcon /> : <EyeOpenIcon />}
             </button>
           </div>
           {errors.newPassword && (
-            <span className="mt-1 block text-xs text-danger-fg">{errors.newPassword.message}</span>
+            <span className="mt-0.5 block text-[11px] text-danger-fg">{errors.newPassword.message}</span>
           )}
         </label>
-        {/* Strength bar */}
+        {/* Strength bar — 4 segments */}
         {newPasswordValue && strength && (
           <div className="mt-2">
             <div className="flex gap-1">
-              {[1, 2, 3].map((bar) => (
+              {[1, 2, 3, 4].map((bar) => (
                 <div
                   key={bar}
                   className={`h-[3px] flex-1 rounded-full transition-colors ${
@@ -173,7 +170,7 @@ export const ChangePasswordForm = () => {
               ))}
             </div>
             <span
-              className="mt-1 block text-xs font-medium"
+              className="mt-1 block text-[11px] font-medium"
               style={{
                 color:
                   strength === 'weak'
@@ -187,55 +184,53 @@ export const ChangePasswordForm = () => {
             </span>
           </div>
         )}
+        {/* Strength hint */}
+        <p className="mt-1.5 text-[11px] text-ink-3">
+          Tối thiểu 9 ký tự, gồm chữ hoa, chữ thường, số và ký tự đặc biệt
+        </p>
       </div>
 
       {/* Confirm password */}
-      <label className="block">
-        <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-[1.5px] text-ink-2">
-          Xác nhận mật khẩu mới
-        </span>
-        <div className="relative">
-          <input
-            type={showConfirm ? 'text' : 'password'}
-            placeholder="Nhập lại mật khẩu mới"
-            autoComplete="new-password"
-            className={`w-full rounded border bg-surface px-3 py-2.5 pr-10 text-sm text-ink outline-none transition-colors focus:border-ink ${
-              errors.confirm ? 'border-danger-fg' : 'border-line'
-            }`}
-            {...register('confirm')}
-          />
-          <button
-            type="button"
-            onClick={() => setShowConfirm((v) => !v)}
-            className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink"
-            aria-label={showConfirm ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-          >
-            {showConfirm ? (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
-                <line x1="1" y1="1" x2="23" y2="23" />
-              </svg>
-            ) : (
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-                <circle cx="12" cy="12" r="3" />
-              </svg>
-            )}
-          </button>
-        </div>
+      <div>
+        <label className="block">
+          <span className="block text-[11px] font-medium uppercase tracking-[0.5px] text-ink-3 mb-1.5">
+            Xác nhận mật khẩu mới
+          </span>
+          <div className="relative flex">
+            <input
+              type={showConfirm ? 'text' : 'password'}
+              placeholder="Nhập lại mật khẩu mới"
+              autoComplete="new-password"
+              className={`h-[42px] border rounded bg-surface text-[14px] text-ink outline-none w-full pr-[44px] pl-[14px] focus:border-ink transition-colors ${
+                errors.confirm ? 'border-danger-fg' : 'border-line'
+              }`}
+              {...register('confirm')}
+            />
+            <button
+              type="button"
+              onClick={() => setShowConfirm((v) => !v)}
+              className="absolute right-[14px] top-1/2 -translate-y-1/2 text-ink-3 hover:text-ink border-none bg-transparent p-0 cursor-pointer"
+              aria-label={showConfirm ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+            >
+              {showConfirm ? <EyeClosedIcon /> : <EyeOpenIcon />}
+            </button>
+          </div>
+        </label>
         {errors.confirm && (
-          <span className="mt-1 block text-xs text-danger-fg">{errors.confirm.message}</span>
+          <span className="mt-0.5 block text-[11px] text-danger-fg">{errors.confirm.message}</span>
         )}
-      </label>
+      </div>
 
-      <Button
-        type="submit"
-        loading={isLoading}
-        disabled={strength !== null && strengthBars[strength ?? 'weak'] < 2}
-        className="h-12 w-full"
-      >
-        ĐỔI MẬT KHẨU
-      </Button>
+      {/* Form actions */}
+      <div className="flex items-center gap-3 mt-7 pt-6 border-t border-line">
+        <button
+          type="submit"
+          disabled={isLoading || (strength !== null && (strengthBars[strength ?? 'weak'] < 2))}
+          className="h-[42px] px-7 bg-ink text-paper border-none rounded text-[11px] font-semibold tracking-[1.5px] uppercase cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {isLoading ? 'Đang cập nhật...' : 'Cập nhật mật khẩu'}
+        </button>
+      </div>
     </form>
   );
 };
