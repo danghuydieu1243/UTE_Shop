@@ -156,3 +156,16 @@ export const resetPassword = async (params: { email: string; resetToken: string;
   await authRepo.revokeAllUserRefresh(user.id);
   return { success: true as const };
 };
+
+export const getMe = async (userId: number) => {
+  const user = await authRepo.findUserById(userId);
+  if (!user) throw AppError.from('NOT_FOUND', 'Không tìm thấy người dùng');
+  const base = toPublicUser(user);
+  if (user.role === 'vendor') {
+    const vendor = await authRepo.findVendorByUserId(userId);
+    if (vendor) {
+      return { ...base, shop: { shopName: vendor.shopName, shopSlug: vendor.shopSlug } };
+    }
+  }
+  return base;
+};
