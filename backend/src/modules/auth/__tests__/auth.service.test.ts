@@ -36,3 +36,46 @@ describe('auth.service register flow', () => {
     expect(vendor!.shopSlug).toBeTruthy();
   });
 });
+
+describe('auth.service login/refresh/logout', () => {
+  const setupActive = async (email: string) => {
+    await authService.register({ accountType: 'user', email, password: 'Abcd@1234', fullName: 'X' });
+    await authService.verifyOtpRegister({ email, code: lastCode() });
+  };
+
+  it('login success returns tokens + redirect /', async () => {
+    await setupActive('login@x.com');
+    const r = await authService.login({ email: 'login@x.com', password: 'Abcd@1234' });
+    expect(r.accessToken).toBeTruthy();
+    expect(r.refreshToken).toBeTruthy();
+    expect(r.redirect).toBe('/');
+  });
+
+  it('login wrong password → AUTH_INVALID_CREDENTIALS', async () => {
+    await setupActive('wp@x.com');
+    await expect(authService.login({ email: 'wp@x.com', password: 'Wrong@1234' }))
+      .rejects.toMatchObject({ code: 'AUTH_INVALID_CREDENTIALS' });
+  });
+
+  it('login pending user → ACCOUNT_PENDING', async () => {
+    await authService.register({ accountType: 'user', email: 'pend@x.com', password: 'Abcd@1234', fullName: 'P' });
+    await expect(authService.login({ email: 'pend@x.com', password: 'Abcd@1234' }))
+      .rejects.toMatchObject({ code: 'ACCOUNT_PENDING' });
+  });
+
+  it('refresh rotates token + detects reuse', async () => {
+    await setupActive('rot@x.com');
+    const r = await authService.login({ email: 'rot@x.com', password: 'Abcd@1234' });
+    const r2 = await authService.refresh(r.refreshToken);
+    expect(r2.refreshToken).not.toBe(r.refreshToken);
+    expect(r2.accessToken).toBeTruthy();
+    await expect(authService.refresh(r.refreshToken)).rejects.toMatchObject({ code: 'REFRESH_REUSED' });
+  });
+
+  it('logout revokes refresh token', async () => {
+    await setupActive('lo@x.com');
+    const r = await authService.login({ email: 'lo@x.com', password: 'Abcd@1234' });
+    await authService.logout(r.refreshToken);
+    await expect(authService.refresh(r.refreshToken)).rejects.toMatchObject({ code: 'REFRESH_REUSED' });
+  });
+});

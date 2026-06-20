@@ -88,3 +88,45 @@ export const resendOtp = async (params: { email: string; purpose: 'register' | '
   const user = await authRepo.findUserByEmail(params.email);
   return otpService.issueOtp({ email: params.email, userId: user?.id ?? null, purpose: params.purpose });
 };
+
+export const login = async (dto: { email: string; password: string }, meta?: Meta) => {
+  const user = await authRepo.findUserByEmail(dto.email, true);
+  if (!user) throw AppError.from('AUTH_INVALID_CRED', 'Email hoặc mật khẩu không đúng');
+  const matched = await bcrypt.compare(dto.password, user.passwordHash);
+  if (!matched) throw AppError.from('AUTH_INVALID_CRED', 'Email hoặc mật khẩu không đúng');
+  if (user.status === 'locked') throw AppError.from('ACCOUNT_LOCKED', 'Tài khoản đã bị khóa');
+  if (user.status === 'pending') throw AppError.from('ACCOUNT_PENDING', 'Tài khoản chưa xác thực email');
+  await authRepo.touchLastLogin(user.id);
+  const tokens = await issueTokenPair(user, meta);
+  return { user: toPublicUser(user), ...tokens, redirect: redirectForRole(user.role) };
+};
+
+export const refresh = async (rawToken: string, meta?: Meta) => {
+  const rec = await authRepo.findRefreshByHash(hashToken(rawToken));
+  if (!rec) throw AppError.from('UNAUTHORIZED', 'Phiên đăng nhập không hợp lệ');
+  if (rec.revokedAt) {
+    await authRepo.revokeAllUserRefresh(rec.userId);
+    throw AppError.from('REFRESH_REUSED', 'Phát hiện tái sử dụng refresh token');
+  }
+  if (rec.expiresAt < new Date()) throw AppError.from('UNAUTHORIZED', 'Phiên đăng nhập đã hết hạn');
+  const user = await authRepo.findUserById(rec.userId);
+  if (!user) throw AppError.from('UNAUTHORIZED', 'Phiên đăng nhập không hợp lệ');
+  const accessToken = signAccessToken({ id: user.id, role: user.role });
+  const newRefresh = generateRefreshToken();
+  const newRec = await authRepo.createRefreshToken({
+    userId: user.id,
+    tokenHash: hashToken(newRefresh),
+    expiresAt: refreshExpiresAt(),
+    userAgent: meta?.userAgent ?? null,
+    ip: meta?.ip ?? null,
+  });
+  await authRepo.revokeRefresh(rec.id, newRec.id);
+  return { accessToken, refreshToken: newRefresh };
+};
+
+export const logout = async (rawToken: string): Promise<void> => {
+  const rec = await authRepo.findRefreshByHash(hashToken(rawToken));
+  if (rec && !rec.revokedAt) {
+    await authRepo.revokeRefresh(rec.id);
+  }
+};
