@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import type { BookCard as BookCardDTO } from '../../features/catalog/types';
-import { formatVND, formatFileSize } from '../format';
+import { formatVND, formatFileSize, formatCount } from '../format';
 
 interface BookCardProps {
   book: BookCardDTO;
@@ -8,13 +8,19 @@ interface BookCardProps {
   className?: string;
   /** Show rank badge (e.g. "No. 1") */
   rank?: number;
+  /** Called when "Thêm vào giỏ" is clicked. Wired in Phase 3 (cart feature). */
+  onAddToCart?: (book: BookCardDTO) => void;
 }
 
 /**
  * BookCard — bám Design System §5 + home_static.html + book_catalog_static.html.
+ * Root = <article> (not <a>) so the "Thêm vào giỏ" <button> is a valid sibling,
+ * avoiding button-inside-anchor (invalid HTML5).
  * Hover: .book-cover đổi nền sang #EFEDE6; .cover-rule giãn rộng (home_preview.html).
  */
-export const BookCard = ({ book, className = '', rank }: BookCardProps) => {
+export const BookCard = ({ book, className = '', rank, onAddToCart }: BookCardProps) => {
+  const navigate = useNavigate();
+
   const {
     slug,
     title,
@@ -32,6 +38,14 @@ export const BookCard = ({ book, className = '', rank }: BookCardProps) => {
 
   const hasDiscount = originalPrice != null && originalPrice > price;
 
+  const handleNavigate = () => navigate(`/books/${slug}`);
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLElement>) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleNavigate();
+    }
+  };
+
   // Render star rating (filled ★ based on ratingAvg out of 5)
   const renderStars = () => {
     const fullStars = Math.round(ratingAvg);
@@ -39,10 +53,13 @@ export const BookCard = ({ book, className = '', rank }: BookCardProps) => {
   };
 
   return (
-    <Link
-      to={`/books/${slug}`}
-      className={`group flex flex-col ${className}`}
+    <article
+      role="link"
+      tabIndex={0}
+      onClick={handleNavigate}
+      onKeyDown={handleKeyDown}
       aria-label={title}
+      className={`group flex flex-col cursor-pointer ${className}`}
     >
       {/* Cover image */}
       <div className="relative mb-3.5 flex aspect-[2/3] flex-col items-center justify-center overflow-hidden border border-line bg-cover-bg p-[26px_22px] transition-colors duration-200 group-hover:bg-[#EFEDE6]">
@@ -90,15 +107,15 @@ export const BookCard = ({ book, className = '', rank }: BookCardProps) => {
       </div>
 
       {/* Author */}
-      <div className="mb-2 text-[12px] text-ink-3">{author ?? ' '}</div>
+      <div className="mb-2 text-[12px] text-ink-3">{author ?? ' '}</div>
 
-      {/* Rating */}
+      {/* Rating — tabular-nums per Design System §3 */}
       <div className="mb-2 flex items-center gap-1.5 text-[11px] text-ink-2">
         <span className="text-star" aria-hidden="true">
           {renderStars()}
         </span>
-        <span>{ratingAvg.toFixed(1)}</span>
-        <span className="text-ink-3">({ratingCount.toLocaleString('vi-VN')})</span>
+        <span className="tabular-nums">{ratingAvg.toFixed(1)}</span>
+        <span className="tabular-nums text-ink-3">({formatCount(ratingCount)})</span>
       </div>
 
       {/* Price row */}
@@ -109,7 +126,8 @@ export const BookCard = ({ book, className = '', rank }: BookCardProps) => {
             {formatVND(originalPrice!)}
           </span>
         )}
-        {discountPercent != null && discountPercent > 0 && (
+        {/* I2: badge gated on hasDiscount to prevent badge without strikethrough price */}
+        {hasDiscount && discountPercent != null && discountPercent > 0 && (
           <span className="text-[9px] font-semibold uppercase tracking-[1px] text-accent">
             {`-${discountPercent}%`}
           </span>
@@ -120,6 +138,19 @@ export const BookCard = ({ book, className = '', rank }: BookCardProps) => {
       <div className="mt-auto text-[11px] tracking-[0.3px] text-ink-3">
         {formatFileSize(fileFormat, fileSizeBytes)}
       </div>
-    </Link>
+
+      {/* "Thêm vào giỏ" — always visible, sibling to cover (not inside <a>).
+          Cart wiring comes in Phase 3. */}
+      <button
+        type="button"
+        className="btn-cart mt-3 w-full border border-ink py-2 text-[11px] font-semibold uppercase tracking-[1px] text-ink transition-colors duration-150 hover:bg-ink hover:text-bg"
+        onClick={(e) => {
+          e.stopPropagation();
+          onAddToCart?.(book);
+        }}
+      >
+        Thêm vào giỏ
+      </button>
+    </article>
   );
 };

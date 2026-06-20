@@ -1,4 +1,5 @@
 import { baseApi } from '../../shared/api/baseApi';
+import type { EnvelopeMeta } from '../../shared/api/baseApi';
 import type {
   HomeData,
   BookCard,
@@ -12,11 +13,6 @@ import type {
 export interface BooksResult {
   books: BookCard[];
   pagination: Pagination;
-}
-
-// RTK Query envelopemeta type (passed to transformResponse as 2nd arg)
-interface EnvelopeMeta {
-  pagination?: Pagination;
 }
 
 export const catalogApi = baseApi.injectEndpoints({

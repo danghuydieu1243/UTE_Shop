@@ -12,7 +12,26 @@ interface QueryArgs {
   params?: unknown;
 }
 
-const rawBaseQuery: BaseQueryFn<QueryArgs, unknown, ApiError & { status?: number }> = async (
+/** Pagination shape mirrored from catalog/types — defined here to avoid a layering cycle. */
+interface PaginationMeta {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+/** Meta object forwarded from the backend envelope to RTK Query transformResponse. */
+export interface EnvelopeMeta {
+  pagination?: PaginationMeta;
+}
+
+const rawBaseQuery: BaseQueryFn<
+  QueryArgs,
+  unknown,
+  ApiError & { status?: number },
+  {},
+  EnvelopeMeta
+> = async (
   { url, method, data, params },
   apiCtx,
 ) => {
@@ -38,7 +57,13 @@ const rawBaseQuery: BaseQueryFn<QueryArgs, unknown, ApiError & { status?: number
 
 let refreshPromise: Promise<{ accessToken: string; refreshToken: string }> | null = null;
 
-const baseQueryWithReauth: typeof rawBaseQuery = async (args, apiCtx, extra) => {
+const baseQueryWithReauth: BaseQueryFn<
+  QueryArgs,
+  unknown,
+  ApiError & { status?: number },
+  {},
+  EnvelopeMeta
+> = async (args, apiCtx, extra) => {
   let result = await rawBaseQuery(args, apiCtx, extra);
   if (result.error?.status === 401) {
     const state = apiCtx.getState() as RootState;

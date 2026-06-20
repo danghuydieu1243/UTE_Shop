@@ -1,7 +1,15 @@
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { BookCard } from '../../../shared/ui/BookCard';
 import type { BookCard as BookCardDTO } from '../types';
+
+// Mock useNavigate so navigation can be asserted without a real router history
+const mockNavigate = vi.fn();
+vi.mock('react-router-dom', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router-dom')>();
+  return { ...actual, useNavigate: () => mockNavigate };
+});
 
 const baseBook: BookCardDTO = {
   id: 1,
@@ -29,6 +37,8 @@ const renderCard = (props?: Partial<BookCardDTO>, rank?: number) =>
   );
 
 describe('BookCard', () => {
+  beforeEach(() => mockNavigate.mockClear());
+
   it('renders title', () => {
     renderCard();
     expect(screen.getAllByText('Đắc Nhân Tâm').length).toBeGreaterThan(0);
@@ -59,10 +69,24 @@ describe('BookCard', () => {
     expect(screen.queryByText(/-\d+%/)).not.toBeInTheDocument();
   });
 
-  it('links to /books/:slug', () => {
+  it('does NOT render discount badge when price equals originalPrice even if discountPercent set', () => {
+    // price === originalPrice → hasDiscount false → badge must not appear
+    renderCard({ originalPrice: 89000, discountPercent: 10 });
+    expect(screen.queryByText(/-\d+%/)).not.toBeInTheDocument();
+  });
+
+  it('navigates to /books/:slug on click', () => {
     renderCard();
-    const link = screen.getByRole('link', { name: /Đắc Nhân Tâm/i });
-    expect(link).toHaveAttribute('href', '/books/dac-nhan-tam');
+    const card = screen.getByRole('link', { name: /Đắc Nhân Tâm/i });
+    fireEvent.click(card);
+    expect(mockNavigate).toHaveBeenCalledWith('/books/dac-nhan-tam');
+  });
+
+  it('navigates to /books/:slug on Enter key', () => {
+    renderCard();
+    const card = screen.getByRole('link', { name: /Đắc Nhân Tâm/i });
+    fireEvent.keyDown(card, { key: 'Enter' });
+    expect(mockNavigate).toHaveBeenCalledWith('/books/dac-nhan-tam');
   });
 
   it('renders rating count', () => {
@@ -82,12 +106,34 @@ describe('BookCard', () => {
 
   it('does NOT render rank badge when rank is undefined', () => {
     renderCard();
-    // rank badge contains "No." — not present if rank not passed
     expect(screen.queryByText(/^No\./)).not.toBeInTheDocument();
   });
 
   it('renders rank badge when rank is provided', () => {
     renderCard({}, 3);
     expect(screen.getByText('3')).toBeInTheDocument();
+  });
+
+  it('renders "Thêm vào giỏ" button', () => {
+    renderCard();
+    expect(screen.getByRole('button', { name: /Thêm vào giỏ/i })).toBeInTheDocument();
+  });
+
+  it('cart button does not navigate when clicked', () => {
+    renderCard();
+    const btn = screen.getByRole('button', { name: /Thêm vào giỏ/i });
+    fireEvent.click(btn);
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('calls onAddToCart with book when cart button clicked', () => {
+    const onAddToCart = vi.fn();
+    render(
+      <MemoryRouter>
+        <BookCard book={baseBook} onAddToCart={onAddToCart} />
+      </MemoryRouter>,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Thêm vào giỏ/i }));
+    expect(onAddToCart).toHaveBeenCalledWith(baseBook);
   });
 });

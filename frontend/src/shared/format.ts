@@ -7,6 +7,14 @@ export function formatVND(amount: number): string {
 }
 
 /**
+ * Định dạng số nguyên với dấu phân cách hàng nghìn (vi-VN).
+ * Ví dụ: 1248 → "1.248"
+ */
+export function formatCount(n: number): string {
+  return n.toLocaleString('vi-VN');
+}
+
+/**
  * Định dạng dung lượng file (bytes → "PDF · 12.4 MB").
  * Ví dụ: formatFileSize('PDF', 13002342) → "PDF · 12.4 MB"
  */
