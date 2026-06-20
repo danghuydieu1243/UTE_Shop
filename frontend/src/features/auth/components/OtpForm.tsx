@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Alert } from '../../../shared/ui';
 import { useVerifyOtpMutation, useResendOtpMutation } from '../authApi';
 
 interface Props {
@@ -15,7 +14,9 @@ export const OtpForm = ({ email, purpose }: Props) => {
 
   const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [apiError, setApiError] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(60);
+  const [inputState, setInputState] = useState<'idle' | 'error' | 'success'>('idle');
+  const [shake, setShake] = useState(false);
+  const [cooldown, setCooldown] = useState(59);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -34,7 +35,7 @@ export const OtpForm = ({ email, purpose }: Props) => {
   }, []);
 
   useEffect(() => {
-    startCooldown(60);
+    startCooldown(59);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
@@ -48,6 +49,8 @@ export const OtpForm = ({ email, purpose }: Props) => {
     const next = [...digits];
     next[index] = value.slice(-1);
     setDigits(next);
+    setInputState('idle');
+    setApiError(null);
     if (value && index < 5) {
       inputRefs.current[index + 1]?.focus();
     }
@@ -63,37 +66,50 @@ export const OtpForm = ({ email, purpose }: Props) => {
     e.preventDefault();
     const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
     if (!pasted) return;
-    const next = [...digits];
+    const next = ['', '', '', '', '', ''];
     for (let i = 0; i < 6; i++) {
       next[i] = pasted[i] ?? '';
     }
     setDigits(next);
+    setInputState('idle');
+    setApiError(null);
     const lastFilled = Math.min(pasted.length - 1, 5);
     inputRefs.current[lastFilled]?.focus();
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isComplete) return;
+    if (!isComplete || isVerifying) return;
     setApiError(null);
     try {
       const data = await verifyOtp({ email, purpose, code }).unwrap();
-      if (purpose === 'reset_password' && 'resetToken' in data) {
-        navigate(`/reset-password?email=${encodeURIComponent(email)}&token=${encodeURIComponent(data.resetToken)}`);
-      } else if ('redirect' in data) {
-        navigate((data as { redirect: string }).redirect);
-      }
+      // Flash success state on inputs before redirecting
+      setInputState('success');
+      setTimeout(() => {
+        if (purpose === 'reset_password' && 'resetToken' in data) {
+          navigate(`/reset-password?email=${encodeURIComponent(email)}&token=${encodeURIComponent(data.resetToken)}`);
+        } else if ('redirect' in data) {
+          navigate((data as { redirect: string }).redirect);
+        }
+      }, 600);
     } catch (err: unknown) {
       const e = err as { data?: { message?: string } };
       setApiError(e?.data?.message ?? 'Mã không đúng, vui lòng thử lại.');
+      setInputState('error');
+      // Trigger shake animation
+      setShake(true);
       // Reset OTP inputs on error
       setDigits(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     }
   };
 
+  const handleShakeEnd = () => setShake(false);
+
   const handleResend = async () => {
     setApiError(null);
+    setInputState('idle');
+    setDigits(['', '', '', '', '', '']);
     try {
       const result = await resendOtp({ email, purpose }).unwrap();
       const availableAt = new Date(result.resendAvailableAt).getTime();
@@ -107,12 +123,23 @@ export const OtpForm = ({ email, purpose }: Props) => {
     }
   };
 
-  return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col items-center gap-5">
-      {apiError && <Alert kind="danger">{apiError}</Alert>}
+  // Per-input border class based on state
+  const inputBorderClass = (digit: string) => {
+    if (inputState === 'error') return 'border-danger-fg';
+    if (inputState === 'success') return 'border-success-fg bg-success-bg';
+    if (digit) return 'border-ink-2';
+    return 'border-line';
+  };
 
-      {/* OTP inputs */}
-      <div className="flex gap-2" onPaste={handlePaste}>
+  return (
+    <form onSubmit={handleSubmit} noValidate>
+      {/* OTP inputs row */}
+      <div
+        className={shake ? 'otp-inputs-shake' : ''}
+        style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '8px' }}
+        onPaste={handlePaste}
+        onAnimationEnd={handleShakeEnd}
+      >
         {digits.map((digit, i) => (
           <input
             key={i}
@@ -124,41 +151,93 @@ export const OtpForm = ({ email, purpose }: Props) => {
             placeholder="·"
             onChange={(e) => handleChange(i, e.target.value)}
             onKeyDown={(e) => handleKeyDown(i, e)}
-            className={`h-14 w-12 rounded border bg-surface text-center text-[22px] font-bold tabular-nums outline-none transition-colors focus:border-ink ${
-              digit ? 'border-ink' : 'border-line'
-            }`}
-            style={{ borderRadius: '2px' }}
+            className={`border bg-surface text-center font-bold tabular-nums outline-none transition-colors duration-[180ms] focus:border-ink ${inputBorderClass(digit)}`}
+            style={{
+              width: '48px',
+              height: '56px',
+              borderRadius: '2px',
+              fontSize: '22px',
+              fontVariantNumeric: 'tabular-nums',
+            }}
           />
         ))}
       </div>
 
-      {/* Resend */}
-      <div className="text-center text-sm text-ink-2">
+      {/* Error message — below inputs, hidden by default */}
+      {apiError && (
+        <p
+          className="text-danger-fg"
+          style={{ fontSize: '12px', marginTop: '8px', marginBottom: '4px' }}
+        >
+          {apiError}
+        </p>
+      )}
+
+      {/* Resend countdown */}
+      <div
+        className="text-center text-ink-3"
+        style={{ fontSize: '13px', margin: '16px 0 20px' }}
+      >
         {cooldown > 0 ? (
           <span>
             Gửi lại mã sau{' '}
-            <span className="tabular-nums font-medium text-ink">{cooldown}s</span>
+            <span className="tabular-nums font-semibold" style={{ fontVariantNumeric: 'tabular-nums' }}>
+              {cooldown}s
+            </span>
           </span>
         ) : (
           <button
             type="button"
             onClick={handleResend}
             disabled={isResending}
-            className="text-accent hover:underline disabled:opacity-50"
+            className="font-medium text-accent transition-opacity duration-[180ms] hover:opacity-75 disabled:opacity-50"
           >
             {isResending ? 'Đang gửi...' : 'Gửi lại mã'}
           </button>
         )}
       </div>
 
-      <Button
+      {/* Submit button — full-width, 48px, disabled until 6 digits */}
+      <button
         type="submit"
-        disabled={!isComplete}
-        loading={isVerifying}
-        className="h-12 w-full"
+        disabled={!isComplete || isVerifying}
+        className="flex w-full items-center justify-center gap-2 transition-opacity duration-200 hover:enabled:opacity-85 disabled:cursor-not-allowed"
+        style={{
+          height: '48px',
+          background: isComplete && !isVerifying ? '#16161A' : '#ECEAE5',
+          color: isComplete && !isVerifying ? '#FBFAF8' : '#A8A8AE',
+          borderRadius: '2px',
+          border: 'none',
+          fontSize: '11px',
+          fontWeight: 600,
+          letterSpacing: '2px',
+          textTransform: 'uppercase',
+        }}
       >
-        XÁC NHẬN
-      </Button>
+        {isVerifying ? (
+          <>
+            <span
+              className="inline-block h-4 w-4 animate-spin rounded-full"
+              style={{ border: '2px solid rgba(255,255,255,.3)', borderTopColor: 'white' }}
+            />
+            <span>XÁC NHẬN</span>
+          </>
+        ) : (
+          'XÁC NHẬN'
+        )}
+      </button>
+
+      {/* Shake + input focus animations */}
+      <style>{`
+        @keyframes shake {
+          0%,100% { transform: translateX(0); }
+          20%      { transform: translateX(-5px); }
+          40%      { transform: translateX(5px); }
+          60%      { transform: translateX(-4px); }
+          80%      { transform: translateX(4px); }
+        }
+        .otp-inputs-shake { animation: shake 380ms ease; }
+      `}</style>
     </form>
   );
 };
