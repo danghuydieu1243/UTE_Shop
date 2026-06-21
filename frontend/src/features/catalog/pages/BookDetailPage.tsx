@@ -503,7 +503,7 @@ export const BookDetailPage = () => {
 
             {/* E-book info row */}
             <div className="mb-6 flex items-center gap-[10px] border-b border-t border-line py-4 text-[12px] text-ink-2">
-              <svg width="16" height="16" stroke="#6B6B73" strokeWidth="1.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" fill="none" aria-hidden="true">
+              <svg width="16" height="16" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round" fill="none" aria-hidden="true">
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                 <path d="M14 2v6h6" />
               </svg>
