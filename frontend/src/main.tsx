@@ -16,6 +16,8 @@ import { BookDetailPage } from './features/catalog/pages/BookDetailPage';
 import { VendorBooksPage } from './features/vendor/pages/VendorBooksPage';
 import { VendorBookFormPage } from './features/vendor/pages/VendorBookFormPage';
 import { CartPage } from './features/cart/pages/CartPage';
+import { CheckoutPage } from './features/orders/pages/CheckoutPage';
+import { CheckoutQrPage } from './features/orders/pages/CheckoutQrPage';
 import { RequireAuth, RequireRole } from './shared/auth/guards';
 import './index.css';
 
@@ -45,6 +47,8 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
           {/* Protected: chỉ role 'user' — vendor/admin/manager không được vào /cart (tránh gọi GET /cart → 403) */}
           <Route element={<RequireRole roles={['user']} />}>
             <Route path="/cart" element={<CartPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/checkout/:code" element={<CheckoutQrPage />} />
           </Route>
 
           {/* Protected: vendor only */}
