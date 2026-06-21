@@ -22,13 +22,19 @@ const bookFormSchema = z.object({
   price: z
     .number({ invalid_type_error: 'Giá bán phải là số' })
     .positive('Giá bán phải lớn hơn 0'),
-  originalPrice: z.number().positive('Giá gốc phải lớn hơn 0').optional().or(z.literal('')),
+  originalPrice: z.preprocess(
+    (v) => (v === '' || v == null || (typeof v === 'number' && Number.isNaN(v)) ? undefined : v),
+    z.number().positive('Giá gốc phải lớn hơn 0').optional(),
+  ),
   categoryId: z
     .number({ invalid_type_error: 'Vui lòng chọn danh mục' })
     .positive('Vui lòng chọn danh mục'),
   authorName: z.string().min(1, 'Tên tác giả không được để trống'),
   publisherName: z.string().optional(),
-  publishYear: z.number().int().min(1000).max(9999).optional().or(z.literal('')),
+  publishYear: z.preprocess(
+    (v) => (v === '' || v == null || (typeof v === 'number' && Number.isNaN(v)) ? undefined : v),
+    z.number().int().min(1000).max(9999).optional(),
+  ),
   isbn: z.string().optional(),
   status: z.enum(['published', 'draft']),
 });
@@ -215,6 +221,7 @@ const textareaStyle: React.CSSProperties = {
 
 // ── Cover image item ────────────────────────────────────────────────────────
 interface CoverItem {
+  id: string;
   file?: File;
   previewUrl: string;
   name: string;
@@ -259,6 +266,7 @@ export const VendorBookFormPage = () => {
     handleSubmit,
     watch,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(bookFormSchema),
@@ -304,6 +312,7 @@ export const VendorBookFormPage = () => {
       if (existingBook.images && existingBook.images.length > 0) {
         setCoverItems(
           existingBook.images.map((img) => ({
+            id: img.url,
             previewUrl: img.url,
             name: img.url.split('/').pop() ?? 'cover',
             isExisting: true,
@@ -312,6 +321,7 @@ export const VendorBookFormPage = () => {
       } else if (existingBook.coverImageUrl) {
         setCoverItems([
           {
+            id: existingBook.coverImageUrl,
             previewUrl: existingBook.coverImageUrl,
             name: existingBook.coverImageUrl.split('/').pop() ?? 'cover',
             isExisting: true,
@@ -333,6 +343,7 @@ export const VendorBookFormPage = () => {
     setCoverItems((prev) => {
       const remaining = 5 - prev.length;
       const toAdd = arr.slice(0, remaining).map((file) => ({
+        id: `${file.name}-${file.size}-${Date.now()}`,
         file,
         previewUrl: URL.createObjectURL(file),
         name: file.name,
@@ -414,8 +425,14 @@ export const VendorBookFormPage = () => {
   };
 
   const onSubmit = handleSubmit((values) => buildAndSubmit(values));
-  const onSaveDraft = handleSubmit((values) => buildAndSubmit(values, 'draft'));
-  const onPublish = handleSubmit((values) => buildAndSubmit(values, 'published'));
+  const onSaveDraft = handleSubmit((values) => {
+    setValue('status', 'draft');
+    return buildAndSubmit(values, 'draft');
+  });
+  const onPublish = handleSubmit((values) => {
+    setValue('status', 'published');
+    return buildAndSubmit(values, 'published');
+  });
 
   // ── Topbar breadcrumb ──
   const breadcrumb = (
@@ -599,7 +616,7 @@ export const VendorBookFormPage = () => {
                 <div style={{ marginBottom: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {coverItems.map((item, idx) => (
                     <div
-                      key={idx}
+                      key={item.id}
                       style={{
                         display: 'flex',
                         alignItems: 'center',

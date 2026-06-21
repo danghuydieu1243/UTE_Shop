@@ -164,6 +164,37 @@ describe('VendorBookFormPage — create mode', () => {
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
+  it('blocks submit and shows cover-required error when no cover image is attached in create mode', async () => {
+    const mockCreate = vi.fn();
+    mockCreateMutation.mockReturnValue([mockCreate, { isLoading: false }]);
+
+    renderCreate();
+
+    // Fill in all required fields so Zod validation passes
+    fireEvent.change(screen.getByPlaceholderText('Nhập tên E-book...'), {
+      target: { value: 'Sách kiểm thử dài hơn' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Mô tả nội dung E-book...'), {
+      target: { value: 'Mô tả đủ dài' },
+    });
+    fireEvent.change(screen.getByPlaceholderText('Tên tác giả'), {
+      target: { value: 'Tác giả' },
+    });
+    // Set price via input
+    const priceInputs = document.querySelectorAll('input[type="number"]');
+    fireEvent.change(priceInputs[0], { target: { value: '50000', valueAsNumber: 50000 } });
+    // Select category
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: '1' } });
+
+    // Submit without attaching a cover image
+    fireEvent.click(screen.getByRole('button', { name: /đăng sách/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/vui lòng tải lên ít nhất 1 ảnh bìa/i)).toBeInTheDocument();
+    });
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
   it('"Lưu nháp" button is present and submittable', () => {
     renderCreate();
     const btn = screen.getByRole('button', { name: /lưu nháp/i });
