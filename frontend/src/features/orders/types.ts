@@ -10,7 +10,8 @@ export interface OrderItem {
 /** Thông tin payment QR */
 export interface Payment {
   id: number;
-  status: 'PENDING' | 'EXPIRED' | 'COMPLETED' | 'CANCELLED';
+  /** Trạng thái payment theo backend enum: PENDING | PAID | FAILED | REFUNDED */
+  status: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   amount: number;
   currency: string;
   referenceCode: string;
@@ -22,7 +23,8 @@ export interface Payment {
 /** Chi tiết đơn hàng */
 export interface OrderDetail {
   code: string;           // "ATHENA123456"
-  status: 'NEW' | 'PENDING_PAYMENT' | 'COMPLETED' | 'CANCELLED';
+  /** Trạng thái đơn hàng theo backend enum: NEW | COMPLETED | CANCELLED */
+  status: 'NEW' | 'COMPLETED' | 'CANCELLED';
   subtotal: number;
   couponDiscount: number;
   loyaltyDiscount: number;

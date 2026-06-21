@@ -96,6 +96,7 @@ describe('CheckoutPage', () => {
     mockUseGetCartQuery.mockReturnValue({ data: sampleCart, isLoading: false });
     renderPage();
     // Kiểm tra 2 title sách hiện trong DOM
+    // (cover-title placeholder dùng slice ngắn + "…" nên không trùng exact text)
     expect(screen.getByText('Đắc Nhân Tâm')).toBeInTheDocument();
     expect(screen.getByText('Nhà Giả Kim')).toBeInTheDocument();
     // Kiểm tra giá định dạng VND

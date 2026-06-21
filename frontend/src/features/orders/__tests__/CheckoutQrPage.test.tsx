@@ -52,7 +52,7 @@ const samplePayment = {
 
 const sampleOrder = {
   code: 'ATHENA123',
-  status: 'PENDING_PAYMENT' as const,
+  status: 'NEW' as const,
   subtotal: 264000,
   couponDiscount: 0,
   loyaltyDiscount: 0,

@@ -94,12 +94,30 @@ export const CheckoutQrPage = () => {
     return () => clearInterval(interval);
   }, [order?.payment]);
 
-  /* ── isExpired: chỉ expired khi countdown đã được tính (không null) VÀ <= 0 ── */
+  /* ── Tham chiếu payment ── */
   const payment = order?.payment ?? null;
+
+  /* ── isExpired: phát hiện hết hạn dựa expiresAt (không dùng status 'EXPIRED' vì không tồn tại)
+     - countdown đã được tính (không null) VÀ <= 0
+     - HOẶC payment.status === 'FAILED' (thanh toán thất bại — cũng cần tạo lại)
+  ── */
   const isExpired =
     payment !== null &&
     countdown !== null &&
-    (countdown <= 0 || payment.status === 'EXPIRED');
+    countdown <= 0;
+
+  /* ── showRecreate: hiện nút "Tạo lại QR" khi:
+     - payment chưa tồn tại (null)
+     - payment.status === 'FAILED' (thất bại)
+     - payment PENDING đã quá expiresAt (isExpired)
+  ── */
+  const showRecreate =
+    payment === null ||
+    payment.status === 'FAILED' ||
+    isExpired;
+
+  /* ── canCancel: chỉ cho phép hủy khi đơn hàng ở trạng thái NEW ── */
+  const canCancel = order?.status === 'NEW';
 
   /* ── Giả lập thanh toán thành công ── */
   const handleSimulate = useCallback(async () => {
@@ -140,10 +158,6 @@ export const CheckoutQrPage = () => {
     navigator.clipboard.writeText(text).then(() => show('Đã sao chép')).catch(() => {});
   };
 
-  const canCancel = order?.status === 'NEW' || order?.status === 'PENDING_PAYMENT';
-  // payment === null → chưa có payment, show nút recreate luôn
-  const showRecreate = payment === null || isExpired;
-
   return (
     <div className="min-h-screen bg-paper">
       <ToastLayer />
@@ -151,10 +165,12 @@ export const CheckoutQrPage = () => {
       {/* ── Navbar rút gọn ── */}
       <header className="fixed top-0 left-0 right-0 z-40 border-b border-line bg-paper">
         <div className="mx-auto flex max-w-container items-center justify-between px-10 h-[64px]">
-          <Link to="/" className="text-[18px] font-semibold tracking-[-0.5px] text-ink">
+          {/* FIX 6: logo uppercase */}
+          <Link to="/" className="text-[18px] font-semibold uppercase tracking-[1px] text-ink">
             Athena
           </Link>
-          <div className="flex items-center gap-1.5 text-[12px] text-ink-2">
+          {/* FIX 6: secure text dùng text-ink-3 theo static */}
+          <div className="flex items-center gap-1.5 text-[12px] text-ink-3">
             <LockIcon />
             Thanh toán an toàn
           </div>
@@ -162,31 +178,51 @@ export const CheckoutQrPage = () => {
       </header>
 
       <div className="pt-[64px]">
-        {/* ── Stepper ── */}
-        <div className="border-b border-line bg-surface">
-          <div className="mx-auto flex max-w-container items-center gap-6 px-10 py-4">
-            {/* Step 1 — done */}
-            <div className="flex items-center gap-2 opacity-60">
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-[10px] font-bold text-paper">
-                ✓
+        {/* ── Stepper (FIX 2) — canh giữa, max-w ~480px, nhãn UPPERCASE, bước done dùng success token ── */}
+        <div className="border-b border-line py-5">
+          <div className="mx-auto flex max-w-[480px] items-center">
+            {/* Step 1 — done (success color) */}
+            <div className="flex flex-1 flex-col items-center gap-2">
+              <div
+                className="flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-semibold"
+                style={{ background: 'var(--success-bg)', border: '1.5px solid var(--success)', color: 'var(--success)' }}
+              >
+                1
               </div>
-              <span className="text-[12px] text-ink-2">Xem lại đơn hàng</span>
+              <span
+                className="text-[11px] font-medium uppercase tracking-[0.5px]"
+                style={{ color: 'var(--success)' }}
+              >
+                Xác nhận
+              </span>
             </div>
-            <div className="h-px w-8 bg-line" />
-            {/* Step 2 — done */}
-            <div className="flex items-center gap-2 opacity-60">
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-[10px] font-bold text-paper">
-                ✓
+            {/* Line 1-2 done (success) */}
+            <div className="h-px flex-1" style={{ background: 'var(--success)', marginTop: '-20px' }} />
+            {/* Step 2 — done (success color) */}
+            <div className="flex flex-1 flex-col items-center gap-2">
+              <div
+                className="flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-semibold"
+                style={{ background: 'var(--success-bg)', border: '1.5px solid var(--success)', color: 'var(--success)' }}
+              >
+                2
               </div>
-              <span className="text-[12px] text-ink-2">Thanh toán</span>
+              <span
+                className="text-[11px] font-medium uppercase tracking-[0.5px]"
+                style={{ color: 'var(--success)' }}
+              >
+                Thanh toán
+              </span>
             </div>
-            <div className="h-px w-8 bg-line" />
+            {/* Line 2-3 inactive */}
+            <div className="h-px flex-1 bg-line" style={{ marginTop: '-20px' }} />
             {/* Step 3 — active */}
-            <div className="flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-[11px] font-bold text-paper">
+            <div className="flex flex-1 flex-col items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[12px] font-semibold text-paper">
                 3
               </div>
-              <span className="text-[12px] font-semibold text-ink">Hoàn tất</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.5px] text-ink">
+                Hoàn tất
+              </span>
             </div>
           </div>
         </div>
@@ -259,10 +295,18 @@ export const CheckoutQrPage = () => {
                       <p className="mb-1 text-[14px] font-semibold text-ink">SEPay QR</p>
                       <p className="mb-4 text-[13px] text-ink-2">Dùng app ngân hàng để quét mã</p>
 
-                      {/* Countdown / expired */}
+                      {/* FIX 4: Countdown bọc trong countdown-wrap nền warning-bg + viền ── */}
                       {payment && !isExpired ? (
-                        <div className="mb-3">
-                          <p className="mb-1 text-[11px] uppercase tracking-[1px] text-ink-3">Hết hạn sau</p>
+                        <div
+                          className="mb-3 rounded-[2px] px-4 py-3"
+                          style={{ background: 'var(--warning-bg)', border: '1px solid #ECD8B2' }}
+                        >
+                          <p
+                            className="mb-1 text-[11px] uppercase tracking-[0.5px]"
+                            style={{ color: 'var(--warning)' }}
+                          >
+                            Hết hạn sau
+                          </p>
                           <p className="text-[28px] font-bold tabular-nums text-ink leading-none">
                             {countdown !== null ? formatCountdown(countdown) : '--:--'}
                           </p>
@@ -278,7 +322,10 @@ export const CheckoutQrPage = () => {
                         </div>
                       )}
 
-                      <p className="text-[11px] text-ink-3">Mã QR tự động hết hạn sau 15 phút</p>
+                      {/* FIX 4: dòng polling-note theo static ── */}
+                      <p className="text-[12px] text-ink-2">
+                        Đang chờ xác nhận thanh toán từ cổng SEPay. Vui lòng không đóng trang này.
+                      </p>
                     </div>
                   </div>
 
@@ -340,13 +387,18 @@ export const CheckoutQrPage = () => {
                     )}
                   </div>
 
-                  {/* Nút hủy đơn hàng */}
+                  {/* FIX 5: Nút hủy đơn hàng — danger color theo static btn-ghost ── */}
                   {canCancel && (
                     <button
                       type="button"
                       onClick={handleCancel}
                       disabled={isCancelling}
-                      className="self-start text-[12px] text-ink-3 transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+                      className="flex w-full h-11 items-center justify-center rounded-[2px] text-[11px] font-semibold uppercase tracking-[1.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                      style={{
+                        background: 'none',
+                        color: 'var(--danger)',
+                        border: '1px solid var(--danger-bg)',
+                      }}
                     >
                       {isCancelling ? 'Đang hủy...' : 'Hủy đơn hàng'}
                     </button>
@@ -365,67 +417,88 @@ export const CheckoutQrPage = () => {
               </div>
 
               {/* ── RIGHT: Summary card (sticky) ── */}
-              <div className="sticky top-[100px] rounded-[2px] border border-line bg-surface p-6">
-                <div className="mb-4 text-[13px] font-semibold uppercase tracking-[2px] text-ink">
-                  Đơn hàng #{order.code}
+              <div className="sticky top-[100px] rounded-[2px] border border-line bg-surface">
+                <div className="px-6 py-5 border-b border-line">
+                  <div className="text-[11px] font-semibold uppercase tracking-[2px] text-ink">
+                    Đơn hàng #{order.code}
+                  </div>
                 </div>
 
-                {/* Danh sách items từ order */}
-                <div className="mb-4 flex flex-col gap-3">
-                  {order.items.map((item) => (
-                    <div key={item.bookId} className="flex items-center gap-3">
-                      {item.coverImageUrl ? (
-                        <img
-                          src={item.coverImageUrl}
-                          alt={item.title}
-                          className="h-14 w-10 flex-shrink-0 rounded-[1px] border border-line bg-cover-bg object-cover"
-                          onError={(e) => {
-                            const img = e.currentTarget;
-                            if (img.src.endsWith(COVER_PLACEHOLDER)) return;
-                            img.src = COVER_PLACEHOLDER;
-                          }}
-                        />
-                      ) : (
-                        <div className="h-14 w-10 flex-shrink-0 rounded-[1px] border border-line bg-cover-bg" />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="line-clamp-2 text-[12px] font-medium leading-[1.4] text-ink">
-                          {item.title}
+                <div className="p-6">
+                  {/* FIX 3: Danh sách items — layout 3 cột (cover | khối title+loại | giá căn phải) ── */}
+                  <div className="mb-4 flex flex-col gap-3">
+                    {order.items.map((item) => (
+                      <div key={item.bookId} className="flex items-start gap-3">
+                        {/* Cover với cover-rule + cover-title nhỏ (như static summary-cover) */}
+                        {item.coverImageUrl ? (
+                          <img
+                            src={item.coverImageUrl}
+                            alt={item.title}
+                            className="h-14 w-10 flex-shrink-0 rounded-[2px] border border-line bg-cover-bg object-cover"
+                            onError={(e) => {
+                              const img = e.currentTarget;
+                              if (img.src.endsWith(COVER_PLACEHOLDER)) return;
+                              img.src = COVER_PLACEHOLDER;
+                            }}
+                          />
+                        ) : (
+                          /* Placeholder cover với cover-rule + cover-title nhỏ */
+                          <div className="flex h-14 w-10 flex-shrink-0 flex-col items-center justify-center gap-0.5 rounded-[2px] border border-line bg-cover-bg p-1">
+                            <div className="h-px w-3.5 bg-ink-3" />
+                            <div
+                              className="text-center font-semibold leading-[1.2] text-ink"
+                              style={{ fontSize: '6px' }}
+                            >
+                              {item.title.slice(0, 12)}
+                            </div>
+                          </div>
+                        )}
+                        {/* Title + loại */}
+                        <div className="flex-1 min-w-0">
+                          <div className="line-clamp-2 text-[13px] font-medium leading-[1.4] text-ink">
+                            {item.title}
+                          </div>
+                          {/* Nhãn loại E-book màu accent */}
+                          <div className="mt-0.5 text-[11px]" style={{ color: 'var(--accent)' }}>
+                            E-book · PDF/EPUB
+                          </div>
                         </div>
-                        <div className="mt-0.5 text-[12px] tabular-nums text-ink-2">
+                        {/* Giá căn phải */}
+                        <div className="flex-shrink-0 text-[13px] font-semibold tabular-nums text-ink">
                           {formatVND(item.unitPrice)}
                         </div>
                       </div>
+                    ))}
+                  </div>
+
+                  {/* FIX 7: hr không mâu thuẫn — h-px bg-line */}
+                  <div className="my-4 h-px bg-line" />
+
+                  {/* Summary meta */}
+                  <div className="flex flex-col gap-2 text-[12px] text-ink-2">
+                    <div className="flex justify-between">
+                      <span>Phương thức</span>
+                      <span className="font-medium text-ink">SEPay QR</span>
                     </div>
-                  ))}
-                </div>
-
-                <hr className="my-4 border-none border-t border-line" />
-
-                {/* Summary meta */}
-                <div className="flex flex-col gap-2 text-[12px] text-ink-2">
-                  <div className="flex justify-between">
-                    <span>Phương thức</span>
-                    <span className="font-medium text-ink">SEPay QR</span>
+                    <div className="flex justify-between">
+                      <span>Nhận hàng</span>
+                      <span className="font-medium text-ink">E-book (tức thì)</span>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span>Nhận hàng</span>
-                    <span className="font-medium text-ink">E-book (tức thì)</span>
+
+                  <div className="my-3 h-px bg-line" />
+
+                  {/* Tổng cộng */}
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[13px] font-semibold text-ink">Tổng cộng</span>
+                    <span className="text-[18px] font-bold tabular-nums text-ink">{formatVND(order.total)}</span>
                   </div>
-                </div>
-
-                <hr className="my-3 border-none border-t border-line" />
-
-                {/* Tổng cộng */}
-                <div className="flex items-baseline justify-between">
-                  <span className="text-[13px] font-semibold text-ink">Tổng cộng</span>
-                  <span className="text-[18px] font-bold tabular-nums text-ink">{formatVND(order.total)}</span>
                 </div>
 
                 {/* Back link */}
                 <Link
                   to="/checkout"
-                  className="mt-5 flex items-center gap-1.5 text-[12px] text-ink-2 transition-colors hover:text-ink"
+                  className="flex items-center gap-1.5 px-6 py-4 text-[12px] text-ink-2 transition-colors hover:text-ink border-t border-line"
                 >
                   ← Quay lại thanh toán
                 </Link>

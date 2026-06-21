@@ -66,10 +66,12 @@ export const CheckoutPage = () => {
       {/* ── Navbar rút gọn ── */}
       <header className="fixed top-0 left-0 right-0 z-40 border-b border-line bg-paper">
         <div className="mx-auto flex max-w-container items-center justify-between px-10 h-[64px]">
-          <Link to="/" className="text-[18px] font-semibold tracking-[-0.5px] text-ink">
+          {/* FIX 6: logo uppercase */}
+          <Link to="/" className="text-[18px] font-semibold uppercase tracking-[1px] text-ink">
             Athena
           </Link>
-          <div className="flex items-center gap-1.5 text-[12px] text-ink-2">
+          {/* FIX 6: secure text dùng text-ink-3 theo static */}
+          <div className="flex items-center gap-1.5 text-[12px] text-ink-3">
             <LockIcon />
             Thanh toán an toàn
           </div>
@@ -77,31 +79,45 @@ export const CheckoutPage = () => {
       </header>
 
       <div className="pt-[64px]">
-        {/* ── Stepper ── */}
-        <div className="border-b border-line bg-surface">
-          <div className="mx-auto flex max-w-container items-center gap-6 px-10 py-4">
+        {/* ── Stepper (FIX 2) — canh giữa, max-w ~480px, nhãn UPPERCASE ── */}
+        <div className="border-b border-line py-5">
+          <div className="mx-auto flex max-w-[480px] items-center">
             {/* Step 1 — active */}
-            <div className="flex items-center gap-2">
-              <div className="flex h-6 w-6 items-center justify-center rounded-full bg-ink text-[11px] font-bold text-paper">
+            <div className="flex flex-1 flex-col items-center gap-2">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-ink text-[12px] font-semibold text-paper">
                 1
               </div>
-              <span className="text-[12px] font-semibold text-ink">Xem lại đơn hàng</span>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.5px] text-ink">
+                Xác nhận
+              </span>
             </div>
-            <div className="h-px w-8 bg-line" />
+            {/* Line 1-2 */}
+            <div className="h-px flex-1 bg-line" style={{ marginTop: '-20px' }} />
             {/* Step 2 — inactive */}
-            <div className="flex items-center gap-2 opacity-40">
-              <div className="flex h-6 w-6 items-center justify-center rounded-full border border-line text-[11px] text-ink-2">
+            <div className="flex flex-1 flex-col items-center gap-2">
+              <div
+                className="flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-semibold"
+                style={{ border: '1.5px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-3)' }}
+              >
                 2
               </div>
-              <span className="text-[12px] text-ink-2">Thanh toán</span>
+              <span className="text-[11px] font-medium uppercase tracking-[0.5px] text-ink-3">
+                Thanh toán
+              </span>
             </div>
-            <div className="h-px w-8 bg-line opacity-40" />
+            {/* Line 2-3 */}
+            <div className="h-px flex-1 bg-line" style={{ marginTop: '-20px' }} />
             {/* Step 3 — inactive */}
-            <div className="flex items-center gap-2 opacity-40">
-              <div className="flex h-6 w-6 items-center justify-center rounded-full border border-line text-[11px] text-ink-2">
+            <div className="flex flex-1 flex-col items-center gap-2">
+              <div
+                className="flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-semibold"
+                style={{ border: '1.5px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-3)' }}
+              >
                 3
               </div>
-              <span className="text-[12px] text-ink-2">Hoàn tất</span>
+              <span className="text-[11px] font-medium uppercase tracking-[0.5px] text-ink-3">
+                Hoàn tất
+              </span>
             </div>
           </div>
         </div>
@@ -181,78 +197,106 @@ export const CheckoutPage = () => {
                   </div>
                 </div>
 
-                {/* Submit */}
-                <button
-                  type="button"
-                  onClick={handleCreateOrder}
-                  disabled={isCreating}
-                  className="flex h-12 w-full items-center justify-center rounded-[2px] bg-ink text-[11px] font-semibold uppercase tracking-[1.5px] text-paper transition-opacity duration-200 hover:opacity-[0.85] disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {isCreating ? 'Đang xử lý...' : 'Đặt đơn & thanh toán'}
-                </button>
+                {/* Submit + FIX 7: terms note */}
+                <div className="rounded-[2px] border border-line p-6">
+                  <button
+                    type="button"
+                    onClick={handleCreateOrder}
+                    disabled={isCreating}
+                    className="flex h-[52px] w-full items-center justify-center rounded-[2px] bg-ink text-[11px] font-semibold uppercase tracking-[2px] text-paper transition-opacity duration-200 hover:opacity-[0.85] disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {isCreating ? 'Đang xử lý...' : 'Đặt đơn & thanh toán'}
+                  </button>
+                  {/* FIX 7: terms note theo static */}
+                  <p className="mt-3 text-center text-[11px] leading-[1.5] text-ink-3">
+                    Bằng cách đặt đơn, bạn đồng ý với{' '}
+                    <Link to="/terms" className="text-ink underline">Điều khoản sử dụng</Link>{' '}
+                    của Athena.
+                  </p>
+                </div>
               </div>
 
               {/* ── RIGHT: Summary card (sticky) ── */}
-              <div className="sticky top-[100px] rounded-[2px] border border-line bg-surface p-6">
-                <div className="mb-4 text-[13px] font-semibold uppercase tracking-[2px] text-ink">
-                  Đơn hàng của bạn
+              <div className="sticky top-[100px] rounded-[2px] border border-line bg-surface">
+                <div className="px-6 py-5 border-b border-line">
+                  <div className="text-[11px] font-semibold uppercase tracking-[2px] text-ink">
+                    Đơn hàng của bạn
+                  </div>
                 </div>
 
-                {/* Danh sách items */}
-                <div className="mb-4 flex flex-col gap-3">
-                  {items.map((item) => {
-                    const { book } = item;
-                    return (
-                      <div key={item.id} className="flex items-center gap-3">
-                        {/* Cover placeholder/image */}
-                        {book.coverImageUrl ? (
-                          <img
-                            src={book.coverImageUrl}
-                            alt={book.title}
-                            className="h-14 w-10 flex-shrink-0 rounded-[1px] border border-line bg-cover-bg object-cover"
-                            onError={(e) => {
-                              const img = e.currentTarget;
-                              if (img.src.endsWith(COVER_PLACEHOLDER)) return;
-                              img.src = COVER_PLACEHOLDER;
-                            }}
-                          />
-                        ) : (
-                          <div className="h-14 w-10 flex-shrink-0 rounded-[1px] border border-line bg-cover-bg" />
-                        )}
-                        {/* Title + giá */}
-                        <div className="flex-1 min-w-0">
-                          <div className="line-clamp-2 text-[12px] font-medium leading-[1.4] text-ink">
-                            {book.title}
+                <div className="p-6">
+                  {/* FIX 3: Danh sách items — layout 3 cột (cover | khối title+loại | giá căn phải) ── */}
+                  <div className="mb-4 flex flex-col gap-3">
+                    {items.map((item) => {
+                      const { book } = item;
+                      return (
+                        <div key={item.id} className="flex items-start gap-3">
+                          {/* Cover với cover-rule + cover-title nhỏ (như static summary-cover) */}
+                          {book.coverImageUrl ? (
+                            <img
+                              src={book.coverImageUrl}
+                              alt={book.title}
+                              className="h-14 w-10 flex-shrink-0 rounded-[2px] border border-line bg-cover-bg object-cover"
+                              onError={(e) => {
+                                const img = e.currentTarget;
+                                if (img.src.endsWith(COVER_PLACEHOLDER)) return;
+                                img.src = COVER_PLACEHOLDER;
+                              }}
+                            />
+                          ) : (
+                            /* Placeholder cover với cover-rule + cover-title rút gọn (aria-hidden: decorative) */
+                            <div className="flex h-14 w-10 flex-shrink-0 flex-col items-center justify-center gap-0.5 rounded-[2px] border border-line bg-cover-bg p-1" aria-hidden="true" role="presentation">
+                              <div className="h-px w-3.5 bg-ink-3" />
+                              <div
+                                className="text-center font-semibold leading-[1.2] text-ink line-clamp-3"
+                                style={{ fontSize: '6px', wordBreak: 'break-all' }}
+                              >
+                                {/* Rút gọn tiêu đề để tránh trùng với text hiển thị chính */}
+                                {book.title.slice(0, 6)}…
+                              </div>
+                            </div>
+                          )}
+                          {/* Title + loại */}
+                          <div className="flex-1 min-w-0">
+                            <div className="line-clamp-2 text-[13px] font-medium leading-[1.4] text-ink">
+                              {book.title}
+                            </div>
+                            {/* Nhãn loại E-book màu accent */}
+                            <div className="mt-0.5 text-[11px]" style={{ color: 'var(--accent)' }}>
+                              E-book · PDF/EPUB
+                            </div>
                           </div>
-                          <div className="mt-0.5 text-[12px] tabular-nums text-ink-2">
+                          {/* Giá căn phải */}
+                          <div className="flex-shrink-0 text-[13px] font-semibold tabular-nums text-ink">
                             {formatVND(item.unitPrice)}
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
-                </div>
+                      );
+                    })}
+                  </div>
 
-                <hr className="my-4 border-none border-t border-line" />
+                  {/* FIX 7: hr không mâu thuẫn — h-px bg-line */}
+                  <div className="my-4 h-px bg-line" />
 
-                {/* Tạm tính */}
-                <div className="flex items-baseline justify-between text-[13px]">
-                  <span className="text-ink-2">Tạm tính</span>
-                  <span className="font-medium tabular-nums text-ink">{formatVND(subtotal)}</span>
-                </div>
+                  {/* Tạm tính */}
+                  <div className="flex items-baseline justify-between text-[13px]">
+                    <span className="text-ink-2">Tạm tính</span>
+                    <span className="font-medium tabular-nums text-ink">{formatVND(subtotal)}</span>
+                  </div>
 
-                <hr className="my-3 border-none border-t border-line" />
+                  <div className="my-3 h-px bg-line" />
 
-                {/* Tổng cộng */}
-                <div className="flex items-baseline justify-between">
-                  <span className="text-[13px] font-semibold text-ink">Tổng cộng</span>
-                  <span className="text-[18px] font-bold tabular-nums text-ink">{formatVND(subtotal)}</span>
+                  {/* Tổng cộng */}
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-[13px] font-semibold text-ink">Tổng cộng</span>
+                    <span className="text-[18px] font-bold tabular-nums text-ink">{formatVND(subtotal)}</span>
+                  </div>
                 </div>
 
                 {/* Link quay lại giỏ hàng */}
                 <Link
                   to="/cart"
-                  className="mt-5 flex items-center gap-1.5 text-[12px] text-ink-2 transition-colors hover:text-ink"
+                  className="flex items-center gap-1.5 px-6 py-4 text-[12px] text-ink-2 transition-colors hover:text-ink border-t border-line"
                 >
                   ← Quay lại giỏ hàng
                 </Link>
