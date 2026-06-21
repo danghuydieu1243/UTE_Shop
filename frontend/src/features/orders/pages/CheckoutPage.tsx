@@ -97,7 +97,7 @@ export const CheckoutPage = () => {
             <div className="flex flex-1 flex-col items-center gap-2">
               <div
                 className="flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-semibold"
-                style={{ border: '1.5px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-3)' }}
+                style={{ border: '1.5px solid #ECEAE5', background: '#FFFFFF', color: '#A8A8AE' }}
               >
                 2
               </div>
@@ -111,7 +111,7 @@ export const CheckoutPage = () => {
             <div className="flex flex-1 flex-col items-center gap-2">
               <div
                 className="flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-semibold"
-                style={{ border: '1.5px solid var(--line)', background: 'var(--surface)', color: 'var(--ink-3)' }}
+                style={{ border: '1.5px solid #ECEAE5', background: '#FFFFFF', color: '#A8A8AE' }}
               >
                 3
               </div>
@@ -154,10 +154,10 @@ export const CheckoutPage = () => {
                 {/* Section: Nhận E-book */}
                 <div
                   className="rounded-[2px] border border-line p-5"
-                  style={{ background: 'var(--info-bg)' }}
+                  style={{ background: '#EDF1F6' }}
                 >
                   <div className="mb-1 text-[13px] font-semibold text-ink">Nhận E-book</div>
-                  <div className="text-[13px] leading-[1.7]" style={{ color: 'var(--info)' }}>
+                  <div className="text-[13px] leading-[1.7]" style={{ color: '#3A5680' }}>
                     Sau khi thanh toán, E-book sẽ được giao vào tài khoản của bạn và có thể tải xuống
                     từ thư viện.{user?.email ? ` Địa chỉ email: ${user.email}` : ''}
                   </div>
@@ -169,7 +169,7 @@ export const CheckoutPage = () => {
                     <span className="text-[13px] font-semibold text-ink-2">Mã giảm giá &amp; điểm thưởng</span>
                     <span
                       className="rounded-[2px] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[1px]"
-                      style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}
+                      style={{ background: '#FBF3E4', color: '#9A6B16' }}
                     >
                       P4 — sắp ra mắt
                     </span>
@@ -262,7 +262,7 @@ export const CheckoutPage = () => {
                               {book.title}
                             </div>
                             {/* Nhãn loại E-book màu accent */}
-                            <div className="mt-0.5 text-[11px]" style={{ color: 'var(--accent)' }}>
+                            <div className="mt-0.5 text-[11px]" style={{ color: '#B8893B' }}>
                               E-book · PDF/EPUB
                             </div>
                           </div>

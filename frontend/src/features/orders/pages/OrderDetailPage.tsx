@@ -37,7 +37,7 @@ const StatusBadge = ({ status }: { status: string }) => {
     return (
       <span
         className="rounded-[2px] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[1px]"
-        style={{ background: 'var(--info-bg)', color: 'var(--info)' }}
+        style={{ background: '#EDF1F6', color: '#3A5680' }}
       >
         Chờ thanh toán
       </span>
@@ -47,7 +47,7 @@ const StatusBadge = ({ status }: { status: string }) => {
     return (
       <span
         className="rounded-[2px] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[1px]"
-        style={{ background: 'var(--success-bg)', color: 'var(--success)' }}
+        style={{ background: '#ECF6EE', color: '#2E7D4F' }}
       >
         Hoàn thành
       </span>
@@ -56,7 +56,7 @@ const StatusBadge = ({ status }: { status: string }) => {
   return (
     <span
       className="rounded-[2px] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[1px]"
-      style={{ background: 'var(--danger-bg)', color: 'var(--danger)' }}
+      style={{ background: '#FBECEC', color: '#B43A3A' }}
     >
       Đã hủy
     </span>
@@ -177,12 +177,12 @@ export const OrderDetailPage = () => {
                 {/* Step 1: Đã đặt hàng — luôn done */}
                 <div className="flex items-start gap-3">
                   <div className="flex flex-col items-center">
-                    <div className="flex h-6 w-6 items-center justify-center" style={{ color: 'var(--success)' }}>
+                    <div className="flex h-6 w-6 items-center justify-center" style={{ color: '#2E7D4F' }}>
                       <CheckCircleIcon />
                     </div>
                     <div
                       className="mt-1 h-8 w-px"
-                      style={{ background: order.status !== 'NEW' ? 'var(--success)' : 'var(--line)' }}
+                      style={{ background: order.status !== 'NEW' ? '#2E7D4F' : '#ECEAE5' }}
                     />
                   </div>
                   <div className="pb-4">
@@ -196,10 +196,10 @@ export const OrderDetailPage = () => {
                   <>
                     <div className="flex items-start gap-3">
                       <div className="flex flex-col items-center">
-                        <div className="flex h-6 w-6 items-center justify-center" style={{ color: 'var(--success)' }}>
+                        <div className="flex h-6 w-6 items-center justify-center" style={{ color: '#2E7D4F' }}>
                           <CheckCircleIcon />
                         </div>
-                        <div className="mt-1 h-8 w-px" style={{ background: 'var(--success)' }} />
+                        <div className="mt-1 h-8 w-px" style={{ background: '#2E7D4F' }} />
                       </div>
                       <div className="pb-4">
                         <div className="text-[13px] font-medium text-ink">Đã thanh toán</div>
@@ -209,7 +209,7 @@ export const OrderDetailPage = () => {
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
-                      <div className="flex h-6 w-6 items-center justify-center" style={{ color: 'var(--success)' }}>
+                      <div className="flex h-6 w-6 items-center justify-center" style={{ color: '#2E7D4F' }}>
                         <CheckCircleIcon />
                       </div>
                       <div>
@@ -222,11 +222,11 @@ export const OrderDetailPage = () => {
 
                 {order.status === 'CANCELLED' && (
                   <div className="flex items-start gap-3">
-                    <div className="flex h-6 w-6 items-center justify-center" style={{ color: 'var(--danger)' }}>
+                    <div className="flex h-6 w-6 items-center justify-center" style={{ color: '#B43A3A' }}>
                       <XCircleIcon />
                     </div>
                     <div>
-                      <div className="text-[13px] font-medium" style={{ color: 'var(--danger)' }}>Đã hủy</div>
+                      <div className="text-[13px] font-medium" style={{ color: '#B43A3A' }}>Đã hủy</div>
                       {order.cancelledAt && (
                         <div className="text-[12px] text-ink-3">{formatDateTime(order.cancelledAt)}</div>
                       )}
@@ -285,7 +285,7 @@ export const OrderDetailPage = () => {
                       <div className="line-clamp-2 text-[13px] font-medium leading-[1.4] text-ink">
                         {item.title}
                       </div>
-                      <div className="mt-0.5 text-[11px]" style={{ color: 'var(--accent)' }}>
+                      <div className="mt-0.5 text-[11px]" style={{ color: '#B8893B' }}>
                         E-book · PDF/EPUB
                       </div>
                     </div>
@@ -335,7 +335,7 @@ export const OrderDetailPage = () => {
               {order.couponDiscount > 0 && (
                 <div className="flex items-baseline justify-between text-[13px] mb-3">
                   <span className="text-ink-2">Giảm giá mã</span>
-                  <span className="font-medium tabular-nums" style={{ color: 'var(--success)' }}>
+                  <span className="font-medium tabular-nums" style={{ color: '#2E7D4F' }}>
                     -{formatVND(order.couponDiscount)}
                   </span>
                 </div>
@@ -343,7 +343,7 @@ export const OrderDetailPage = () => {
               {order.loyaltyDiscount > 0 && (
                 <div className="flex items-baseline justify-between text-[13px] mb-3">
                   <span className="text-ink-2">Điểm tích lũy</span>
-                  <span className="font-medium tabular-nums" style={{ color: 'var(--success)' }}>
+                  <span className="font-medium tabular-nums" style={{ color: '#2E7D4F' }}>
                     -{formatVND(order.loyaltyDiscount)}
                   </span>
                 </div>
@@ -394,7 +394,7 @@ export const OrderDetailPage = () => {
                 <>
                   <div
                     className="flex h-10 w-full items-center justify-center rounded-[2px] text-[11px] font-semibold uppercase tracking-[1px] text-ink-3"
-                    style={{ background: 'var(--line)' }}
+                    style={{ background: '#ECEAE5' }}
                   >
                     Đã hủy
                   </div>
@@ -443,7 +443,7 @@ export const OrderDetailPage = () => {
                 disabled={isCancelling}
                 onClick={handleCancel}
                 className="flex h-10 flex-1 items-center justify-center rounded-[2px] text-[11px] font-semibold uppercase tracking-[1px] text-paper transition-opacity duration-200 hover:opacity-[0.85] disabled:cursor-not-allowed disabled:opacity-50"
-                style={{ background: 'var(--danger)' }}
+                style={{ background: '#B43A3A' }}
               >
                 {isCancelling ? 'Đang hủy...' : 'Xác nhận hủy'}
               </button>

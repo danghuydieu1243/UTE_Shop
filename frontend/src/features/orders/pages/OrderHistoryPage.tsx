@@ -43,7 +43,7 @@ const StatusBadge = ({ status }: { status: string }) => {
     return (
       <span
         className="rounded-[2px] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[1px]"
-        style={{ background: 'var(--info-bg)', color: 'var(--info)' }}
+        style={{ background: '#EDF1F6', color: '#3A5680' }}
       >
         {STATUS_LABEL[status]}
       </span>
@@ -53,7 +53,7 @@ const StatusBadge = ({ status }: { status: string }) => {
     return (
       <span
         className="rounded-[2px] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[1px]"
-        style={{ background: 'var(--success-bg)', color: 'var(--success)' }}
+        style={{ background: '#ECF6EE', color: '#2E7D4F' }}
       >
         {STATUS_LABEL[status]}
       </span>
@@ -63,7 +63,7 @@ const StatusBadge = ({ status }: { status: string }) => {
   return (
     <span
       className="rounded-[2px] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[1px]"
-      style={{ background: 'var(--danger-bg)', color: 'var(--danger)' }}
+      style={{ background: '#FBECEC', color: '#B43A3A' }}
     >
       {STATUS_LABEL[status] ?? status}
     </span>
@@ -253,8 +253,8 @@ export const OrderHistoryPage = () => {
                 onClick={() => handleTabChange(tab.status)}
                 className="relative px-4 py-3 text-[13px] font-medium transition-colors duration-150"
                 style={{
-                  color: isActive ? 'var(--ink)' : 'var(--ink-3)',
-                  borderBottom: isActive ? '2px solid var(--ink)' : '2px solid transparent',
+                  color: isActive ? '#16161A' : '#A8A8AE',
+                  borderBottom: isActive ? '2px solid #16161A' : '2px solid transparent',
                   marginBottom: '-1px',
                 }}
               >

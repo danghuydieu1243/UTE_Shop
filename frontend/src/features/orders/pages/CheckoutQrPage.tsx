@@ -35,15 +35,15 @@ const CopyIcon = () => (
 
 /* ── QR SVG placeholder ── */
 const QrPlaceholder = () => (
-  <svg width="180" height="180" viewBox="0 0 180 180" fill="var(--ink)" xmlns="http://www.w3.org/2000/svg" aria-label="QR code placeholder">
+  <svg width="180" height="180" viewBox="0 0 180 180" fill="#16161A" xmlns="http://www.w3.org/2000/svg" aria-label="QR code placeholder">
     <rect x="8" y="8" width="48" height="48"/>
-    <rect x="16" y="16" width="32" height="32" fill="var(--paper)"/>
+    <rect x="16" y="16" width="32" height="32" fill="#FBFAF8"/>
     <rect x="22" y="22" width="20" height="20"/>
     <rect x="124" y="8" width="48" height="48"/>
-    <rect x="132" y="16" width="32" height="32" fill="var(--paper)"/>
+    <rect x="132" y="16" width="32" height="32" fill="#FBFAF8"/>
     <rect x="138" y="22" width="20" height="20"/>
     <rect x="8" y="124" width="48" height="48"/>
-    <rect x="16" y="132" width="32" height="32" fill="var(--paper)"/>
+    <rect x="16" y="132" width="32" height="32" fill="#FBFAF8"/>
     <rect x="22" y="138" width="20" height="20"/>
     <rect x="70" y="12" width="8" height="8"/><rect x="82" y="12" width="8" height="8"/><rect x="94" y="12" width="8" height="8"/>
     <rect x="70" y="26" width="8" height="8"/><rect x="94" y="26" width="8" height="8"/>
@@ -185,30 +185,30 @@ export const CheckoutQrPage = () => {
             <div className="flex flex-1 flex-col items-center gap-2">
               <div
                 className="flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-semibold"
-                style={{ background: 'var(--success-bg)', border: '1.5px solid var(--success)', color: 'var(--success)' }}
+                style={{ background: '#ECF6EE', border: '1.5px solid #2E7D4F', color: '#2E7D4F' }}
               >
                 1
               </div>
               <span
                 className="text-[11px] font-medium uppercase tracking-[0.5px]"
-                style={{ color: 'var(--success)' }}
+                style={{ color: '#2E7D4F' }}
               >
                 Xác nhận
               </span>
             </div>
             {/* Line 1-2 done (success) */}
-            <div className="h-px flex-1" style={{ background: 'var(--success)', marginTop: '-20px' }} />
+            <div className="h-px flex-1" style={{ background: '#2E7D4F', marginTop: '-20px' }} />
             {/* Step 2 — done (success color) */}
             <div className="flex flex-1 flex-col items-center gap-2">
               <div
                 className="flex h-7 w-7 items-center justify-center rounded-full text-[12px] font-semibold"
-                style={{ background: 'var(--success-bg)', border: '1.5px solid var(--success)', color: 'var(--success)' }}
+                style={{ background: '#ECF6EE', border: '1.5px solid #2E7D4F', color: '#2E7D4F' }}
               >
                 2
               </div>
               <span
                 className="text-[11px] font-medium uppercase tracking-[0.5px]"
-                style={{ color: 'var(--success)' }}
+                style={{ color: '#2E7D4F' }}
               >
                 Thanh toán
               </span>
@@ -261,7 +261,7 @@ export const CheckoutQrPage = () => {
                   <div className="flex flex-wrap items-center gap-3">
                     <span
                       className="inline-flex items-center rounded-[2px] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.5px]"
-                      style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}
+                      style={{ background: '#FBF3E4', color: '#9A6B16' }}
                     >
                       Đang chờ xác nhận
                     </span>
@@ -299,11 +299,11 @@ export const CheckoutQrPage = () => {
                       {payment && !isExpired ? (
                         <div
                           className="mb-3 rounded-[2px] px-4 py-3"
-                          style={{ background: 'var(--warning-bg)', border: '1px solid #ECD8B2' }}
+                          style={{ background: '#FBF3E4', border: '1px solid #ECD8B2' }}
                         >
                           <p
                             className="mb-1 text-[11px] uppercase tracking-[0.5px]"
-                            style={{ color: 'var(--warning)' }}
+                            style={{ color: '#9A6B16' }}
                           >
                             Hết hạn sau
                           </p>
@@ -315,7 +315,7 @@ export const CheckoutQrPage = () => {
                         <div className="mb-3">
                           <span
                             className="inline-flex items-center rounded-[2px] px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.5px]"
-                            style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}
+                            style={{ background: '#FBF3E4', color: '#9A6B16' }}
                           >
                             Hết hạn
                           </span>
@@ -396,8 +396,8 @@ export const CheckoutQrPage = () => {
                       className="flex w-full h-11 items-center justify-center rounded-[2px] text-[11px] font-semibold uppercase tracking-[1.5px] transition-colors disabled:cursor-not-allowed disabled:opacity-50"
                       style={{
                         background: 'none',
-                        color: 'var(--danger)',
-                        border: '1px solid var(--danger-bg)',
+                        color: '#B43A3A',
+                        border: '1px solid #FBECEC',
                       }}
                     >
                       {isCancelling ? 'Đang hủy...' : 'Hủy đơn hàng'}
@@ -407,7 +407,7 @@ export const CheckoutQrPage = () => {
                   {/* Helper panel */}
                   <div
                     className="rounded-[2px] p-4 text-[12px] leading-[1.7]"
-                    style={{ background: 'var(--info-bg)', color: 'var(--info)' }}
+                    style={{ background: '#EDF1F6', color: '#3A5680' }}
                   >
                     <strong>Lưu ý:</strong> Đây là thanh toán giả lập cho Phase 3. Bấm "Tôi đã chuyển khoản
                     (giả lập)" để xác nhận thanh toán và hoàn tất đơn hàng. SEPay thật sẽ được tích hợp ở Phase 5.
@@ -459,7 +459,7 @@ export const CheckoutQrPage = () => {
                             {item.title}
                           </div>
                           {/* Nhãn loại E-book màu accent */}
-                          <div className="mt-0.5 text-[11px]" style={{ color: 'var(--accent)' }}>
+                          <div className="mt-0.5 text-[11px]" style={{ color: '#B8893B' }}>
                             E-book · PDF/EPUB
                           </div>
                         </div>
