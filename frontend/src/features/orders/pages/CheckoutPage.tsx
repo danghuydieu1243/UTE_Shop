@@ -183,7 +183,7 @@ export const CheckoutPage = () => {
 
                 {/* Submit */}
                 <button
-                  type="submit"
+                  type="button"
                   onClick={handleCreateOrder}
                   disabled={isCreating}
                   className="flex h-12 w-full items-center justify-center rounded-[2px] bg-ink text-[11px] font-semibold uppercase tracking-[1.5px] text-paper transition-opacity duration-200 hover:opacity-[0.85] disabled:cursor-not-allowed disabled:opacity-50"

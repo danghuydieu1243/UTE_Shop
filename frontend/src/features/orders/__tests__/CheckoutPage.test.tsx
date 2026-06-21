@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -114,6 +114,8 @@ describe('CheckoutPage', () => {
 
     // Kiểm tra createOrder được gọi
     expect(mockCreateFn).toHaveBeenCalled();
+    // Kiểm tra navigate đến trang QR của đơn hàng
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/checkout/ATHENA123'));
   });
 
   it('shows empty state when cart is empty', () => {

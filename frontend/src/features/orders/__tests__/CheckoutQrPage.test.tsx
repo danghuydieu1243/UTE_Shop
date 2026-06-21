@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -132,6 +132,8 @@ describe('CheckoutQrPage', () => {
 
     // Kiểm tra simulatePayment được gọi với id = 1
     expect(mockSimulateFn).toHaveBeenCalledWith(1);
+    // Kiểm tra navigate đến trang chi tiết đơn hàng
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/orders/ATHENA123'));
   });
 
   it('shows recreate QR button when payment is null', () => {

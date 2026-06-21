@@ -15,6 +15,9 @@ function formatCountdown(ms: number): string {
 }
 
 /* ── Lock icon SVG ── */
+/* Intentionally duplicated from CheckoutPage — both pages are standalone checkout
+   shells with their own reduced navbar; extracting to a shared file is deferred
+   until a shared checkout-shell layout component is needed. */
 const LockIcon = () => (
   <svg width="12" height="12" viewBox="0 0 12 12" stroke="currentColor" strokeWidth="1.4" fill="none" aria-hidden="true">
     <rect x="2" y="5" width="8" height="6" rx="1" />
