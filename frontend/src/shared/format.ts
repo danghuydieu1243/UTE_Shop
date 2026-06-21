@@ -15,13 +15,20 @@ export function formatCount(n: number): string {
 }
 
 /**
- * Định dạng dung lượng file (bytes → "PDF · 12.4 MB").
+ * Định dạng dung lượng file thuần (bytes → "12.4 MB" / "850 KB").
+ * Ví dụ: formatBytes(13002342) → "12.4 MB"
+ */
+export function formatBytes(bytes: number): string {
+  const mb = bytes / (1024 * 1024);
+  return mb >= 1 ? `${mb.toFixed(1)} MB` : `${Math.round(bytes / 1024)} KB`;
+}
+
+/**
+ * Định dạng dung lượng file kèm format (bytes → "PDF · 12.4 MB").
  * Ví dụ: formatFileSize('PDF', 13002342) → "PDF · 12.4 MB"
  */
 export function formatFileSize(format: string, bytes: number): string {
-  const mb = bytes / (1024 * 1024);
-  const display = mb >= 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`;
-  return `${format} · ${display}`;
+  return `${format} · ${formatBytes(bytes)}`;
 }
 
 /**
