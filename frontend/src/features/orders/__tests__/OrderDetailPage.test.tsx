@@ -136,6 +136,6 @@ describe('OrderDetailPage', () => {
     mockUseGetOrderQuery.mockReturnValue({ data: completedOrder, isLoading: false });
     renderPage();
     const downloadLink = screen.getByRole('link', { name: /tải e-book/i });
-    expect(downloadLink).toHaveAttribute('href', '/me/ebooks');
+    expect(downloadLink).toHaveAttribute('href', '/user/ebooks');
   });
 });

@@ -134,7 +134,7 @@ const OrderCard = ({
               Xem chi tiết
             </Link>
             <Link
-              to="/me/ebooks"
+              to="/user/ebooks"
               className="inline-flex h-8 items-center rounded-[2px] bg-ink px-4 text-[11px] font-semibold uppercase tracking-[1px] text-paper transition-opacity duration-200 hover:opacity-[0.85]"
             >
               Tải E-book

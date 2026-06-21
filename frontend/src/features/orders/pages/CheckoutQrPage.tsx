@@ -70,7 +70,18 @@ export const CheckoutQrPage = () => {
   const { code } = useParams<{ code: string }>();
   const { show, ToastLayer } = useToast();
 
-  const { data: order, isLoading } = useGetOrderQuery(code!);
+  // Poll trạng thái đơn mỗi 5s khi còn NEW (chờ thanh toán). P5: thay nút giả lập
+  // bằng webhook SEPay thật — polling này giữ UI tự cập nhật khi đơn chuyển COMPLETED.
+  // Poll một lần đầu chưa biết status → bật polling; RTK tự dừng khi pollingInterval=0.
+  // Chỉ poll khi đơn còn NEW (chờ thanh toán); ngừng khi COMPLETED/CANCELLED.
+  const [pollMs, setPollMs] = useState(0);
+  const { data: order, isLoading } = useGetOrderQuery(code!, {
+    pollingInterval: pollMs,
+    skipPollingIfUnfocused: true,
+  });
+  useEffect(() => {
+    setPollMs(order?.status === 'NEW' ? 5000 : 0);
+  }, [order?.status]);
   const [simulatePayment, { isLoading: isSimulating }] = useSimulatePaymentMutation();
   const [cancelOrder, { isLoading: isCancelling }] = useCancelOrderMutation();
   const [recreatePayment, { isLoading: isRecreating }] = useRecreatePaymentMutation();
