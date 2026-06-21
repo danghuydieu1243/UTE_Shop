@@ -65,7 +65,8 @@ const FilterAccordion = ({ label, defaultOpen = true, children }: AccordionProps
 /* ─────────────────────────────────────────── */
 interface StagedFilters {
   formats: ('PDF' | 'EPUB')[];
-  categories: string[];
+  /** Single-select: at most one category slug (matches API contract — one category per book). */
+  category: string | null;
   priceMin: string;
   priceMax: string;
   rating: number | null;
@@ -75,7 +76,7 @@ interface StagedFilters {
 
 const DEFAULT_STAGED: StagedFilters = {
   formats: [],
-  categories: [],
+  category: null,
   priceMin: '',
   priceMax: '',
   rating: null,
@@ -87,14 +88,14 @@ const DEFAULT_STAGED: StagedFilters = {
 /*  Parse URL params into staged state          */
 /* ─────────────────────────────────────────── */
 function paramsToStaged(sp: URLSearchParams): StagedFilters {
-  const getAll = (key: string) =>
-    sp.getAll(key).flatMap((v) => v.split(',').filter(Boolean));
+  // applyFilters always writes repeated keys, never comma-joined values — split(',') is dead code.
+  const getAll = (key: string) => sp.getAll(key).filter(Boolean);
   const formats = getAll('format').filter(
     (f): f is 'PDF' | 'EPUB' => f === 'PDF' || f === 'EPUB',
   );
   return {
     formats,
-    categories: getAll('category'),
+    category: sp.get('category') ?? null,
     priceMin: sp.get('priceMin') ?? '',
     priceMax: sp.get('priceMax') ?? '',
     rating: sp.get('rating') ? Number(sp.get('rating')) : null,
@@ -189,9 +190,7 @@ export const CatalogPage = () => {
     format: committed.formats.length
       ? (committed.formats as ('PDF' | 'EPUB')[])
       : undefined,
-    category: committed.categories.length
-      ? committed.categories[0]
-      : undefined,
+    category: committed.category ?? undefined,
     priceMin: committed.priceMin ? Number(committed.priceMin) : undefined,
     priceMax: committed.priceMax ? Number(committed.priceMax) : undefined,
     rating: committed.rating ?? undefined,
@@ -278,7 +277,7 @@ export const CatalogPage = () => {
     const params: Record<string, string | string[]> = {};
     if (q) params.q = q;
     if (staged.formats.length) params.format = staged.formats;
-    if (staged.categories.length) params.category = staged.categories;
+    if (staged.category) params.category = staged.category;
     if (staged.priceMin) params.priceMin = staged.priceMin;
     if (staged.priceMax) params.priceMax = staged.priceMax;
     if (staged.rating != null) params.rating = String(staged.rating);
@@ -305,7 +304,7 @@ export const CatalogPage = () => {
     const params: Record<string, string | string[]> = {};
     if (q) params.q = q;
     if (committed.formats.length) params.format = committed.formats;
-    if (committed.categories.length) params.category = committed.categories;
+    if (committed.category) params.category = committed.category;
     if (committed.priceMin) params.priceMin = committed.priceMin;
     if (committed.priceMax) params.priceMax = committed.priceMax;
     if (committed.rating != null) params.rating = String(committed.rating);
@@ -323,7 +322,7 @@ export const CatalogPage = () => {
     const params: Record<string, string | string[]> = {};
     if (q) params.q = q;
     if (next.formats.length) params.format = next.formats;
-    if (next.categories.length) params.category = next.categories;
+    if (next.category) params.category = next.category;
     if (next.priceMin) params.priceMin = next.priceMin;
     if (next.priceMax) params.priceMax = next.priceMax;
     if (next.rating != null) params.rating = String(next.rating);
@@ -343,17 +342,15 @@ export const CatalogPage = () => {
         removeChip({ formats: committed.formats.filter((x) => x !== f) }),
     }),
   );
-  committed.categories.forEach((catSlug) => {
+  if (committed.category) {
+    const catSlug = committed.category;
     const cat = categoriesData?.find((c) => c.slug === catSlug);
     chips.push({
       key: `category:${catSlug}`,
       label: cat?.name ?? catSlug,
-      onRemove: () =>
-        removeChip({
-          categories: committed.categories.filter((x) => x !== catSlug),
-        }),
+      onRemove: () => removeChip({ category: null }),
     });
-  });
+  }
   if (committed.rating != null) {
     chips.push({
       key: 'rating',
@@ -395,7 +392,7 @@ export const CatalogPage = () => {
 
   const hasActiveFilters =
     committed.formats.length > 0 ||
-    committed.categories.length > 0 ||
+    committed.category != null ||
     committed.rating != null ||
     !!committed.priceMin ||
     !!committed.priceMax ||
@@ -411,12 +408,11 @@ export const CatalogPage = () => {
         : [...s.formats, fmt],
     }));
   };
+  // Single-select: ticking a category replaces any previous selection; ticking again deselects.
   const toggleCategory = (slug: string) => {
     setStaged((s) => ({
       ...s,
-      categories: s.categories.includes(slug)
-        ? s.categories.filter((c) => c !== slug)
-        : [...s.categories, slug],
+      category: s.category === slug ? null : slug,
     }));
   };
   const toggleAuthor = (slug: string) => {
@@ -458,6 +454,7 @@ export const CatalogPage = () => {
           <button
             type="button"
             onClick={clearAll}
+            /* #B43A3A mirrors .btn-clear-all color from book_catalog_static.html — no Tailwind token for this shade */
             className="bg-transparent border-none p-0 text-[11px] font-medium uppercase tracking-[0.5px] text-[#B43A3A] cursor-pointer"
           >
             Xóa tất cả
@@ -487,7 +484,7 @@ export const CatalogPage = () => {
             <input
               type="checkbox"
               className="h-[15px] w-[15px] flex-shrink-0 rounded-[2px] border border-line accent-ink"
-              checked={staged.categories.includes(cat.slug)}
+              checked={staged.category === cat.slug}
               onChange={() => toggleCategory(cat.slug)}
             />
             <span className="text-[13px] text-ink">{cat.name}</span>

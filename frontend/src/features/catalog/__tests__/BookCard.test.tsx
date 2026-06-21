@@ -136,4 +136,38 @@ describe('BookCard', () => {
     fireEvent.click(screen.getByRole('button', { name: /Thêm vào giỏ/i }));
     expect(onAddToCart).toHaveBeenCalledWith(baseBook);
   });
+
+  describe('Highlight', () => {
+    it('highlights a query that appears once in title', () => {
+      render(
+        <MemoryRouter>
+          <BookCard book={{ ...baseBook, title: 'Đắc Nhân Tâm' }} highlightQuery="Nhân" />
+        </MemoryRouter>,
+      );
+      const mark = document.querySelector('mark');
+      expect(mark).not.toBeNull();
+      expect(mark?.textContent).toMatch(/Nhân/i);
+    });
+
+    it('highlights ALL occurrences when query appears twice in a title', () => {
+      render(
+        <MemoryRouter>
+          <BookCard book={{ ...baseBook, title: 'Tâm Tâm' }} highlightQuery="Tâm" />
+        </MemoryRouter>,
+      );
+      const marks = document.querySelectorAll('mark');
+      // Both occurrences must be wrapped — stateful /g regex bug would leave one unwrapped
+      expect(marks.length).toBe(2);
+      marks.forEach((m) => expect(m.textContent).toMatch(/Tâm/i));
+    });
+
+    it('does not render marks when query is empty', () => {
+      render(
+        <MemoryRouter>
+          <BookCard book={baseBook} highlightQuery="" />
+        </MemoryRouter>,
+      );
+      expect(document.querySelector('mark')).toBeNull();
+    });
+  });
 });

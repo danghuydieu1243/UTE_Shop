@@ -9,17 +9,18 @@ function escapeRegex(s: string) {
 
 const Highlight = ({ text, query }: { text: string; query?: string }) => {
   if (!query?.trim()) return <>{text}</>;
-  const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
-  const parts = text.split(regex);
+  // Split with ONE capturing group → matched text lands at ODD indices.
+  // No .test() needed — avoids stateful lastIndex bug with /g flag.
+  const parts = text.split(new RegExp(`(${escapeRegex(query)})`, 'i'));
   return (
     <>
       {parts.map((part, i) =>
-        regex.test(part) ? (
-          <mark key={i} className="rounded-[1px] bg-[#FFF3CD] px-[1px] text-ink">
+        i % 2 === 1 ? (
+          <mark key={`${i}-${part}`} className="rounded-[1px] bg-[#FFF3CD] px-[1px] text-ink">
             {part}
           </mark>
         ) : (
-          <span key={i}>{part}</span>
+          <span key={`${i}-${part}`}>{part}</span>
         ),
       )}
     </>
