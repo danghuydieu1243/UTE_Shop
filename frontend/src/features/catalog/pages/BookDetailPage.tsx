@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { SiteHeader, SiteFooter, BookCard, COVER_PLACEHOLDER } from '../../../shared/ui';
 import { useGetBookDetailQuery } from '../catalogApi';
@@ -6,6 +6,7 @@ import { useAddToCartMutation } from '../../cart/cartApi';
 import type { BookCard as BookCardDTO } from '../types';
 import { formatVND, formatFileSize, formatCount } from '../../../shared/format';
 import { useAppSelector } from '../../../app/hooks';
+import { useToast } from '../../../shared/hooks/useToast';
 
 /* ── Star renderer ── */
 const renderStars = (avg: number, size: 'sm' | 'lg' = 'sm') => {
@@ -20,39 +21,6 @@ const renderStars = (avg: number, size: 'sm' | 'lg' = 'sm') => {
       {stars}
     </span>
   );
-};
-
-/* ── Toast (inline, no external deps) ── */
-interface ToastItem {
-  id: number;
-  msg: string;
-}
-
-const useToast = () => {
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const counter = useRef(0);
-
-  const show = (msg: string) => {
-    const id = ++counter.current;
-    setToasts((prev) => [...prev, { id, msg }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000);
-  };
-
-  const ToastLayer = () => (
-    <div className="fixed bottom-8 left-1/2 z-[9999] flex -translate-x-1/2 flex-col items-center gap-2 pointer-events-none">
-      {toasts.map((t) => (
-        <div
-          key={t.id}
-          className="animate-[toastIn_.4s_ease_forwards] bg-ink px-5 py-3 text-[13px] tracking-[.2px] text-paper"
-          style={{ borderRadius: 0 }}
-        >
-          {t.msg}
-        </div>
-      ))}
-    </div>
-  );
-
-  return { show, ToastLayer };
 };
 
 /* ── Skeleton ── */
@@ -247,11 +215,14 @@ export const BookDetailPage = () => {
   };
 
   /* ── Action handlers ── */
-  const handleAddToCartAction = async () => {
+  const handleAddToCart = async () => {
+    // Chưa đăng nhập → chuyển về trang login
     if (!user) {
       navigate(`/login?returnUrl=/books/${idOrSlug}`);
       return;
     }
+    // Đã đăng nhập nhưng không phải role 'user' (vendor/admin/manager) → không cho thêm giỏ
+    if (user.role !== 'user') return;
     if (!book) return;
     try {
       await addToCart({ bookId: book.id }).unwrap();
@@ -268,10 +239,13 @@ export const BookDetailPage = () => {
   };
 
   const handleBuyNow = async () => {
+    // Chưa đăng nhập → chuyển về trang login
     if (!user) {
       navigate(`/login?returnUrl=/books/${idOrSlug}`);
       return;
     }
+    // Không phải role 'user' → không cho mua
+    if (user.role !== 'user') return;
     if (!book) return;
     try {
       await addToCart({ bookId: book.id }).unwrap();
@@ -287,8 +261,6 @@ export const BookDetailPage = () => {
       }
     }
   };
-
-  const handleAddToCart = handleAddToCartAction;
 
   const handleWishlist = () => {
     if (!user) {

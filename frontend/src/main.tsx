@@ -40,6 +40,10 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
           <Route element={<RequireAuth />}>
             <Route path="/user/profile" element={<ProfilePage />} />
             <Route path="/user/change-password" element={<ChangePasswordPage />} />
+          </Route>
+
+          {/* Protected: chỉ role 'user' — vendor/admin/manager không được vào /cart (tránh gọi GET /cart → 403) */}
+          <Route element={<RequireRole roles={['user']} />}>
             <Route path="/cart" element={<CartPage />} />
           </Route>
 

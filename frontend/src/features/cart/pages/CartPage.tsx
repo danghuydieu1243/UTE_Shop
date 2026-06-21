@@ -1,4 +1,3 @@
-import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { SiteHeader, SiteFooter } from '../../../shared/ui';
 import { COVER_PLACEHOLDER } from '../../../shared/ui/BookCard';
@@ -8,39 +7,7 @@ import {
   useRemoveFromCartMutation,
   useClearCartMutation,
 } from '../cartApi';
-
-/* ── Toast (inline, copy từ BookDetailPage) ── */
-interface ToastItem {
-  id: number;
-  msg: string;
-}
-
-const useToast = () => {
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const counter = useRef(0);
-
-  const show = (msg: string) => {
-    const id = ++counter.current;
-    setToasts((prev) => [...prev, { id, msg }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000);
-  };
-
-  const ToastLayer = () => (
-    <div className="fixed bottom-8 left-1/2 z-[9999] flex -translate-x-1/2 flex-col items-center gap-2 pointer-events-none">
-      {toasts.map((t) => (
-        <div
-          key={t.id}
-          className="bg-ink px-5 py-3 text-[13px] text-paper"
-          style={{ borderRadius: 0 }}
-        >
-          {t.msg}
-        </div>
-      ))}
-    </div>
-  );
-
-  return { show, ToastLayer };
-};
+import { useToast } from '../../../shared/hooks/useToast';
 
 /* ── E-book icon SVG ── */
 const EbookIcon = () => (

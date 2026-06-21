@@ -5,6 +5,7 @@ import { useGetHomeQuery } from '../catalogApi';
 import { useAddToCartMutation } from '../../cart/cartApi';
 import { useAppSelector } from '../../../app/hooks';
 import type { HomeCategory, BookCard as BookCardDTO } from '../types';
+import { useToast } from '../../../shared/hooks/useToast';
 
 /* ── Hero slides data (static marketing copy from home_preview.html) ── */
 const HERO_SLIDES = [
@@ -114,29 +115,6 @@ const IconRight = () => (
     <path d="M9 18l6-6-6-6" />
   </svg>
 );
-
-/* ── Toast (inline, copy từ BookDetailPage) ── */
-interface ToastItem { id: number; msg: string; }
-
-const useToast = () => {
-  const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const counter = useRef(0);
-  const show = (msg: string) => {
-    const id = ++counter.current;
-    setToasts((prev) => [...prev, { id, msg }]);
-    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000);
-  };
-  const ToastLayer = () => (
-    <div className="fixed bottom-8 left-1/2 z-[9999] flex -translate-x-1/2 flex-col items-center gap-2 pointer-events-none">
-      {toasts.map((t) => (
-        <div key={t.id} className="bg-ink px-5 py-3 text-[13px] text-paper" style={{ borderRadius: 0 }}>
-          {t.msg}
-        </div>
-      ))}
-    </div>
-  );
-  return { show, ToastLayer };
-};
 
 /* ─────────────────────────────────────────── */
 /*  HomePage component                         */

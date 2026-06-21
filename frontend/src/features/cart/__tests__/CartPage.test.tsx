@@ -127,9 +127,10 @@ describe('CartPage', () => {
   it('shows loading state', () => {
     mockUseGetCartQuery.mockReturnValue({ data: undefined, isLoading: true });
     renderPage();
-    // Loading state render skeleton — không crash
-    // Kiểm tra container render được (không throw)
-    expect(document.body).toBeTruthy();
+    // Khi đang loading: skeleton animate-pulse hiện, danh sách item KHÔNG có
+    const skeletons = document.querySelectorAll('.animate-pulse');
+    expect(skeletons.length).toBeGreaterThan(0);
+    expect(screen.queryByTestId('cart-item')).toBeNull();
   });
 
   it('shows total price formatted', () => {
