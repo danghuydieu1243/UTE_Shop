@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { SiteHeader, SiteFooter } from '../../../shared/ui';
-import { formatVND } from '../../../shared/format';
+import { formatVND, formatDateTime } from '../../../shared/format';
 import { useGetOrdersQuery, useCancelOrderMutation } from '../ordersApi';
 import { useToast } from '../../../shared/hooks/useToast';
 import type { OrderSummary } from '../types';
@@ -69,17 +69,6 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
-/* ── Định dạng datetime VN ── */
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  const hh = d.getHours().toString().padStart(2, '0');
-  const mm = d.getMinutes().toString().padStart(2, '0');
-  const dd = d.getDate().toString().padStart(2, '0');
-  const mo = (d.getMonth() + 1).toString().padStart(2, '0');
-  const yy = d.getFullYear();
-  return `${hh}:${mm}, ${dd}/${mo}/${yy}`;
-}
-
 /* ── Order Card ── */
 const OrderCard = ({
   order,
@@ -130,7 +119,6 @@ const OrderCard = ({
               disabled={isCancelling}
               onClick={() => onCancel(order.code)}
               className="inline-flex h-8 items-center rounded-[2px] border border-line px-4 text-[11px] font-semibold uppercase tracking-[1px] text-ink-2 transition-[border-color,color] duration-200 hover:border-danger hover:text-danger disabled:cursor-not-allowed disabled:opacity-50"
-              style={{ '--danger': 'var(--danger)' } as React.CSSProperties}
             >
               Hủy đơn
             </button>

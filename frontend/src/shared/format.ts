@@ -23,3 +23,14 @@ export function formatFileSize(format: string, bytes: number): string {
   const display = mb >= 1 ? `${mb.toFixed(1)} MB` : `${(bytes / 1024).toFixed(0)} KB`;
   return `${format} · ${display}`;
 }
+
+/**
+ * Định dạng ngày giờ ngắn gọn (vi-VN).
+ * Ví dụ: "2024-01-01T03:30:00Z" → "03:30, 01/01/2024"
+ */
+export function formatDateTime(iso: string): string {
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+  const date = d.toLocaleDateString('vi-VN');
+  return `${time}, ${date}`;
+}

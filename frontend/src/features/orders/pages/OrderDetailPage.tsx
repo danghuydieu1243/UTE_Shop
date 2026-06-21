@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { SiteHeader, SiteFooter } from '../../../shared/ui';
-import { formatVND } from '../../../shared/format';
+import { formatVND, formatDateTime } from '../../../shared/format';
 import { COVER_PLACEHOLDER } from '../../../shared/ui/BookCard';
 import { useGetOrderQuery, useCancelOrderMutation } from '../ordersApi';
 import { useToast } from '../../../shared/hooks/useToast';
@@ -29,17 +29,6 @@ const CircleIcon = () => (
     <circle cx="8" cy="8" r="7" />
   </svg>
 );
-
-/* ── Định dạng datetime VN ── */
-function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  const hh = d.getHours().toString().padStart(2, '0');
-  const mm = d.getMinutes().toString().padStart(2, '0');
-  const dd = d.getDate().toString().padStart(2, '0');
-  const mo = (d.getMonth() + 1).toString().padStart(2, '0');
-  const yy = d.getFullYear();
-  return `${hh}:${mm}, ${dd}/${mo}/${yy}`;
-}
 
 /* ── Badge trạng thái ── */
 const StatusBadge = ({ status }: { status: string }) => {
@@ -385,7 +374,6 @@ export const OrderDetailPage = () => {
                     type="button"
                     onClick={() => setShowCancelModal(true)}
                     className="flex h-10 w-full items-center justify-center rounded-[2px] border border-line text-[11px] font-semibold uppercase tracking-[1px] text-ink-2 transition-[border-color,color] duration-200 hover:border-danger hover:text-danger"
-                    style={{ '--danger': 'var(--danger)' } as React.CSSProperties}
                   >
                     Hủy đơn hàng
                   </button>
