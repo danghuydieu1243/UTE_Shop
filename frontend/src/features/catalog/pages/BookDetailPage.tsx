@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import { SiteHeader, SiteFooter, BookCard, COVER_PLACEHOLDER } from '../../../shared/ui';
 import { useGetBookDetailQuery } from '../catalogApi';
+import { useAddToCartMutation } from '../../cart/cartApi';
 import type { BookCard as BookCardDTO } from '../types';
 import { formatVND, formatFileSize, formatCount } from '../../../shared/format';
 import { useAppSelector } from '../../../app/hooks';
@@ -118,9 +119,10 @@ interface CarouselProps {
   books: BookCardDTO[];
   viewAllUrl: string;
   viewAllLabel: string;
+  onAddToCart?: (book: BookCardDTO) => void;
 }
 
-const RelatedCarousel = ({ title, books, viewAllUrl, viewAllLabel }: CarouselProps) => {
+const RelatedCarousel = ({ title, books, viewAllUrl, viewAllLabel, onAddToCart }: CarouselProps) => {
   const [offset, setOffset] = useState(0);
   const pageSize = 5;
 
@@ -173,7 +175,7 @@ const RelatedCarousel = ({ title, books, viewAllUrl, viewAllLabel }: CarouselPro
 
         <div className="grid grid-cols-5 gap-x-6">
           {visibleBooks.map((book) => (
-            <BookCard key={book.id} book={book} />
+            <BookCard key={book.id} book={book} onAddToCart={onAddToCart} />
           ))}
         </div>
       </div>
@@ -189,6 +191,8 @@ export const BookDetailPage = () => {
   const navigate = useNavigate();
   const user = useAppSelector((s) => s.auth.user);
   const { show, ToastLayer } = useToast();
+
+  const [addToCart] = useAddToCartMutation();
 
   const { data: book, isLoading, isError, error } = useGetBookDetailQuery(
     { idOrSlug },
@@ -243,23 +247,48 @@ export const BookDetailPage = () => {
   };
 
   /* ── Action handlers ── */
-  const handleBuyNow = () => {
+  const handleAddToCartAction = async () => {
     if (!user) {
       navigate(`/login?returnUrl=/books/${idOrSlug}`);
       return;
     }
-    // TODO Phase 3: add to cart + navigate to /checkout
-    show('Giỏ hàng & thanh toán sẽ có ở bước sau');
+    if (!book) return;
+    try {
+      await addToCart({ bookId: book.id }).unwrap();
+      show('Đã thêm vào giỏ hàng');
+    } catch (err: unknown) {
+      const e = err as { data?: { message?: string } };
+      const msg = e?.data?.message ?? '';
+      if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('đã có')) {
+        show('Sách đã có trong giỏ');
+      } else {
+        show('Không thể thêm vào giỏ hàng');
+      }
+    }
   };
 
-  const handleAddToCart = () => {
+  const handleBuyNow = async () => {
     if (!user) {
       navigate(`/login?returnUrl=/books/${idOrSlug}`);
       return;
     }
-    // TODO Phase 3: add to cart
-    show('Giỏ hàng & thanh toán sẽ có ở bước sau');
+    if (!book) return;
+    try {
+      await addToCart({ bookId: book.id }).unwrap();
+      navigate('/checkout');
+    } catch (err: unknown) {
+      const e = err as { data?: { message?: string } };
+      const msg = e?.data?.message ?? '';
+      if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('đã có')) {
+        // Sách đã trong giỏ → cũng navigate checkout được
+        navigate('/checkout');
+      } else {
+        show('Không thể thêm vào giỏ hàng');
+      }
+    }
   };
+
+  const handleAddToCart = handleAddToCartAction;
 
   const handleWishlist = () => {
     if (!user) {
@@ -703,6 +732,7 @@ export const BookDetailPage = () => {
           books={book.relatedByAuthor}
           viewAllUrl={`/books?author=${authorSlug}`}
           viewAllLabel="Xem tất cả"
+          onAddToCart={handleAddToCart}
         />
       )}
 
@@ -713,6 +743,7 @@ export const BookDetailPage = () => {
           books={book.relatedByCategory}
           viewAllUrl={`/books?category=${categorySlug}`}
           viewAllLabel="Xem thêm"
+          onAddToCart={handleAddToCart}
         />
       )}
 

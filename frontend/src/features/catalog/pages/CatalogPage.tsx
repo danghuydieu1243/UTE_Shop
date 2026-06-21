@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { SiteHeader, SiteFooter, BookCard } from '../../../shared/ui';
 import {
   useGetBooksQuery,
   useGetCategoriesQuery,
   useGetFiltersQuery,
 } from '../catalogApi';
+import { useAddToCartMutation } from '../../cart/cartApi';
+import { useAppSelector } from '../../../app/hooks';
 import type { BookCard as BookCardDTO, SortOption } from '../types';
 import { formatVND } from '../../../shared/format';
 
@@ -104,6 +106,29 @@ function paramsToStaged(sp: URLSearchParams): StagedFilters {
   };
 }
 
+/* ── Toast (inline, copy từ BookDetailPage) ── */
+interface ToastItem { id: number; msg: string; }
+
+const useToast = () => {
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const counter = useRef(0);
+  const show = (msg: string) => {
+    const id = ++counter.current;
+    setToasts((prev) => [...prev, { id, msg }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000);
+  };
+  const ToastLayer = () => (
+    <div className="fixed bottom-8 left-1/2 z-[9999] flex -translate-x-1/2 flex-col items-center gap-2 pointer-events-none">
+      {toasts.map((t) => (
+        <div key={t.id} className="bg-ink px-5 py-3 text-[13px] text-paper" style={{ borderRadius: 0 }}>
+          {t.msg}
+        </div>
+      ))}
+    </div>
+  );
+  return { show, ToastLayer };
+};
+
 /* ─────────────────────────────────────────── */
 /*  Chip definitions from committed filters    */
 /* ─────────────────────────────────────────── */
@@ -153,6 +178,31 @@ const EmptyState = ({ onClear }: { onClear: () => void }) => (
 /* ─────────────────────────────────────────── */
 export const CatalogPage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const user = useAppSelector((s) => s.auth.user);
+  const { show, ToastLayer } = useToast();
+  const [addToCart] = useAddToCartMutation();
+
+  /* ── Xử lý thêm vào giỏ ── */
+  const handleAddToCart = async (book: BookCardDTO) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    if (user.role !== 'user') return;
+    try {
+      await addToCart({ bookId: book.id }).unwrap();
+      show('Đã thêm vào giỏ hàng');
+    } catch (err: unknown) {
+      const e = err as { data?: { message?: string } };
+      const msg = e?.data?.message ?? '';
+      if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('đã có')) {
+        show('Sách đã có trong giỏ');
+      } else {
+        show('Không thể thêm vào giỏ hàng');
+      }
+    }
+  };
 
   /* ── URL-derived "committed" state ── */
   const q = searchParams.get('q') ?? '';
@@ -627,6 +677,7 @@ export const CatalogPage = () => {
   /* ─────────────────────────────────────────── */
   return (
     <div className="min-h-screen bg-paper">
+      <ToastLayer />
       <SiteHeader />
 
       {/* ── Breadcrumb ── */}
@@ -762,6 +813,7 @@ export const CatalogPage = () => {
                         : book
                     }
                     highlightQuery={q || undefined}
+                    onAddToCart={handleAddToCart}
                   />
                 ))}
               </div>

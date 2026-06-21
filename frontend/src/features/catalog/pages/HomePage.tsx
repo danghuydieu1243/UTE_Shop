@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { SiteHeader, SiteFooter, BookCard } from '../../../shared/ui';
 import { useGetHomeQuery } from '../catalogApi';
-import type { HomeCategory } from '../types';
+import { useAddToCartMutation } from '../../cart/cartApi';
+import { useAppSelector } from '../../../app/hooks';
+import type { HomeCategory, BookCard as BookCardDTO } from '../types';
 
 /* ── Hero slides data (static marketing copy from home_preview.html) ── */
 const HERO_SLIDES = [
@@ -113,11 +115,59 @@ const IconRight = () => (
   </svg>
 );
 
+/* ── Toast (inline, copy từ BookDetailPage) ── */
+interface ToastItem { id: number; msg: string; }
+
+const useToast = () => {
+  const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const counter = useRef(0);
+  const show = (msg: string) => {
+    const id = ++counter.current;
+    setToasts((prev) => [...prev, { id, msg }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000);
+  };
+  const ToastLayer = () => (
+    <div className="fixed bottom-8 left-1/2 z-[9999] flex -translate-x-1/2 flex-col items-center gap-2 pointer-events-none">
+      {toasts.map((t) => (
+        <div key={t.id} className="bg-ink px-5 py-3 text-[13px] text-paper" style={{ borderRadius: 0 }}>
+          {t.msg}
+        </div>
+      ))}
+    </div>
+  );
+  return { show, ToastLayer };
+};
+
 /* ─────────────────────────────────────────── */
 /*  HomePage component                         */
 /* ─────────────────────────────────────────── */
 export const HomePage = () => {
   const { data, isLoading } = useGetHomeQuery();
+  const navigate = useNavigate();
+  const user = useAppSelector((s) => s.auth.user);
+  const { show, ToastLayer } = useToast();
+  const [addToCart] = useAddToCartMutation();
+
+  /* ── Xử lý thêm vào giỏ ── */
+  const handleAddToCart = async (book: BookCardDTO) => {
+    if (!user) {
+      navigate('/login');
+      return;
+    }
+    if (user.role !== 'user') return;
+    try {
+      await addToCart({ bookId: book.id }).unwrap();
+      show('Đã thêm vào giỏ hàng');
+    } catch (err: unknown) {
+      const e = err as { data?: { message?: string } };
+      const msg = e?.data?.message ?? '';
+      if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('đã có')) {
+        show('Sách đã có trong giỏ');
+      } else {
+        show('Không thể thêm vào giỏ hàng');
+      }
+    }
+  };
 
   /* ── Hero state ── */
   const [heroIdx, setHeroIdx] = useState(0);
@@ -184,6 +234,7 @@ export const HomePage = () => {
 
   return (
     <div className="min-h-screen bg-paper">
+      <ToastLayer />
       <SiteHeader />
 
       {/* ── HERO ── */}
@@ -299,6 +350,7 @@ export const HomePage = () => {
                   key={book.id}
                   book={book}
                   className={`reveal d${i + 1}`}
+                  onAddToCart={handleAddToCart}
                 />
               ))}
             </div>
@@ -353,6 +405,7 @@ export const HomePage = () => {
                   book={book}
                   rank={clampedBsPage * bsPageSize + i + 1}
                   className={`reveal d${i + 1}`}
+                  onAddToCart={handleAddToCart}
                 />
               ))}
             </div>
@@ -386,6 +439,7 @@ export const HomePage = () => {
                   key={book.id}
                   book={book}
                   className={`reveal d${i + 1}`}
+                  onAddToCart={handleAddToCart}
                 />
               ))}
             </div>

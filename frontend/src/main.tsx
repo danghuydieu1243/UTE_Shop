@@ -15,6 +15,7 @@ import { CatalogPage } from './features/catalog/pages/CatalogPage';
 import { BookDetailPage } from './features/catalog/pages/BookDetailPage';
 import { VendorBooksPage } from './features/vendor/pages/VendorBooksPage';
 import { VendorBookFormPage } from './features/vendor/pages/VendorBookFormPage';
+import { CartPage } from './features/cart/pages/CartPage';
 import { RequireAuth, RequireRole } from './shared/auth/guards';
 import './index.css';
 
@@ -39,6 +40,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
           <Route element={<RequireAuth />}>
             <Route path="/user/profile" element={<ProfilePage />} />
             <Route path="/user/change-password" element={<ChangePasswordPage />} />
+            <Route path="/cart" element={<CartPage />} />
           </Route>
 
           {/* Protected: vendor only */}

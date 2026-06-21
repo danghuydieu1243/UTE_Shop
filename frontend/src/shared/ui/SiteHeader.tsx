@@ -2,6 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../app/hooks';
 import { clearCredentials } from '../auth/authSlice';
+import { useGetCartQuery } from '../../features/cart/cartApi';
 
 /**
  * SiteHeader — sticky navbar matching home_static.html + home_preview.html.
@@ -20,6 +21,12 @@ export const SiteHeader = () => {
     navigate('/login');
   };
   const initials = (user?.fullName ?? user?.email ?? '?').trim().charAt(0).toUpperCase();
+
+  // Chỉ gọi cart API khi đã đăng nhập với role 'user'
+  const { data: cartData } = useGetCartQuery(undefined, {
+    skip: !user || user.role !== 'user',
+  });
+  const cartCount = cartData?.itemCount ?? 0;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -134,14 +141,14 @@ export const SiteHeader = () => {
               Yêu thích
             </button>
 
-            {/* Cart */}
-            <button
-              type="button"
+            {/* Cart — Link đến /cart, hiển thị số sản phẩm thực từ API */}
+            <Link
+              to="/cart"
               className="text-[13px] tracking-[0.2px] text-ink-2 transition-colors duration-[250ms] hover:text-ink"
               aria-label="Giỏ hàng"
             >
-              Giỏ hàng <span className="font-medium text-ink">(0)</span>
-            </button>
+              Giỏ hàng <span className="font-medium text-ink">({cartCount})</span>
+            </Link>
 
             <span className="h-5 w-px bg-line" aria-hidden="true" />
 
