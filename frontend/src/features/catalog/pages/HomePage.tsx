@@ -171,7 +171,9 @@ export const HomePage = () => {
     );
     document.querySelectorAll<HTMLElement>('.reveal').forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, []);
+    // Chạy lại khi `data` về: card/danh mục render bất đồng bộ SAU mount,
+    // nếu chỉ observe lúc mount thì các phần tử mới không bao giờ được reveal.
+  }, [data]);
 
   /* ── Data ── */
   const newReleases = data?.newReleases?.slice(0, 5) ?? [];

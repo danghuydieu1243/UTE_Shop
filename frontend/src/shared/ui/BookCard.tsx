@@ -2,6 +2,9 @@ import { useNavigate } from 'react-router-dom';
 import type { BookCard as BookCardDTO } from '../../features/catalog/types';
 import { formatVND, formatFileSize, formatCount } from '../format';
 
+/** Ảnh bìa dùng chung (data giả): lưu ở frontend/public, phục vụ tại /book-cover-placeholder.svg */
+export const COVER_PLACEHOLDER = '/book-cover-placeholder.svg';
+
 /* ── Highlight helper ── */
 function escapeRegex(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -105,27 +108,18 @@ export const BookCard = ({ book, className = '', rank, onAddToCart, highlightQue
           </span>
         )}
 
-        {coverImageUrl ? (
-          <img
-            src={coverImageUrl}
-            alt={title}
-            className="h-full w-full object-cover"
-            loading="lazy"
-          />
-        ) : (
-          /* Fallback placeholder: rule + title + author */
-          <>
-            <div className="mb-[18px] h-px w-6 bg-ink-3 transition-all duration-300 group-hover:w-10" />
-            <div className="text-center text-[13px] font-semibold leading-[1.4] tracking-[-0.2px] text-ink line-clamp-4">
-              {title}
-            </div>
-            {author && (
-              <div className="mt-3.5 text-center text-[10px] font-medium uppercase tracking-[1.5px] text-ink-3">
-                {author}
-              </div>
-            )}
-          </>
-        )}
+        {/* Ảnh bìa: dùng URL thật nếu có, hỏng/thiếu → placeholder dùng chung */}
+        <img
+          src={coverImageUrl || COVER_PLACEHOLDER}
+          alt={title}
+          className="h-full w-full object-cover"
+          loading="lazy"
+          onError={(e) => {
+            const img = e.currentTarget;
+            if (img.src.endsWith(COVER_PLACEHOLDER)) return; // tránh lặp vô hạn
+            img.src = COVER_PLACEHOLDER;
+          }}
+        />
       </div>
 
       {/* Title — 2 line clamp */}

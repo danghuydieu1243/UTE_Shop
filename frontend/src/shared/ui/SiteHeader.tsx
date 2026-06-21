@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { useAppSelector } from '../../app/hooks';
+import { useAppSelector, useAppDispatch } from '../../app/hooks';
+import { clearCredentials } from '../auth/authSlice';
 
 /**
  * SiteHeader — sticky navbar matching home_static.html + home_preview.html.
@@ -9,9 +10,16 @@ import { useAppSelector } from '../../app/hooks';
 export const SiteHeader = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
   const [scrolled, setScrolled] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  const handleLogout = () => {
+    dispatch(clearCredentials());
+    navigate('/login');
+  };
+  const initials = (user?.fullName ?? user?.email ?? '?').trim().charAt(0).toUpperCase();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -138,22 +146,49 @@ export const SiteHeader = () => {
             <span className="h-5 w-px bg-line" aria-hidden="true" />
 
             {user ? (
-              /* Logged-in state */
-              <div className="flex items-center gap-3">
-                {user.role === 'vendor' && (
-                  <Link
-                    to="/vendor/books"
-                    className="text-[13px] text-ink-2 transition-colors duration-[250ms] hover:text-ink"
-                  >
-                    Quản lý sách
-                  </Link>
-                )}
-                <Link
-                  to="/user/profile"
-                  className="text-[13px] font-medium text-ink transition-colors duration-[250ms] hover:opacity-80"
+              /* Logged-in: avatar + dropdown (hover) */
+              <div className="group relative">
+                <button
+                  type="button"
+                  className="flex items-center gap-2 text-[13px] text-ink"
+                  aria-label="Tài khoản"
                 >
-                  {user.fullName}
-                </Link>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-ink text-[13px] font-semibold text-paper">
+                    {initials}
+                  </span>
+                  <span className="max-w-[120px] truncate font-medium">{user.fullName}</span>
+                </button>
+
+                {/* Dropdown — hiện khi hover (có cầu nối pt-2 để không mất hover) */}
+                <div className="invisible absolute right-0 top-full z-[210] pt-2 opacity-0 transition-opacity duration-150 group-hover:visible group-hover:opacity-100">
+                  <div className="w-[200px] rounded border border-line bg-paper py-1.5 shadow-[0_8px_28px_rgba(0,0,0,0.10)]">
+                    <div className="border-b border-line px-4 py-2">
+                      <div className="truncate text-[13px] font-medium text-ink">{user.fullName}</div>
+                      <div className="truncate text-[11px] text-ink-3">{user.email}</div>
+                    </div>
+                    <Link
+                      to="/user/profile"
+                      className="block px-4 py-2 text-[13px] text-ink-2 transition-colors hover:bg-surface hover:text-ink"
+                    >
+                      Hồ sơ của tôi
+                    </Link>
+                    {user.role === 'vendor' && (
+                      <Link
+                        to="/vendor/books"
+                        className="block px-4 py-2 text-[13px] text-ink-2 transition-colors hover:bg-surface hover:text-ink"
+                      >
+                        Quản lý E-book
+                      </Link>
+                    )}
+                    <button
+                      type="button"
+                      onClick={handleLogout}
+                      className="block w-full px-4 py-2 text-left text-[13px] text-danger-fg transition-colors hover:bg-surface"
+                    >
+                      Đăng xuất
+                    </button>
+                  </div>
+                </div>
               </div>
             ) : (
               /* Guest state */

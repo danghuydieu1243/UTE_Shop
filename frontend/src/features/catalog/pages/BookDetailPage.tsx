@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { SiteHeader, SiteFooter, BookCard } from '../../../shared/ui';
+import { SiteHeader, SiteFooter, BookCard, COVER_PLACEHOLDER } from '../../../shared/ui';
 import { useGetBookDetailQuery } from '../catalogApi';
 import type { BookCard as BookCardDTO } from '../types';
 import { formatVND, formatFileSize, formatCount } from '../../../shared/format';
@@ -361,6 +361,11 @@ export const BookDetailPage = () => {
                     src={activeItem.url}
                     alt={activeItem.label}
                     className="h-full w-full object-cover"
+                    onError={(e) => {
+                      const img = e.currentTarget;
+                      if (img.src.endsWith(COVER_PLACEHOLDER)) return;
+                      img.src = COVER_PLACEHOLDER;
+                    }}
                   />
                 ) : (
                   <>
@@ -393,7 +398,16 @@ export const BookDetailPage = () => {
                     }`}
                   >
                     {item.url ? (
-                      <img src={item.url} alt={item.label} className="h-full w-full object-cover" />
+                      <img
+                        src={item.url}
+                        alt={item.label}
+                        className="h-full w-full object-cover"
+                        onError={(e) => {
+                          const img = e.currentTarget;
+                          if (img.src.endsWith(COVER_PLACEHOLDER)) return;
+                          img.src = COVER_PLACEHOLDER;
+                        }}
+                      />
                     ) : (
                       item.label.slice(0, 4)
                     )}
