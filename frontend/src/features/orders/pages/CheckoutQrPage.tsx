@@ -75,14 +75,14 @@ export const CheckoutQrPage = () => {
   const [cancelOrder, { isLoading: isCancelling }] = useCancelOrderMutation();
   const [recreatePayment, { isLoading: isRecreating }] = useRecreatePaymentMutation();
 
-  /* ── Countdown state ── */
-  const [countdown, setCountdown] = useState<number>(0);
+  /* ── Countdown state (null = chưa tính, tránh flash "Hết hạn" ở frame đầu) ── */
+  const [countdown, setCountdown] = useState<number | null>(null);
 
   /* ── Tính countdown từ payment.expiresAt ── */
   useEffect(() => {
     const payment = order?.payment;
     if (!payment) {
-      setCountdown(0);
+      setCountdown(null);
       return;
     }
     const updateCountdown = () => {
@@ -94,12 +94,12 @@ export const CheckoutQrPage = () => {
     return () => clearInterval(interval);
   }, [order?.payment]);
 
-  /* ── isExpired ── */
+  /* ── isExpired: chỉ expired khi countdown đã được tính (không null) VÀ <= 0 ── */
   const payment = order?.payment ?? null;
   const isExpired =
-    payment === null ||
-    countdown <= 0 ||
-    payment.status === 'EXPIRED';
+    payment !== null &&
+    countdown !== null &&
+    (countdown <= 0 || payment.status === 'EXPIRED');
 
   /* ── Giả lập thanh toán thành công ── */
   const handleSimulate = useCallback(async () => {
@@ -141,6 +141,7 @@ export const CheckoutQrPage = () => {
   };
 
   const canCancel = order?.status === 'NEW' || order?.status === 'PENDING_PAYMENT';
+  // payment === null → chưa có payment, show nút recreate luôn
   const showRecreate = payment === null || isExpired;
 
   return (
