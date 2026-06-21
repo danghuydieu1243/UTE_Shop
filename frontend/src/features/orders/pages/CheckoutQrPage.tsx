@@ -264,7 +264,7 @@ export const CheckoutQrPage = () => {
                         <div className="mb-3">
                           <p className="mb-1 text-[11px] uppercase tracking-[1px] text-ink-3">Hết hạn sau</p>
                           <p className="text-[28px] font-bold tabular-nums text-ink leading-none">
-                            {formatCountdown(countdown)}
+                            {countdown !== null ? formatCountdown(countdown) : '--:--'}
                           </p>
                         </div>
                       ) : (
