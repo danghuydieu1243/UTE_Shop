@@ -9,7 +9,7 @@ import request from 'supertest';
 import { createApp } from '../../../app';
 import {
   User, Vendor, Book, BookFile,
-  Order, OrderItem, Payment, Entitlement,
+  Order, OrderItem, Payment, Entitlement, Author,
 } from '../../../db/models';
 import { signAccessToken } from '../../auth/token.service';
 import { env } from '../../../config/env';
@@ -290,10 +290,57 @@ describe('GET /api/v1/me/ebooks', () => {
     expect(ebook).toBeDefined();
     expect(ebook.title).toBe('Sách Test Payments');
     expect(ebook.orderCode).toBe(order.code);
+    // Sách không có tác giả → author phải là null
+    expect(ebook.author).toBeNull();
 
     // Kiểm pagination meta
     expect(res.body.meta.pagination).toBeDefined();
     expect(res.body.meta.pagination.total).toBeGreaterThanOrEqual(1);
+  });
+
+  it('6b. GET /me/ebooks khi sách có tác giả → author trả tên tác giả', async () => {
+    const user = await seedUser('user', `eb6b-${Date.now()}`);
+    const token = makeToken(user.id);
+
+    // Tạo author
+    const author = await Author.create({ name: 'Nguyễn Văn A', slug: `author-6b-${Date.now()}` });
+
+    // Tạo sách gắn author
+    const slug = `test-book-eb6b-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const book = await Book.create({
+      vendorUserId: vendorUser.id,
+      title: 'Sách Có Tác Giả',
+      slug,
+      price: 59000,
+      fileFormat: 'PDF',
+      status: 'published',
+      authorId: Number(author.id),
+    } as any);
+
+    const order = await Order.create({
+      userId: user.id,
+      code: `ATH-EB6B-${Date.now()}`,
+      status: 'COMPLETED',
+      subtotal: 59000,
+      total: 59000,
+      currency: 'VND',
+      completedAt: new Date(),
+    });
+    await Entitlement.create({
+      userId: user.id,
+      bookId: book.id,
+      orderId: Number(order.id),
+      grantedAt: new Date(),
+    });
+
+    const res = await request(app)
+      .get('/api/v1/me/ebooks')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    const ebook = res.body.data.find((e: any) => e.bookId === Number(book.id));
+    expect(ebook).toBeDefined();
+    expect(ebook.author).toBe('Nguyễn Văn A');
   });
 });
 

@@ -46,8 +46,8 @@ export async function completePayment(
   opts: { userId: number },
 ): Promise<OrderDetailDTO> {
   return sequelize.transaction(async (t) => {
-    // 1. Load payment
-    const payment = await Payment.findByPk(paymentId, { transaction: t });
+    // 1. Load payment — SELECT ... FOR UPDATE để ngăn double-complete khi gọi song song
+    const payment = await Payment.findByPk(paymentId, { transaction: t, lock: t.LOCK.UPDATE });
     if (!payment) {
       throw AppError.from('PAYMENT_NOT_FOUND', 'Không tìm thấy giao dịch thanh toán');
     }

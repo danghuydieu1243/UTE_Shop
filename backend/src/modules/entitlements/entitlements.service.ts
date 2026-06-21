@@ -6,11 +6,12 @@ import path from 'path';
 import fs from 'fs';
 import { Op } from 'sequelize';
 import {
-  Entitlement, Book, BookFile, Order, DownloadLog,
+  Entitlement, Book, BookFile, Order, DownloadLog, Author,
 } from '../../db/models';
 import { AppError } from '../../shared/errors/AppError';
-import { signDownloadToken } from '../../shared/download-url';
+import { signDownloadToken, verifyDownloadToken } from '../../shared/download-url';
 import { env } from '../../config/env';
+import { logger } from '../../shared/logger';
 
 // ── DTO Types ─────────────────────────────────────────────────────────────────
 
@@ -18,7 +19,7 @@ export interface EbookDTO {
   bookId: number;
   slug: string | null;
   title: string;
-  author: null; // Phase 4 đơn giản — Author chưa join
+  author: string | null; // tên tác giả từ JOIN Author
   coverImageUrl: string | null;
   fileFormat: string | null;
   fileSizeBytes: number | null;
@@ -78,6 +79,12 @@ export async function listEbooks(
             attributes: ['fileFormat', 'fileSizeBytes'],
             required: false,
           },
+          {
+            model: Author,
+            as: 'author',
+            attributes: ['name'],
+            required: false,
+          },
         ],
       },
       {
@@ -95,13 +102,14 @@ export async function listEbooks(
   const data: EbookDTO[] = rows.map((e) => {
     const book = (e as any).book as Book | null;
     const bookFile = book ? ((book as any).file as BookFile | null) : null;
+    const bookAuthor = book ? ((book as any).author as Author | null) : null;
     const order = (e as any).order as Order | null;
 
     return {
       bookId: Number(e.bookId),
       slug: book?.slug ?? null,
       title: book?.title ?? '',
-      author: null,
+      author: bookAuthor?.name ?? null,
       coverImageUrl: book?.coverImageUrl ?? null,
       fileFormat: bookFile?.fileFormat ?? null,
       fileSizeBytes: bookFile?.fileSizeBytes != null ? Number(bookFile.fileSizeBytes) : null,
@@ -146,13 +154,17 @@ export async function issueDownloadLink(
   const token = signDownloadToken({ userId, bookId });
 
   // 4. Ghi download log (best-effort — không block nếu lỗi)
-  await DownloadLog.create({
-    userId,
-    bookId,
-    entitlementId: Number(entitlement.id),
-    ip: ip ?? null,
-    issuedAt: new Date(),
-  });
+  try {
+    await DownloadLog.create({
+      userId,
+      bookId,
+      entitlementId: Number(entitlement.id),
+      ip: ip ?? null,
+      issuedAt: new Date(),
+    });
+  } catch (err) {
+    logger.warn({ err }, 'Ghi download_logs thất bại (best-effort)');
+  }
 
   const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 phút
 
@@ -170,11 +182,11 @@ export async function issueDownloadLink(
  * Xác thực token + kiểm entitlement + stream file về client.
  * Ném AppError nếu có vấn đề; caller (controller) pipe response.
  */
+// FIX 5: loại bỏ tham số thừa clientUserId không dùng
+// FIX 6: dùng static import verifyDownloadToken (không có circular dependency)
 export async function resolveDownloadFile(
   token: string,
-  clientUserId?: number,
 ): Promise<{ filePath: string; filename: string; bookFile: BookFile }> {
-  const { verifyDownloadToken } = await import('../../shared/download-url');
   const { userId, bookId } = verifyDownloadToken(token);
 
   // Bảo vệ kép: kiểm lại entitlement

@@ -5,6 +5,7 @@
 import fs from 'fs';
 import { Request, Response } from 'express';
 import { ok } from '../../shared/http/response';
+import { AppError } from '../../shared/errors/AppError';
 import { listEbooks, issueDownloadLink, resolveDownloadFile } from './entitlements.service';
 
 // ── GET /me/ebooks ────────────────────────────────────────────────────────────
@@ -32,12 +33,8 @@ export async function requestDownload(req: Request, res: Response): Promise<void
 export async function serveFile(req: Request, res: Response): Promise<void> {
   const token = req.query.token as string | undefined;
   if (!token) {
-    // Không có token → trả lỗi thủ công (route này không qua auth middleware)
-    res.status(401).json({
-      success: false,
-      error: { code: 'DOWNLOAD_TOKEN_INVALID', message: 'Token không được cung cấp' },
-    });
-    return;
+    // FIX 4: dùng AppError.from để nhất quán envelope với phần còn lại
+    throw AppError.from('DOWNLOAD_TOKEN_INVALID', 'Thiếu token tải');
   }
 
   const { filePath, filename } = await resolveDownloadFile(token);
@@ -45,5 +42,15 @@ export async function serveFile(req: Request, res: Response): Promise<void> {
   // Stream file về client — KHÔNG trả storageKey
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
   res.setHeader('Content-Type', 'application/octet-stream');
-  fs.createReadStream(filePath).pipe(res);
+
+  // FIX 7: xử lý lỗi stream để không treo kết nối khi file bị lỗi đọc
+  const stream = fs.createReadStream(filePath);
+  stream.on('error', () => {
+    if (!res.headersSent) {
+      res.status(500).end();
+    } else {
+      res.end();
+    }
+  });
+  stream.pipe(res);
 }
