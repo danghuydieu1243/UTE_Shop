@@ -36,3 +36,33 @@ export interface OrderDetail {
   completedAt: string | null;
   cancelledAt: string | null;
 }
+
+/** Tóm tắt đơn hàng cho danh sách */
+export interface OrderSummary {
+  code: string;
+  status: 'NEW' | 'COMPLETED' | 'CANCELLED';
+  itemCount: number;
+  total: number;
+  currency: string;
+  createdAt: string;
+  completedAt: string | null;
+  cancelledAt: string | null;
+}
+
+/** Params cho getOrders */
+export interface GetOrdersParams {
+  status?: 'NEW' | 'COMPLETED' | 'CANCELLED';
+  page?: number;
+  limit?: number;
+}
+
+/** Response cho getOrders */
+export interface OrdersResult {
+  orders: OrderSummary[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}

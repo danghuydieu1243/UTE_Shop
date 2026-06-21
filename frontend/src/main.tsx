@@ -18,6 +18,8 @@ import { VendorBookFormPage } from './features/vendor/pages/VendorBookFormPage';
 import { CartPage } from './features/cart/pages/CartPage';
 import { CheckoutPage } from './features/orders/pages/CheckoutPage';
 import { CheckoutQrPage } from './features/orders/pages/CheckoutQrPage';
+import { OrderHistoryPage } from './features/orders/pages/OrderHistoryPage';
+import { OrderDetailPage } from './features/orders/pages/OrderDetailPage';
 import { RequireAuth, RequireRole } from './shared/auth/guards';
 import './index.css';
 
@@ -49,6 +51,8 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/checkout/:code" element={<CheckoutQrPage />} />
+            <Route path="/orders" element={<OrderHistoryPage />} />
+            <Route path="/orders/:code" element={<OrderDetailPage />} />
           </Route>
 
           {/* Protected: vendor only */}

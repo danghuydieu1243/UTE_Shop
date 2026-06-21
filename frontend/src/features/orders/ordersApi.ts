@@ -1,5 +1,6 @@
 import { baseApi } from '../../shared/api/baseApi';
-import type { OrderDetail, Payment } from './types';
+import type { EnvelopeMeta } from '../../shared/api/baseApi';
+import type { OrderDetail, Payment, GetOrdersParams, OrderSummary, OrdersResult } from './types';
 
 export const ordersApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
@@ -32,6 +33,22 @@ export const ordersApi = baseApi.injectEndpoints({
       query: (id) => ({ url: `/payments/${id}/simulate`, method: 'POST' }),
       invalidatesTags: ['Order'],
     }),
+
+    // GET /orders?status&page&limit → OrdersResult
+    getOrders: build.query<OrdersResult, GetOrdersParams>({
+      query: (params) => ({ url: '/orders', method: 'GET', params }),
+      transformResponse: (resp: { orders: OrderSummary[] }, meta: EnvelopeMeta | undefined) => ({
+        orders: resp.orders ?? [],
+        pagination: meta?.pagination ?? { page: 1, limit: 10, total: 0, totalPages: 0 },
+      }),
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.orders.map(({ code }) => ({ type: 'Order' as const, id: code })),
+              { type: 'Order', id: 'LIST' },
+            ]
+          : [{ type: 'Order', id: 'LIST' }],
+    }),
   }),
 });
 
@@ -41,4 +58,5 @@ export const {
   useCancelOrderMutation,
   useRecreatePaymentMutation,
   useSimulatePaymentMutation,
+  useGetOrdersQuery,
 } = ordersApi;
