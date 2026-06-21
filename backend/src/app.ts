@@ -7,6 +7,7 @@ import { authRouter } from './modules/auth';
 import { usersRouter } from './modules/users';
 import { catalogRouter } from './modules/catalog';
 import { vendorBooksRouter } from './modules/vendor-books';
+import { cartRouter } from './modules/cart';
 import { notFound } from './shared/middleware/notFound';
 import { errorHandler } from './shared/middleware/errorHandler';
 import { env } from './config/env';
@@ -30,6 +31,7 @@ export const createApp = () => {
   app.use('/api/v1/users', usersRouter);
   app.use('/api/v1/catalog', catalogRouter);
   app.use('/api/v1/vendor/books', vendorBooksRouter);
+  app.use('/api/v1/cart', cartRouter);
 
   app.use(notFound);
   app.use(errorHandler);
