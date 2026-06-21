@@ -25,8 +25,8 @@ function addMinutes(date: Date, minutes: number): Date {
 // ── createOrder (checkout) ────────────────────────────────────────────────────
 
 export async function createOrder(userId: number): Promise<OrderDetailDTO> {
-  // Bọc toàn bộ trong transaction
-  return sequelize.transaction(async (t) => {
+  // Bọc toàn bộ trong transaction; kết quả được capture để xử lý cache SAU KHI commit
+  const result = await sequelize.transaction(async (t) => {
     // 1. Lấy cart của user
     const cart = await Cart.findOne({ where: { userId }, transaction: t });
     if (!cart) {
@@ -132,11 +132,8 @@ export async function createOrder(userId: number): Promise<OrderDetailDTO> {
       transaction: t,
     });
 
-    // 9. Del cart cache (ngoài transaction, ignore lỗi)
-    await cartCache.delCart(userId);
-
-    // 10. Build và trả OrderDetailDTO
-    // Load lại order với items + payment
+    // 9. Build và trả OrderDetailDTO
+    // Load lại order với items + payment (trong transaction)
     const createdOrder = await Order.findOne({
       where: { id: order.id },
       include: [
@@ -152,6 +149,16 @@ export async function createOrder(userId: number): Promise<OrderDetailDTO> {
 
     return repo.mapOrderDetailDTO(createdOrder!);
   });
+
+  // 10. Del cart cache SAU KHI transaction đã commit thành công.
+  // Bọc try/catch để Redis down KHÔNG làm fail checkout đã ghi vào DB.
+  try {
+    await cartCache.delCart(userId);
+  } catch {
+    /* cache best-effort — bỏ qua lỗi Redis */
+  }
+
+  return result;
 }
 
 // ── listOrders ────────────────────────────────────────────────────────────────
@@ -223,8 +230,21 @@ export async function recreatePayment(userId: number, code: string): Promise<Pay
       throw AppError.from('ORDER_NOT_PAYABLE', 'Đơn hàng không ở trạng thái chờ thanh toán');
     }
 
-    // Tạo payment intent PENDING mới
+    // Guard I1: Chỉ tạo lại QR khi KHÔNG còn payment PENDING hợp lệ (chưa hết hạn).
+    // Nếu vẫn còn payment PENDING với expires_at > now → từ chối tạo thêm.
     const now = new Date();
+    const payments = ((order as any).payments as Payment[]) ?? [];
+    const hasValidPending = payments.some(
+      (p) => p.status === 'PENDING' && p.expiresAt != null && new Date(p.expiresAt) > now,
+    );
+    if (hasValidPending) {
+      throw AppError.from(
+        'ORDER_NOT_PAYABLE',
+        'Đơn hàng đang có QR hợp lệ, chưa cần tạo lại',
+      );
+    }
+
+    // Tạo payment intent PENDING mới (now đã khai báo ở trên)
     const qrPayload = generateQrPayload(order.code, Number(order.total));
     const payment = await Payment.create(
       {

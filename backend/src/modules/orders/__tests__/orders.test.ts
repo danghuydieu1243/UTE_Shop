@@ -490,6 +490,35 @@ describe('Orders API', () => {
       expect(res.body.error.code).toBe('ORDER_NOT_PAYABLE');
     });
 
+    it('7d. tạo lại payment khi đơn NEW nhưng còn PENDING hợp lệ → 409 ORDER_NOT_PAYABLE', async () => {
+      // I1 guard: nếu payment PENDING chưa hết hạn thì từ chối tạo thêm
+      const userGuard = await seedUser('user', `guard-${Date.now()}`);
+      const tokenGuard = makeToken(userGuard.id, 'user');
+      const bookGuard = await seedBook(vendorUser.id, { price: 55000 });
+
+      const cart = await Cart.findOrCreate({
+        where: { userId: userGuard.id },
+        defaults: { userId: userGuard.id },
+      });
+      await CartItem.create({ cartId: cart[0].id, bookId: bookGuard.id, unitPrice: 55000 });
+
+      // Checkout → tạo đơn NEW với payment PENDING còn hiệu lực
+      const checkoutRes = await request(app)
+        .post('/api/v1/orders')
+        .set('Authorization', `Bearer ${tokenGuard}`)
+        .send({});
+      expect(checkoutRes.status).toBe(201);
+      const code = checkoutRes.body.data.code;
+
+      // Gọi recreatePayment ngay khi payment PENDING vẫn còn hạn → phải bị từ chối
+      const res = await request(app)
+        .post(`/api/v1/orders/${code}/payment`)
+        .set('Authorization', `Bearer ${tokenGuard}`);
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('ORDER_NOT_PAYABLE');
+    });
+
     it('7c. PaymentDTO TUYỆT ĐỐI KHÔNG chứa providerTxnId', async () => {
       const userPayDTO = await seedUser('user', `paydto-${Date.now()}`);
       const tokenPayDTO = makeToken(userPayDTO.id, 'user');

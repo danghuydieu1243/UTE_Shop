@@ -87,6 +87,10 @@ export async function findOrderByCode(
       {
         model: Payment,
         as: 'payments',
+        // I3: Sắp xếp payment theo id DESC để intent mới nhất luôn đứng đầu,
+        // đảm bảo mapOrderDetailDTO chọn tất định payment mới nhất khi reduce.
+        separate: true,
+        order: [['id', 'DESC']],
       },
     ],
     ...(options?.transaction ? { transaction: options.transaction } : {}),
