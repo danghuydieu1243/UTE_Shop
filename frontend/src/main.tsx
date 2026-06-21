@@ -13,6 +13,7 @@ import { ChangePasswordPage } from './features/profile/pages/ChangePasswordPage'
 import { HomePage } from './features/catalog/pages/HomePage';
 import { CatalogPage } from './features/catalog/pages/CatalogPage';
 import { BookDetailPage } from './features/catalog/pages/BookDetailPage';
+import { VendorBooksPage } from './features/vendor/pages/VendorBooksPage';
 import { RequireAuth, RequireRole } from './shared/auth/guards';
 import './index.css';
 
@@ -42,7 +43,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
           {/* Protected: vendor only */}
           <Route element={<RequireRole roles={['vendor']} />}>
             <Route path="/vendor/dashboard" element={<div className="p-10 text-ink">Vendor Dashboard</div>} />
-            <Route path="/vendor/books" element={<div className="p-10 text-ink">Vendor Books (đang xây dựng)</div>} />
+            <Route path="/vendor/books" element={<VendorBooksPage />} />
             <Route path="/vendor/books/new" element={<div className="p-10 text-ink">Vendor Books (đang xây dựng)</div>} />
             <Route path="/vendor/books/:id/edit" element={<div className="p-10 text-ink">Vendor Books (đang xây dựng)</div>} />
           </Route>

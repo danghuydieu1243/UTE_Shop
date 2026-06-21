@@ -37,12 +37,24 @@ const rawBaseQuery: BaseQueryFn<
 ) => {
   const token = (apiCtx.getState() as RootState).auth.accessToken;
   try {
+    // When data is FormData, let the browser set Content-Type (multipart + boundary).
+    // Explicitly delete the default 'application/json' header so axios doesn't override.
+    const extraHeaders: Record<string, string> = {};
+    if (data instanceof FormData) {
+      extraHeaders['Content-Type'] = ''; // axios will strip empty-string headers
+    }
     const res = await api({
       url,
       method: method ?? 'GET',
       data,
       params,
-      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...extraHeaders,
+      },
+      transformRequest: data instanceof FormData
+        ? [(d) => d]  // skip JSON serialisation — send FormData as-is
+        : undefined,
     });
     // Backend bọc envelope {success,data,meta}; trả data + meta cho RTK Query.
     // transformResponse nhận meta làm tham số thứ 2 (dùng cho catalog pagination).
