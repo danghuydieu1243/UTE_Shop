@@ -56,6 +56,8 @@ export async function createBook(data: {
   tableOfContents?: string;
   price: number;
   originalPrice?: number | null;
+  publishYear?: number | null;
+  isbn?: string | null;
   authorId?: number;
   publisherId?: number | null;
   categoryId?: number;
@@ -104,6 +106,8 @@ export async function updateBook(id: number, data: Partial<{
   tableOfContents: string | null;
   price: number;
   originalPrice: number | null;
+  publishYear: number | null;
+  isbn: string | null;
   authorId: number | null;
   publisherId: number | null;
   categoryId: number;

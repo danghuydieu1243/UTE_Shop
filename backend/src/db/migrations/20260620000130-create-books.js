@@ -42,6 +42,8 @@ module.exports = {
       rating_count: { type: Sequelize.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0 },
       original_price: { type: Sequelize.BIGINT.UNSIGNED, allowNull: true },
       table_of_contents: { type: Sequelize.TEXT, allowNull: true },
+      publish_year: { type: Sequelize.INTEGER.UNSIGNED, allowNull: true },
+      isbn: { type: Sequelize.STRING(20), allowNull: true },
       published_at: { type: Sequelize.DATE, allowNull: true },
       created_at: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') },
       updated_at: { type: Sequelize.DATE, allowNull: false, defaultValue: Sequelize.literal('CURRENT_TIMESTAMP') },

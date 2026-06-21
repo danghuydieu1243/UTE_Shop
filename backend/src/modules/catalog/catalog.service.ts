@@ -77,6 +77,8 @@ export async function getBookDetail(idOrSlug: string) {
       book.originalPrice != null && Number(book.originalPrice) > Number(book.price)
         ? Math.round((1 - Number(book.price) / Number(book.originalPrice)) * 100)
         : null,
+    publishYear: book.publishYear ?? null,
+    isbn: book.isbn ?? null,
     fileFormat: book.fileFormat,
     fileSizeBytes: file?.fileSizeBytes ?? book.fileSizeBytes ?? null,
     coverImageUrl: book.coverImageUrl ?? null,

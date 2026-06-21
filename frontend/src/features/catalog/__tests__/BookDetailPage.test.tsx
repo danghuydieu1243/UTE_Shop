@@ -65,6 +65,8 @@ const sampleBook: BookDetail = {
   price: 72000,
   originalPrice: 90000,
   discountPercent: 20,
+  publishYear: 2018,
+  isbn: '978-604-1-00000',
   fileFormat: 'PDF',
   fileSizeBytes: 13002342,
   coverImageUrl: null,

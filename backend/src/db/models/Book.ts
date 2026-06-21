@@ -22,6 +22,8 @@ export class Book extends Model<InferAttributes<Book>, InferCreationAttributes<B
   declare ratingCount: CreationOptional<number>;
   declare originalPrice: CreationOptional<number | null>;
   declare tableOfContents: CreationOptional<string | null>;
+  declare publishYear: CreationOptional<number | null>;
+  declare isbn: CreationOptional<string | null>;
   declare publishedAt: CreationOptional<Date | null>;
   declare created_at: CreationOptional<Date>;
   declare updated_at: CreationOptional<Date>;
@@ -49,6 +51,8 @@ Book.init(
     ratingCount: { type: DataTypes.INTEGER.UNSIGNED, allowNull: false, defaultValue: 0, field: 'rating_count' },
     originalPrice: { type: DataTypes.BIGINT.UNSIGNED, allowNull: true, field: 'original_price' },
     tableOfContents: { type: DataTypes.TEXT, allowNull: true, field: 'table_of_contents' },
+    publishYear: { type: DataTypes.INTEGER.UNSIGNED, allowNull: true, field: 'publish_year' },
+    isbn: { type: DataTypes.STRING(20), allowNull: true, field: 'isbn' },
     publishedAt: { type: DataTypes.DATE, allowNull: true, field: 'published_at' },
     created_at: DataTypes.DATE,
     updated_at: DataTypes.DATE,

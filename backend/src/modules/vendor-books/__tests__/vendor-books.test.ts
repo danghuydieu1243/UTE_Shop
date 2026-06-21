@@ -191,6 +191,42 @@ describe('vendor-books service', () => {
     ).rejects.toMatchObject({ code: 'CATEGORY_NOT_FOUND' });
   });
 
+  // ── Test 5b: publishYear/isbn round-trip + originalPrice update keeps when omitted ──
+  it('create+update: publishYear/isbn persist and reload; originalPrice kept when omitted', async () => {
+    const r = await service.createBook(
+      vendorUser.id,
+      {
+        title: 'Metadata Book',
+        categoryId: category.id,
+        price: 60000,
+        originalPrice: 90000,
+        authorName: 'Meta Author',
+        publishYear: 2021,
+        isbn: '978-604-1-23456',
+        status: 'draft',
+      },
+      { ebookFile: [makeFakeEbookFile()] },
+    );
+
+    const created = await service.getVendorBook(vendorUser.id, r.id);
+    expect(created.publishYear).toBe(2021);
+    expect(created.isbn).toBe('978-604-1-23456');
+    expect(created.originalPrice).toBe(90000);
+
+    // update publishYear/isbn; omit originalPrice → must keep prior value
+    await service.updateBook(
+      vendorUser.id,
+      r.id,
+      { publishYear: 2022, isbn: '978-604-1-99999' } as any,
+      {},
+    );
+
+    const updated = await service.getVendorBook(vendorUser.id, r.id);
+    expect(updated.publishYear).toBe(2022);
+    expect(updated.isbn).toBe('978-604-1-99999');
+    expect(updated.originalPrice).toBe(90000);
+  });
+
   // ── Test 6: list filter by status (own-only) ─────────────────────────────────
   it('listVendorBooks: returns only own books and respects status filter', async () => {
     const { data, meta } = await service.listVendorBooks(vendorUser.id, {

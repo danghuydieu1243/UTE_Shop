@@ -69,6 +69,8 @@ export async function createBook(
     tableOfContents: input.tableOfContents,
     price: input.price,
     originalPrice: input.originalPrice ?? null,
+    publishYear: input.publishYear ?? null,
+    isbn: input.isbn ?? null,
     authorId: author.id,
     publisherId: publisher?.id ?? null,
     categoryId: input.categoryId,
@@ -119,6 +121,8 @@ export async function getVendorBook(vendorUserId: number, bookId: number) {
     tableOfContents: book.tableOfContents ?? null,
     price: Number(book.price),
     originalPrice: book.originalPrice != null ? Number(book.originalPrice) : null,
+    publishYear: book.publishYear ?? null,
+    isbn: book.isbn ?? null,
     categoryId: book.categoryId ?? null,
     authorName: author?.name ?? null,
     publisherName: publisher?.name ?? null,
@@ -191,6 +195,8 @@ export async function updateBook(
   if (input.tableOfContents !== undefined) updateData.tableOfContents = input.tableOfContents ?? null;
   if (input.price !== undefined) updateData.price = input.price;
   if ('originalPrice' in input) updateData.originalPrice = input.originalPrice ?? null;
+  if ('publishYear' in input) updateData.publishYear = input.publishYear ?? null;
+  if ('isbn' in input) updateData.isbn = input.isbn ?? null;
   if (input.categoryId !== undefined) updateData.categoryId = input.categoryId;
   if (input.status !== undefined) updateData.status = input.status;
 

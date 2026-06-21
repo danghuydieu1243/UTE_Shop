@@ -281,10 +281,10 @@ export const BookDetailPage = () => {
   const hasDiscount =
     book.originalPrice != null && book.originalPrice > book.price;
 
-  /* ── publishedAt year ── */
-  const publishedYear = book.publishedAt
-    ? new Date(book.publishedAt).getFullYear()
-    : null;
+  /* ── năm xuất bản: ưu tiên publishYear, fallback năm publishedAt ── */
+  const publishedYear =
+    book.publishYear ??
+    (book.publishedAt ? new Date(book.publishedAt).getFullYear() : null);
 
   /* ── Description paragraphs ── */
   const descParagraphs = book.description

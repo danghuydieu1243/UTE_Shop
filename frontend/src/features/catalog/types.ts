@@ -59,6 +59,8 @@ export interface BookDetail {
   price: number;
   originalPrice: number | null;
   discountPercent: number | null;
+  publishYear: number | null;
+  isbn: string | null;
   fileFormat: 'PDF' | 'EPUB';
   fileSizeBytes: number;
   coverImageUrl: string | null;
@@ -67,7 +69,7 @@ export interface BookDetail {
   ratingCount: number;
   purchaseCount: number;
   publishedAt: string;
-  vendor: VendorRef;
+  vendor: VendorRef | null;
   relatedByAuthor: BookCard[];
   relatedByCategory: BookCard[];
 }
