@@ -11,6 +11,7 @@ import { ResetPasswordPage } from './features/auth/pages/ResetPasswordPage';
 import { ProfilePage } from './features/profile/pages/ProfilePage';
 import { ChangePasswordPage } from './features/profile/pages/ChangePasswordPage';
 import { HomePage } from './features/catalog/pages/HomePage';
+import { CatalogPage } from './features/catalog/pages/CatalogPage';
 import { RequireAuth, RequireRole } from './shared/auth/guards';
 import './index.css';
 
@@ -21,6 +22,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
         <Routes>
           {/* Public: Home (guests + logged-in users) */}
           <Route path="/" element={<HomePage />} />
+          <Route path="/books" element={<CatalogPage />} />
 
           {/* Auth routes (guest only) */}
           <Route path="/login" element={<LoginPage />} />

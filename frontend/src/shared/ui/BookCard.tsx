@@ -2,6 +2,30 @@ import { useNavigate } from 'react-router-dom';
 import type { BookCard as BookCardDTO } from '../../features/catalog/types';
 import { formatVND, formatFileSize, formatCount } from '../format';
 
+/* ── Highlight helper ── */
+function escapeRegex(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const Highlight = ({ text, query }: { text: string; query?: string }) => {
+  if (!query?.trim()) return <>{text}</>;
+  const regex = new RegExp(`(${escapeRegex(query)})`, 'gi');
+  const parts = text.split(regex);
+  return (
+    <>
+      {parts.map((part, i) =>
+        regex.test(part) ? (
+          <mark key={i} className="rounded-[1px] bg-[#FFF3CD] px-[1px] text-ink">
+            {part}
+          </mark>
+        ) : (
+          <span key={i}>{part}</span>
+        ),
+      )}
+    </>
+  );
+};
+
 interface BookCardProps {
   book: BookCardDTO;
   /** Extra classes to control grid column sizing from parent */
@@ -10,6 +34,8 @@ interface BookCardProps {
   rank?: number;
   /** Called when "Thêm vào giỏ" is clicked. Wired in Phase 3 (cart feature). */
   onAddToCart?: (book: BookCardDTO) => void;
+  /** Highlight this query string in title + author */
+  highlightQuery?: string;
 }
 
 /**
@@ -18,7 +44,7 @@ interface BookCardProps {
  * avoiding button-inside-anchor (invalid HTML5).
  * Hover: .book-cover đổi nền sang #EFEDE6; .cover-rule giãn rộng (home_preview.html).
  */
-export const BookCard = ({ book, className = '', rank, onAddToCart }: BookCardProps) => {
+export const BookCard = ({ book, className = '', rank, onAddToCart, highlightQuery }: BookCardProps) => {
   const navigate = useNavigate();
 
   const {
@@ -103,11 +129,13 @@ export const BookCard = ({ book, className = '', rank, onAddToCart }: BookCardPr
 
       {/* Title — 2 line clamp */}
       <div className="mb-1 line-clamp-2 min-h-[36px] text-[13px] font-medium leading-[1.4] text-ink">
-        {title}
+        <Highlight text={title} query={highlightQuery} />
       </div>
 
       {/* Author */}
-      <div className="mb-2 text-[12px] text-ink-3">{author ?? ' '}</div>
+      <div className="mb-2 text-[12px] text-ink-3">
+        {author ? <Highlight text={author} query={highlightQuery} /> : ' '}
+      </div>
 
       {/* Rating — tabular-nums per Design System §3 */}
       <div className="mb-2 flex items-center gap-1.5 text-[11px] text-ink-2">
