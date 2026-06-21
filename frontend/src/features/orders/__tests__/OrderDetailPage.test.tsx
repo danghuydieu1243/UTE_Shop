@@ -13,6 +13,12 @@ vi.mock('../ordersApi', () => ({
   useCancelOrderMutation: vi.fn(),
 }));
 
+/* ── Mock authApi (useGetMeQuery dùng trong AccountShell) ── */
+vi.mock('../../auth/authApi', () => ({
+  useGetMeQuery: vi.fn(() => ({ data: null })),
+  useLogoutMutation: vi.fn(() => [vi.fn(), {}]),
+}));
+
 import { useGetOrderQuery, useCancelOrderMutation } from '../ordersApi';
 
 const mockUseGetOrderQuery = useGetOrderQuery as ReturnType<typeof vi.fn>;
@@ -101,7 +107,7 @@ describe('OrderDetailPage', () => {
     };
     mockUseGetOrderQuery.mockReturnValue({ data: completedOrder, isLoading: false });
     renderPage();
-    expect(screen.getByText('Hoàn tất')).toBeInTheDocument();
+    expect(screen.getByText('Hoàn thành')).toBeInTheDocument();
   });
 
   it('cancel button calls cancelOrder when NEW', async () => {

@@ -51,8 +51,8 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
             <Route path="/cart" element={<CartPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/checkout/:code" element={<CheckoutQrPage />} />
-            <Route path="/orders" element={<OrderHistoryPage />} />
-            <Route path="/orders/:code" element={<OrderDetailPage />} />
+            <Route path="/user/orders" element={<OrderHistoryPage />} />
+            <Route path="/user/orders/:code" element={<OrderDetailPage />} />
           </Route>
 
           {/* Protected: vendor only */}

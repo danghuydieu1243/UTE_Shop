@@ -124,7 +124,7 @@ export const CheckoutQrPage = () => {
     if (!payment) return;
     try {
       await simulatePayment(payment.id).unwrap();
-      navigate('/orders/' + code);
+      navigate('/user/orders/' + code);
     } catch (err) {
       const e = err as { message?: string };
       show(e?.message || 'Không thể xác nhận thanh toán');

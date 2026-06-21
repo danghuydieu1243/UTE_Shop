@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { SiteHeader, SiteFooter } from '../../../shared/ui';
+import { Link, useSearchParams } from 'react-router-dom';
 import { formatVND, formatDateTime } from '../../../shared/format';
 import { useGetOrdersQuery, useCancelOrderMutation } from '../ordersApi';
 import { useToast } from '../../../shared/hooks/useToast';
+import { useGetMeQuery } from '../../auth/authApi';
+import { AccountShell } from '../../profile/components/AccountShell';
 import type { OrderSummary } from '../types';
 
 /* ── Kiểu status filter ── */
@@ -12,7 +13,7 @@ type StatusFilter = 'NEW' | 'COMPLETED' | 'CANCELLED' | undefined;
 /* ── Nhãn trạng thái ── */
 const STATUS_LABEL: Record<string, string> = {
   NEW: 'Chờ thanh toán',
-  COMPLETED: 'Hoàn tất',
+  COMPLETED: 'Hoàn thành',
   CANCELLED: 'Đã hủy',
 };
 
@@ -42,7 +43,7 @@ const StatusBadge = ({ status }: { status: string }) => {
     return (
       <span
         className="rounded-[2px] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[1px]"
-        style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}
+        style={{ background: 'var(--info-bg)', color: 'var(--info)' }}
       >
         {STATUS_LABEL[status]}
       </span>
@@ -58,11 +59,11 @@ const StatusBadge = ({ status }: { status: string }) => {
       </span>
     );
   }
-  // CANCELLED — muted
+  // CANCELLED — danger theo DS
   return (
     <span
-      className="rounded-[2px] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[1px] text-ink-3"
-      style={{ background: 'var(--line)' }}
+      className="rounded-[2px] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[1px]"
+      style={{ background: 'var(--danger-bg)', color: 'var(--danger)' }}
     >
       {STATUS_LABEL[status] ?? status}
     </span>
@@ -93,7 +94,7 @@ const OrderCard = ({
 
       {/* Body — click navigates to detail */}
       <Link
-        to={`/orders/${order.code}`}
+        to={`/user/orders/${order.code}`}
         className="block px-5 py-4 transition-[background] duration-150 hover:bg-surface"
       >
         <div className="flex items-center justify-between">
@@ -112,7 +113,7 @@ const OrderCard = ({
               to={`/checkout/${order.code}`}
               className="inline-flex h-8 items-center rounded-[2px] bg-ink px-4 text-[11px] font-semibold uppercase tracking-[1px] text-paper transition-opacity duration-200 hover:opacity-[0.85]"
             >
-              Tiếp tục thanh toán
+              Thanh toán QR
             </Link>
             <button
               type="button"
@@ -127,7 +128,7 @@ const OrderCard = ({
         {order.status === 'COMPLETED' && (
           <>
             <Link
-              to={`/orders/${order.code}`}
+              to={`/user/orders/${order.code}`}
               className="inline-flex h-8 items-center rounded-[2px] border border-line px-4 text-[11px] font-semibold uppercase tracking-[1px] text-ink transition-[border-color] duration-200 hover:border-ink"
             >
               Xem chi tiết
@@ -142,7 +143,7 @@ const OrderCard = ({
         )}
         {order.status === 'CANCELLED' && (
           <Link
-            to={`/orders/${order.code}`}
+            to={`/user/orders/${order.code}`}
             className="inline-flex h-8 items-center rounded-[2px] border border-line px-4 text-[11px] font-semibold uppercase tracking-[1px] text-ink transition-[border-color] duration-200 hover:border-ink"
           >
             Xem chi tiết
@@ -174,11 +175,19 @@ const SkeletonCard = () => (
 
 /* ─────────────────────────────────────────── */
 /*  OrderHistoryPage                           */
-/*  Route: /orders (role 'user')               */
+/*  Route: /user/orders (role 'user')          */
 /* ─────────────────────────────────────────── */
 export const OrderHistoryPage = () => {
   const { show, ToastLayer } = useToast();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>(undefined);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  /* ── Đồng bộ tab filter với URL query string ?status=... ── */
+  const statusFromUrl = searchParams.get('status') as StatusFilter | null;
+  const statusFilter: StatusFilter =
+    statusFromUrl === 'NEW' || statusFromUrl === 'COMPLETED' || statusFromUrl === 'CANCELLED'
+      ? statusFromUrl
+      : undefined;
+
   const [page, setPage] = useState(1);
 
   const { data, isLoading } = useGetOrdersQuery({
@@ -189,11 +198,19 @@ export const OrderHistoryPage = () => {
 
   const [cancelOrder, { isLoading: isCancelling }] = useCancelOrderMutation();
 
+  /* ── Lấy userData để truyền vào AccountShell ── */
+  const { data: meData } = useGetMeQuery();
+  const userData = meData ? { fullName: meData.fullName, email: meData.email } : null;
+
   const orders = data?.orders ?? [];
   const pagination = data?.pagination ?? { page: 1, limit: 10, total: 0, totalPages: 1 };
 
   const handleTabChange = (status: StatusFilter) => {
-    setStatusFilter(status);
+    if (status) {
+      setSearchParams({ status });
+    } else {
+      setSearchParams({});
+    }
     setPage(1);
   };
 
@@ -209,36 +226,24 @@ export const OrderHistoryPage = () => {
   const tabs: { label: string; status: StatusFilter }[] = [
     { label: 'Tất cả', status: undefined },
     { label: 'Chờ thanh toán', status: 'NEW' },
-    { label: 'Hoàn tất', status: 'COMPLETED' },
+    { label: 'Hoàn thành', status: 'COMPLETED' },
     { label: 'Đã hủy', status: 'CANCELLED' },
   ];
 
   return (
-    <div className="min-h-screen bg-paper">
+    <AccountShell
+      breadcrumbLabel="Đơn hàng của tôi"
+      activeNav="/user/orders"
+      userData={userData}
+    >
       <ToastLayer />
-      <SiteHeader />
 
-      {/* ── Breadcrumb ── */}
-      <div className="border-b border-line pt-[72px]">
-        <div className="mx-auto max-w-container px-10 py-[14px]">
-          <nav className="flex items-center gap-2 text-[12px] text-ink-2" aria-label="Breadcrumb">
-            <Link to="/" className="text-ink-2 transition-colors hover:text-ink">
-              Trang chủ
-            </Link>
-            <span className="text-ink-3">/</span>
-            <span className="font-medium text-ink">Đơn hàng</span>
-          </nav>
-        </div>
-      </div>
-
-      {/* ── Page body ── */}
-      <div className="mx-auto max-w-container px-10 py-10 pb-20">
-        <h1 className="mb-6 text-[28px] font-semibold leading-tight tracking-[-0.5px] text-ink">
-          Đơn hàng của bạn
-        </h1>
+      {/* ── Content header ── */}
+      <div className="px-7 pt-6 pb-0 border-b border-line">
+        <h1 className="text-[18px] font-semibold tracking-[-0.3px] mb-0">Đơn hàng của tôi</h1>
 
         {/* ── Filter tabs ── */}
-        <div className="mb-6 flex items-center gap-0 border-b border-line">
+        <div className="mt-4 flex items-center gap-0 border-b border-line -mx-7 px-7">
           {tabs.map((tab) => {
             const isActive = statusFilter === tab.status;
             return (
@@ -258,8 +263,10 @@ export const OrderHistoryPage = () => {
             );
           })}
         </div>
+      </div>
 
-        {/* ── Content ── */}
+      {/* ── Content body ── */}
+      <div className="p-7">
         {isLoading ? (
           <div className="flex flex-col gap-4">
             {[1, 2, 3].map((i) => (
@@ -268,7 +275,7 @@ export const OrderHistoryPage = () => {
           </div>
         ) : orders.length === 0 ? (
           /* Empty state */
-          <div className="flex flex-col items-center py-24 text-center">
+          <div className="flex flex-col items-center py-16 text-center">
             <EmptyBoxIcon />
             <p className="mb-3 text-[22px] font-semibold leading-tight tracking-[-0.4px] text-ink">
               Chưa có đơn hàng nào
@@ -323,8 +330,6 @@ export const OrderHistoryPage = () => {
           </>
         )}
       </div>
-
-      <SiteFooter />
-    </div>
+    </AccountShell>
   );
 };

@@ -133,7 +133,7 @@ describe('CheckoutQrPage', () => {
     // Kiểm tra simulatePayment được gọi với id = 1
     expect(mockSimulateFn).toHaveBeenCalledWith(1);
     // Kiểm tra navigate đến trang chi tiết đơn hàng
-    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/orders/ATHENA123'));
+    await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/user/orders/ATHENA123'));
   });
 
   it('shows recreate QR button when payment is null', () => {

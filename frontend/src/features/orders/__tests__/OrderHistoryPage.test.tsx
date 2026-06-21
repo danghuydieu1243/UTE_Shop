@@ -13,6 +13,12 @@ vi.mock('../ordersApi', () => ({
   useCancelOrderMutation: vi.fn(),
 }));
 
+/* ── Mock authApi (useGetMeQuery dùng trong AccountShell) ── */
+vi.mock('../../auth/authApi', () => ({
+  useGetMeQuery: vi.fn(() => ({ data: null })),
+  useLogoutMutation: vi.fn(() => [vi.fn(), {}]),
+}));
+
 import { useGetOrdersQuery, useCancelOrderMutation } from '../ordersApi';
 
 const mockUseGetOrdersQuery = useGetOrdersQuery as ReturnType<typeof vi.fn>;
@@ -113,7 +119,7 @@ describe('OrderHistoryPage', () => {
     expect(hasNewFilter).toBe(true);
   });
 
-  it('click Xem chi tiết navigates to /orders/:code', () => {
+  it('click Xem chi tiết navigates to /user/orders/:code', () => {
     mockUseGetOrdersQuery.mockReturnValue({
       data: {
         orders: [sampleOrders[1]], // COMPLETED order
@@ -124,6 +130,6 @@ describe('OrderHistoryPage', () => {
     renderPage();
     // Tìm link Xem chi tiết cho ATHENA-DONE01
     const detailLink = screen.getByRole('link', { name: /xem chi tiết/i });
-    expect(detailLink).toHaveAttribute('href', '/orders/ATHENA-DONE01');
+    expect(detailLink).toHaveAttribute('href', '/user/orders/ATHENA-DONE01');
   });
 });

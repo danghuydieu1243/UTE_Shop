@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
-import { SiteHeader, SiteFooter } from '../../../shared/ui';
 import { formatVND, formatDateTime } from '../../../shared/format';
 import { COVER_PLACEHOLDER } from '../../../shared/ui/BookCard';
 import { useGetOrderQuery, useCancelOrderMutation } from '../ordersApi';
 import { useToast } from '../../../shared/hooks/useToast';
+import { useGetMeQuery } from '../../auth/authApi';
+import { AccountShell } from '../../profile/components/AccountShell';
 
 /* ── Check circle icon SVG ── */
 const CheckCircleIcon = () => (
@@ -36,7 +37,7 @@ const StatusBadge = ({ status }: { status: string }) => {
     return (
       <span
         className="rounded-[2px] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[1px]"
-        style={{ background: 'var(--warning-bg)', color: 'var(--warning)' }}
+        style={{ background: 'var(--info-bg)', color: 'var(--info)' }}
       >
         Chờ thanh toán
       </span>
@@ -48,14 +49,14 @@ const StatusBadge = ({ status }: { status: string }) => {
         className="rounded-[2px] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[1px]"
         style={{ background: 'var(--success-bg)', color: 'var(--success)' }}
       >
-        Hoàn tất
+        Hoàn thành
       </span>
     );
   }
   return (
     <span
-      className="rounded-[2px] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[1px] text-ink-3"
-      style={{ background: 'var(--line)' }}
+      className="rounded-[2px] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[1px]"
+      style={{ background: 'var(--danger-bg)', color: 'var(--danger)' }}
     >
       Đã hủy
     </span>
@@ -64,7 +65,7 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 /* ─────────────────────────────────────────── */
 /*  OrderDetailPage                            */
-/*  Route: /orders/:code (role 'user')         */
+/*  Route: /user/orders/:code (role 'user')    */
 /* ─────────────────────────────────────────── */
 export const OrderDetailPage = () => {
   const { code } = useParams<{ code: string }>();
@@ -75,12 +76,16 @@ export const OrderDetailPage = () => {
   const { data: order, isLoading, isError } = useGetOrderQuery(code ?? '');
   const [cancelOrder, { isLoading: isCancelling }] = useCancelOrderMutation();
 
+  /* ── Lấy userData để truyền vào AccountShell ── */
+  const { data: meData } = useGetMeQuery();
+  const userData = meData ? { fullName: meData.fullName, email: meData.email } : null;
+
   const handleCancel = async () => {
     if (!code) return;
     try {
       await cancelOrder(code).unwrap();
       setShowCancelModal(false);
-      navigate('/orders');
+      navigate('/user/orders');
     } catch (err) {
       const e = err as { message?: string };
       show(e?.message || 'Không thể hủy đơn hàng');
@@ -91,9 +96,12 @@ export const OrderDetailPage = () => {
   /* ── Loading state ── */
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-paper">
-        <SiteHeader />
-        <div className="mx-auto max-w-container px-10 py-16">
+      <AccountShell
+        breadcrumbLabel="Chi tiết đơn hàng"
+        activeNav="/user/orders"
+        userData={userData}
+      >
+        <div className="p-7">
           <div className="animate-pulse">
             <div className="mb-6 h-8 w-48 rounded bg-line" />
             <div className="grid grid-cols-[1fr_380px] gap-8">
@@ -102,30 +110,31 @@ export const OrderDetailPage = () => {
             </div>
           </div>
         </div>
-        <SiteFooter />
-      </div>
+      </AccountShell>
     );
   }
 
   /* ── Error / not found ── */
   if (isError || !order) {
     return (
-      <div className="min-h-screen bg-paper">
-        <SiteHeader />
-        <div className="mx-auto max-w-container px-10 py-24 text-center">
+      <AccountShell
+        breadcrumbLabel="Chi tiết đơn hàng"
+        activeNav="/user/orders"
+        userData={userData}
+      >
+        <div className="p-7 py-16 text-center">
           <p className="mb-3 text-[22px] font-semibold text-ink">Không tìm thấy đơn hàng</p>
           <p className="mb-8 text-[14px] text-ink-2">
             Đơn hàng không tồn tại hoặc bạn không có quyền xem.
           </p>
           <Link
-            to="/orders"
+            to="/user/orders"
             className="inline-flex h-11 items-center rounded-[2px] border border-ink px-6 text-[12px] font-semibold uppercase tracking-[1.5px] text-ink transition-[background,color] duration-200 hover:bg-ink hover:text-paper"
           >
             ← Quay lại đơn hàng
           </Link>
         </div>
-        <SiteFooter />
-      </div>
+      </AccountShell>
     );
   }
 
@@ -133,29 +142,15 @@ export const OrderDetailPage = () => {
   const total = order.total;
 
   return (
-    <div className="min-h-screen bg-paper">
+    <AccountShell
+      breadcrumbLabel={`Đơn hàng #${order.code}`}
+      activeNav="/user/orders"
+      userData={userData}
+    >
       <ToastLayer />
-      <SiteHeader />
-
-      {/* ── Breadcrumb ── */}
-      <div className="border-b border-line pt-[72px]">
-        <div className="mx-auto max-w-container px-10 py-[14px]">
-          <nav className="flex items-center gap-2 text-[12px] text-ink-2" aria-label="Breadcrumb">
-            <Link to="/" className="text-ink-2 transition-colors hover:text-ink">
-              Trang chủ
-            </Link>
-            <span className="text-ink-3">/</span>
-            <Link to="/orders" className="text-ink-2 transition-colors hover:text-ink">
-              Đơn hàng
-            </Link>
-            <span className="text-ink-3">/</span>
-            <span className="font-medium text-ink">#{order.code}</span>
-          </nav>
-        </div>
-      </div>
 
       {/* ── Page body ── */}
-      <div className="mx-auto max-w-container px-10 py-10 pb-20">
+      <div className="p-7">
 
         {/* ── Page header ── */}
         <div className="mb-8 flex items-center gap-4">
@@ -368,7 +363,7 @@ export const OrderDetailPage = () => {
                     to={`/checkout/${order.code}`}
                     className="flex h-12 w-full items-center justify-center rounded-[2px] bg-ink text-[11px] font-semibold uppercase tracking-[1.5px] text-paper transition-opacity duration-200 hover:opacity-[0.85]"
                   >
-                    Tiếp tục thanh toán
+                    Thanh toán QR
                   </Link>
                   <button
                     type="button"
@@ -414,7 +409,7 @@ export const OrderDetailPage = () => {
             </div>
 
             <Link
-              to="/orders"
+              to="/user/orders"
               className="flex items-center gap-1.5 px-6 py-4 text-[12px] text-ink-2 transition-colors hover:text-ink border-t border-line"
             >
               ← Quay lại đơn hàng
@@ -464,8 +459,6 @@ export const OrderDetailPage = () => {
           </div>
         </div>
       )}
-
-      <SiteFooter />
-    </div>
+    </AccountShell>
   );
 };

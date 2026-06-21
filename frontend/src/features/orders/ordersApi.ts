@@ -19,7 +19,10 @@ export const ordersApi = baseApi.injectEndpoints({
     // POST /orders/:code/cancel — hủy đơn hàng
     cancelOrder: build.mutation<OrderDetail, string>({
       query: (code) => ({ url: `/orders/${code}/cancel`, method: 'POST' }),
-      invalidatesTags: (_result, _err, code) => [{ type: 'Order' as const, id: code }],
+      invalidatesTags: (_result, _err, code) => [
+        { type: 'Order' as const, id: code },
+        { type: 'Order' as const, id: 'LIST' },
+      ],
     }),
 
     // POST /orders/:code/payment — tạo lại QR payment
