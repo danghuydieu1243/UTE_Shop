@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { SiteHeader, SiteFooter, BookCard } from '../../../shared/ui';
 import { useGetHomeQuery } from '../catalogApi';
 import type { HomeCategory } from '../types';
@@ -117,7 +117,6 @@ const IconRight = () => (
 /*  HomePage component                         */
 /* ─────────────────────────────────────────── */
 export const HomePage = () => {
-  const navigate = useNavigate();
   const { data, isLoading } = useGetHomeQuery();
 
   /* ── Hero state ── */
@@ -152,7 +151,10 @@ export const HomePage = () => {
   const bestsellers = data?.bestsellers ?? [];
   const bsPageSize = 5;
   const bsMaxPage = Math.max(0, Math.ceil(bestsellers.length / bsPageSize) - 1);
-  const bsSlice = bestsellers.slice(bsPage * bsPageSize, (bsPage + 1) * bsPageSize);
+  const clampedBsPage = Math.min(bsPage, bsMaxPage);
+  const bsSlice = bestsellers.slice(clampedBsPage * bsPageSize, (clampedBsPage + 1) * bsPageSize);
+
+  useEffect(() => { setBsPage(0); }, [data]);
 
   /* ── Scroll reveal ── */
   useEffect(() => {
@@ -169,7 +171,7 @@ export const HomePage = () => {
     );
     document.querySelectorAll<HTMLElement>('.reveal').forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  });
+  }, []);
 
   /* ── Data ── */
   const newReleases = data?.newReleases?.slice(0, 5) ?? [];
@@ -211,16 +213,15 @@ export const HomePage = () => {
                   {s.desc}
                 </p>
                 <div className="flex items-center gap-4">
-                  <button
-                    type="button"
-                    className="inline-flex h-12 items-center justify-center rounded bg-ink px-7 text-[14px] font-medium text-paper transition-opacity duration-[200ms] hover:opacity-[0.85]"
-                    onClick={() => navigate(s.primaryTo)}
+                  <Link
+                    to={s.primaryTo}
+                    className="inline-flex h-12 items-center justify-center rounded bg-ink px-7 text-[14px] font-medium uppercase tracking-[0.8px] text-paper transition-opacity duration-[200ms] hover:opacity-[0.85]"
                   >
                     {s.primaryLabel}
-                  </button>
+                  </Link>
                   <Link
                     to={s.ghostTo}
-                    className="inline-flex h-12 items-center rounded border border-line px-6 text-[14px] font-medium text-ink transition-[border-color] duration-[250ms] hover:border-ink"
+                    className="inline-flex h-12 items-center rounded border border-line px-6 text-[14px] font-medium uppercase tracking-[0.8px] text-ink transition-[border-color] duration-[250ms] hover:border-ink"
                   >
                     {s.ghostLabel}
                   </Link>
@@ -348,7 +349,7 @@ export const HomePage = () => {
                 <BookCard
                   key={book.id}
                   book={book}
-                  rank={bsPage * bsPageSize + i + 1}
+                  rank={clampedBsPage * bsPageSize + i + 1}
                   className={`reveal d${i + 1}`}
                 />
               ))}
@@ -435,15 +436,6 @@ export const HomePage = () => {
       </section>
 
       <SiteFooter />
-
-      {/* Keyframe for hero eyebrow rise animation */}
-      <style>{`
-        @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .reveal { opacity: 0; transform: translateY(14px); transition: opacity .55s cubic-bezier(.22,.61,.36,1), transform .55s cubic-bezier(.22,.61,.36,1); }
-        .reveal.in { opacity: 1; transform: translateY(0); }
-        .d1 { transition-delay: .04s; } .d2 { transition-delay: .08s; } .d3 { transition-delay: .12s; }
-        .d4 { transition-delay: .16s; } .d5 { transition-delay: .20s; }
-      `}</style>
     </div>
   );
 };

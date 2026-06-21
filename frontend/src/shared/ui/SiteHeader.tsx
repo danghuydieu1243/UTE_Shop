@@ -22,7 +22,7 @@ export const SiteHeader = () => {
   const handleSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       const val = searchRef.current?.value.trim();
-      if (val) navigate(`/search?q=${encodeURIComponent(val)}`);
+      if (val) navigate(`/books?q=${encodeURIComponent(val)}`);
     }
   };
 
@@ -97,10 +97,11 @@ export const SiteHeader = () => {
               <svg
                 width="14"
                 height="14"
-                stroke="#A8A8AE"
+                stroke="currentColor"
                 strokeWidth="1.6"
                 viewBox="0 0 24 24"
                 fill="none"
+                className="text-ink-3"
                 aria-hidden="true"
               >
                 <circle cx="11" cy="11" r="8" />
@@ -167,7 +168,7 @@ export const SiteHeader = () => {
                 </Link>
                 <Link
                   to="/login"
-                  className="inline-flex h-9 items-center rounded bg-ink px-[18px] text-[13px] font-medium text-paper transition-opacity duration-[200ms] hover:opacity-[0.82]"
+                  className="inline-flex h-9 items-center rounded bg-ink px-[18px] text-[13px] font-medium uppercase tracking-[0.8px] text-paper transition-opacity duration-[200ms] hover:opacity-[0.82]"
                 >
                   Đăng nhập
                 </Link>

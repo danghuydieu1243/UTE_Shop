@@ -38,6 +38,9 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
           {/* Protected: vendor only */}
           <Route element={<RequireRole roles={['vendor']} />}>
             <Route path="/vendor/dashboard" element={<div className="p-10 text-ink">Vendor Dashboard</div>} />
+            <Route path="/vendor/books" element={<div className="p-10 text-ink">Vendor Books (đang xây dựng)</div>} />
+            <Route path="/vendor/books/new" element={<div className="p-10 text-ink">Vendor Books (đang xây dựng)</div>} />
+            <Route path="/vendor/books/:id/edit" element={<div className="p-10 text-ink">Vendor Books (đang xây dựng)</div>} />
           </Route>
 
           {/* Protected: admin/manager only */}

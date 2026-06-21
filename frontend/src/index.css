@@ -9,3 +9,13 @@ body { @apply bg-paper text-ink; font-variant-numeric: tabular-nums; }
 /* Hide native browser password reveal/clear buttons to prevent duplicate eye icons */
 input::-ms-reveal,
 input::-ms-clear { display: none; }
+
+/* ── Scroll-reveal animation (HomePage) ── */
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.reveal { opacity: 0; transform: translateY(14px); transition: opacity .55s cubic-bezier(.22,.61,.36,1), transform .55s cubic-bezier(.22,.61,.36,1); }
+.reveal.in { opacity: 1; transform: translateY(0); }
+.d1 { transition-delay: .04s; }
+.d2 { transition-delay: .08s; }
+.d3 { transition-delay: .12s; }
+.d4 { transition-delay: .16s; }
+.d5 { transition-delay: .20s; }
