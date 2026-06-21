@@ -1,0 +1,407 @@
+/**
+ * Test suite cho Payment simulation, Entitlement grant, và Signed-URL download.
+ * Dùng SQLite in-memory (jest setup.ts sync({ force: true })).
+ */
+
+import fs from 'fs';
+import path from 'path';
+import request from 'supertest';
+import { createApp } from '../../../app';
+import {
+  User, Vendor, Book, BookFile,
+  Order, OrderItem, Payment, Entitlement,
+} from '../../../db/models';
+import { signAccessToken } from '../../auth/token.service';
+import { env } from '../../../config/env';
+
+const app = createApp();
+
+// ── Upload dir tạm (test) ─────────────────────────────────────────────────────
+const TEST_UPLOAD_DIR = env.UPLOAD_DIR;
+const TEST_PRIVATE_DIR = path.resolve(TEST_UPLOAD_DIR, 'private');
+const TEST_FILE_PATH = path.resolve(TEST_PRIVATE_DIR, 'test-book.pdf');
+
+// ── Seed helpers ──────────────────────────────────────────────────────────────
+
+async function seedUser(role: 'user' | 'vendor' | 'admin' = 'user', suffix = '') {
+  return User.create({
+    email: `${role}${suffix}${Date.now()}@test-payments.com`,
+    passwordHash: 'hash',
+    role,
+    fullName: `Test ${role}`,
+    status: 'active',
+  });
+}
+
+async function seedBook(vendorUserId: number, opts: { price?: number; status?: string } = {}) {
+  const slug = `test-book-pay-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return Book.create({
+    vendorUserId,
+    title: 'Sách Test Payments',
+    slug,
+    price: opts.price ?? 79000,
+    fileFormat: 'PDF',
+    status: opts.status ?? 'published',
+  });
+}
+
+function makeToken(userId: number, role = 'user') {
+  return signAccessToken({ id: userId, role });
+}
+
+/**
+ * Tạo order + payment PENDING trong DB trực tiếp (không qua checkout endpoint)
+ */
+async function createPendingOrder(
+  userId: number,
+  vendorId: number,
+  bookId: number,
+  opts: { expiresAt?: Date | null } = {},
+) {
+  const code = `ATH-PAY-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const order = await Order.create({
+    userId,
+    code,
+    status: 'NEW',
+    subtotal: 79000,
+    total: 79000,
+    currency: 'VND',
+  });
+  await OrderItem.create({
+    orderId: Number(order.id),
+    bookId,
+    vendorUserId: vendorId,
+    titleSnapshot: 'Sách Test Payments',
+    unitPrice: 79000,
+  });
+  const payment = await Payment.create({
+    orderId: Number(order.id),
+    provider: 'sepay',
+    amount: 79000,
+    currency: 'VND',
+    status: 'PENDING',
+    referenceCode: code,
+    expiresAt: opts.expiresAt !== undefined
+      ? opts.expiresAt
+      : new Date(Date.now() + 15 * 60 * 1000), // 15 phút
+  });
+  return { order, payment };
+}
+
+// ── Global setup: tạo file test PDF tạm ──────────────────────────────────────
+
+let vendorUser: User;
+let testBook: Book;
+let testBookWithFile: Book;
+
+beforeAll(async () => {
+  // Tạo thư mục private nếu chưa có
+  if (!fs.existsSync(TEST_PRIVATE_DIR)) {
+    fs.mkdirSync(TEST_PRIVATE_DIR, { recursive: true });
+  }
+  // Tạo file PDF giả để test stream
+  fs.writeFileSync(TEST_FILE_PATH, '%PDF-1.4 test content');
+
+  // Seed vendor
+  vendorUser = await seedUser('vendor', `v-pay-${Date.now()}`);
+  await Vendor.create({
+    userId: vendorUser.id,
+    shopName: 'Shop Payments',
+    shopSlug: `shop-pay-${Date.now()}`,
+  });
+
+  // Seed sách có BookFile
+  testBook = await seedBook(vendorUser.id);
+  testBookWithFile = await seedBook(vendorUser.id);
+  await BookFile.create({
+    bookId: Number(testBookWithFile.id),
+    storageKey: 'private/test-book.pdf',
+    fileFormat: 'PDF',
+    fileSizeBytes: 21,
+  });
+});
+
+afterAll(async () => {
+  // Dọn file test PDF
+  if (fs.existsSync(TEST_FILE_PATH)) {
+    fs.unlinkSync(TEST_FILE_PATH);
+  }
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test 1: simulate PENDING → PAID
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('POST /api/v1/payments/:id/simulate', () => {
+  it('1. simulate PENDING → PAID: order COMPLETED + entitlement tạo + purchaseCount+1', async () => {
+    const user = await seedUser('user', `sim1-${Date.now()}`);
+    const token = makeToken(user.id);
+    const book = await seedBook(vendorUser.id);
+
+    const { payment } = await createPendingOrder(user.id, vendorUser.id, book.id);
+
+    const res = await request(app)
+      .post(`/api/v1/payments/${payment.id}/simulate`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    const d = res.body.data;
+    expect(d.status).toBe('COMPLETED');
+    expect(d.payment.status).toBe('PAID');
+    expect(d.payment.paidAt).toBeTruthy();
+
+    // Kiểm DB: entitlement tạo
+    const ent = await Entitlement.findOne({ where: { userId: user.id, bookId: book.id } });
+    expect(ent).not.toBeNull();
+
+    // Kiểm purchaseCount tăng
+    const updatedBook = await Book.findByPk(book.id);
+    expect(Number(updatedBook!.purchaseCount)).toBe(1);
+  });
+
+  // ── Test 2: Idempotent ────────────────────────────────────────────────────
+
+  it('2. simulate lần 2 idempotent: 200 OK, purchaseCount KHÔNG tăng thêm, entitlement KHÔNG tạo thêm', async () => {
+    const user = await seedUser('user', `sim2-${Date.now()}`);
+    const token = makeToken(user.id);
+    const book = await seedBook(vendorUser.id);
+
+    const { payment } = await createPendingOrder(user.id, vendorUser.id, book.id);
+    const payId = payment.id;
+
+    // Lần 1
+    const res1 = await request(app)
+      .post(`/api/v1/payments/${payId}/simulate`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res1.status).toBe(200);
+
+    // Lần 2 — idempotent
+    const res2 = await request(app)
+      .post(`/api/v1/payments/${payId}/simulate`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res2.status).toBe(200);
+    expect(res2.body.data.status).toBe('COMPLETED');
+
+    // purchaseCount vẫn là 1 (không tăng thêm lần 2)
+    // NOTE: Theo logic hiện tại purchaseCount tăng mỗi lần gọi khi PAID idempotent path
+    // không tăng thêm vì bước tăng chỉ xảy ra trên path PENDING→PAID
+    const updatedBook = await Book.findByPk(book.id);
+    expect(Number(updatedBook!.purchaseCount)).toBe(1);
+
+    // Entitlement chỉ có 1 record
+    const ents = await Entitlement.findAll({ where: { userId: user.id, bookId: book.id } });
+    expect(ents).toHaveLength(1);
+  });
+
+  // ── Test 3: Payment hết hạn ───────────────────────────────────────────────
+
+  it('3. simulate payment hết hạn → 409 PAYMENT_EXPIRED', async () => {
+    const user = await seedUser('user', `sim3-${Date.now()}`);
+    const token = makeToken(user.id);
+    const book = await seedBook(vendorUser.id);
+
+    const { payment } = await createPendingOrder(user.id, vendorUser.id, book.id, {
+      expiresAt: new Date(Date.now() - 60 * 1000), // quá khứ
+    });
+
+    const res = await request(app)
+      .post(`/api/v1/payments/${payment.id}/simulate`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('PAYMENT_EXPIRED');
+  });
+
+  // ── Test 4: Payment của người khác → 404 ─────────────────────────────────
+
+  it('4. simulate payment người khác → 404 PAYMENT_NOT_FOUND', async () => {
+    const owner = await seedUser('user', `sim4-owner-${Date.now()}`);
+    const other = await seedUser('user', `sim4-other-${Date.now()}`);
+    const tokenOther = makeToken(other.id);
+    const book = await seedBook(vendorUser.id);
+
+    const { payment } = await createPendingOrder(owner.id, vendorUser.id, book.id);
+
+    const res = await request(app)
+      .post(`/api/v1/payments/${payment.id}/simulate`)
+      .set('Authorization', `Bearer ${tokenOther}`);
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('PAYMENT_NOT_FOUND');
+  });
+
+  // ── Test 5: Payment FAILED ────────────────────────────────────────────────
+
+  it('5. simulate payment FAILED → 409 PAYMENT_ALREADY_FAILED', async () => {
+    const user = await seedUser('user', `sim5-${Date.now()}`);
+    const token = makeToken(user.id);
+    const book = await seedBook(vendorUser.id);
+
+    const { payment } = await createPendingOrder(user.id, vendorUser.id, book.id);
+    await payment.update({ status: 'FAILED' });
+
+    const res = await request(app)
+      .post(`/api/v1/payments/${payment.id}/simulate`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('PAYMENT_ALREADY_FAILED');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test 6: GET /me/ebooks sau khi mua
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('GET /api/v1/me/ebooks', () => {
+  it('6. GET /me/ebooks sau khi mua → có sách trong danh sách', async () => {
+    const user = await seedUser('user', `eb6-${Date.now()}`);
+    const token = makeToken(user.id);
+    const book = await seedBook(vendorUser.id);
+
+    // Tạo entitlement trực tiếp
+    const order = await Order.create({
+      userId: user.id,
+      code: `ATH-EB6-${Date.now()}`,
+      status: 'COMPLETED',
+      subtotal: 79000,
+      total: 79000,
+      currency: 'VND',
+      completedAt: new Date(),
+    });
+    await Entitlement.create({
+      userId: user.id,
+      bookId: book.id,
+      orderId: Number(order.id),
+      grantedAt: new Date(),
+    });
+
+    const res = await request(app)
+      .get('/api/v1/me/ebooks')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.data.length).toBeGreaterThanOrEqual(1);
+
+    const ebook = res.body.data.find((e: any) => e.bookId === Number(book.id));
+    expect(ebook).toBeDefined();
+    expect(ebook.title).toBe('Sách Test Payments');
+    expect(ebook.orderCode).toBe(order.code);
+
+    // Kiểm pagination meta
+    expect(res.body.meta.pagination).toBeDefined();
+    expect(res.body.meta.pagination.total).toBeGreaterThanOrEqual(1);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test 7: POST /me/ebooks/:bookId/download → trả url + expiresAt
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('POST /api/v1/me/ebooks/:bookId/download', () => {
+  it('7. download link → trả url + expiresAt', async () => {
+    const user = await seedUser('user', `dl7-${Date.now()}`);
+    const token = makeToken(user.id);
+
+    // Tạo entitlement cho sách có BookFile
+    const order = await Order.create({
+      userId: user.id,
+      code: `ATH-DL7-${Date.now()}`,
+      status: 'COMPLETED',
+      subtotal: 79000,
+      total: 79000,
+      currency: 'VND',
+      completedAt: new Date(),
+    });
+    await Entitlement.create({
+      userId: user.id,
+      bookId: testBookWithFile.id,
+      orderId: Number(order.id),
+      grantedAt: new Date(),
+    });
+
+    const res = await request(app)
+      .post(`/api/v1/me/ebooks/${testBookWithFile.id}/download`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    const d = res.body.data;
+    expect(d.url).toMatch(/^\/api\/v1\/download\?token=/);
+    expect(d.expiresAt).toBeTruthy();
+    expect(d.fileFormat).toBe('PDF');
+    expect(d.fileSizeBytes).toBe(21);
+  });
+
+  // ── Test 10: chưa sở hữu → ENTITLEMENT_MISSING ───────────────────────────
+
+  it('10. POST download khi chưa sở hữu → 403 ENTITLEMENT_MISSING', async () => {
+    const user = await seedUser('user', `dl10-${Date.now()}`);
+    const token = makeToken(user.id);
+    const book = await seedBook(vendorUser.id);
+
+    const res = await request(app)
+      .post(`/api/v1/me/ebooks/${book.id}/download`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.code).toBe('ENTITLEMENT_MISSING');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test 8 & 9: GET /download?token=...
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('GET /api/v1/download', () => {
+  it('8. GET /download?token=<valid> → 200 stream với Content-Disposition', async () => {
+    const user = await seedUser('user', `stream8-${Date.now()}`);
+    const token = makeToken(user.id);
+
+    // Tạo entitlement cho sách có file
+    const order = await Order.create({
+      userId: user.id,
+      code: `ATH-STR8-${Date.now()}`,
+      status: 'COMPLETED',
+      subtotal: 79000,
+      total: 79000,
+      currency: 'VND',
+      completedAt: new Date(),
+    });
+    await Entitlement.create({
+      userId: user.id,
+      bookId: testBookWithFile.id,
+      orderId: Number(order.id),
+      grantedAt: new Date(),
+    });
+
+    // Lấy download token qua endpoint
+    const linkRes = await request(app)
+      .post(`/api/v1/me/ebooks/${testBookWithFile.id}/download`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(linkRes.status).toBe(200);
+
+    const downloadUrl = linkRes.body.data.url; // '/api/v1/download?token=...'
+
+    const res = await request(app).get(downloadUrl);
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-disposition']).toMatch(/attachment/);
+    expect(res.headers['content-disposition']).toMatch(/test-book\.pdf/);
+    expect(res.headers['content-type']).toMatch(/application\/octet-stream/);
+    // Nội dung file (supertest trả buffer khi binary)
+    const body = res.body instanceof Buffer ? res.body.toString() : res.text ?? '';
+    expect(body).toContain('%PDF');
+  });
+
+  it('9. GET /download?token=<invalid> → 401 DOWNLOAD_TOKEN_INVALID', async () => {
+    const res = await request(app)
+      .get('/api/v1/download?token=invalid_token_here');
+
+    expect(res.status).toBe(401);
+    expect(res.body.error.code).toBe('DOWNLOAD_TOKEN_INVALID');
+  });
+});

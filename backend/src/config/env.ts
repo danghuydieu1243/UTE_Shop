@@ -24,6 +24,7 @@ const schema = z.object({
   SEED_MANAGER_EMAIL: z.string().email().default('manager@uteshop.com'),
   SEED_MANAGER_PASSWORD: z.string().default('Manager@1234'),
   UPLOAD_DIR: z.string().default('./uploads'),
+  DOWNLOAD_URL_SECRET: z.string().min(16).optional(),
 });
 
 const parsed = schema.safeParse(process.env);
@@ -31,5 +32,9 @@ if (!parsed.success) {
   console.error('❌ Invalid environment variables:', parsed.error.flatten().fieldErrors);
   process.exit(1);
 }
-export const env = parsed.data;
-export type Env = typeof env;
+export const env = {
+  ...parsed.data,
+  // Nếu không cấu hình riêng, dùng chung JWT_ACCESS_SECRET để ký download token
+  DOWNLOAD_URL_SECRET: parsed.data.DOWNLOAD_URL_SECRET ?? parsed.data.JWT_ACCESS_SECRET,
+};
+export type Env = z.infer<typeof schema> & { DOWNLOAD_URL_SECRET: string };
