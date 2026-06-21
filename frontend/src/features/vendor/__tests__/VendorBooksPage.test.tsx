@@ -131,7 +131,7 @@ describe('VendorBooksPage', () => {
     await waitFor(() => {
       expect(screen.getByTestId('bulk-bar')).toBeInTheDocument();
     });
-    expect(screen.getByText(/1 đã chọn/i)).toBeInTheDocument();
+    expect(screen.getByText(/1 sách đã chọn/i)).toBeInTheDocument();
   });
 
   it('bulk bar shows correct count when multiple rows selected', async () => {
@@ -140,7 +140,7 @@ describe('VendorBooksPage', () => {
     fireEvent.click(checkboxes[1]);
     fireEvent.click(checkboxes[2]);
     await waitFor(() => {
-      expect(screen.getByText(/2 đã chọn/i)).toBeInTheDocument();
+      expect(screen.getByText(/2 sách đã chọn/i)).toBeInTheDocument();
     });
   });
 
@@ -229,14 +229,22 @@ describe('VendorBooksPage', () => {
     expect(editLinks[0]).toHaveAttribute('href', '/vendor/books/1/edit');
   });
 
-  it('bulk delete calls deleteVendorBook for each selected id', async () => {
+  it('bulk delete shows confirm dialog then calls deleteVendorBook for each selected id', async () => {
     renderPage();
     const checkboxes = screen.getAllByRole('checkbox', { name: /chọn/i });
     fireEvent.click(checkboxes[1]); // book id=1
     fireEvent.click(checkboxes[2]); // book id=2
     await waitFor(() => screen.getByTestId('bulk-bar'));
 
+    // Click "Xóa đã chọn" — should open confirm dialog, not delete immediately
     fireEvent.click(screen.getByRole('button', { name: /xóa đã chọn/i }));
+    await waitFor(() => screen.getByRole('dialog'));
+    expect(mockDelete).not.toHaveBeenCalled();
+
+    // Confirm in dialog triggers actual deletion
+    const allXoaButtons = screen.getAllByRole('button', { name: /xóa/i });
+    const confirmBtn = allXoaButtons[allXoaButtons.length - 1];
+    fireEvent.click(confirmBtn);
 
     await waitFor(() => {
       expect(mockDelete).toHaveBeenCalledWith({ id: 1 });

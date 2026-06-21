@@ -38,11 +38,11 @@ const rawBaseQuery: BaseQueryFn<
   const token = (apiCtx.getState() as RootState).auth.accessToken;
   try {
     // When data is FormData, let the browser set Content-Type (multipart + boundary).
-    // Explicitly delete the default 'application/json' header so axios doesn't override.
-    const extraHeaders: Record<string, string> = {};
-    if (data instanceof FormData) {
-      extraHeaders['Content-Type'] = ''; // axios will strip empty-string headers
-    }
+    // Set Content-Type to undefined so axios removes it entirely and the browser
+    // can inject the correct multipart/form-data header with the boundary parameter.
+    // An empty string '' is NOT reliably stripped across axios versions, so we use
+    // undefined here. Plain JSON requests are completely unaffected.
+    const isFormData = data instanceof FormData;
     const res = await api({
       url,
       method: method ?? 'GET',
@@ -50,9 +50,9 @@ const rawBaseQuery: BaseQueryFn<
       params,
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...extraHeaders,
+        ...(isFormData ? { 'Content-Type': undefined } : {}),
       },
-      transformRequest: data instanceof FormData
+      transformRequest: isFormData
         ? [(d) => d]  // skip JSON serialisation — send FormData as-is
         : undefined,
     });

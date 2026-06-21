@@ -109,6 +109,7 @@ export const VendorBooksPage = () => {
   const [selected, setSelected]       = useState<Set<number>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<VendorBookRow | null>(null);
   const [bulkDeletePending, setBulkDeletePending] = useState(false);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
   const debouncedQ = useDebounce(searchInput, 400);
 
@@ -167,7 +168,8 @@ export const VendorBooksPage = () => {
   };
 
   // ── Bulk delete ──
-  const handleBulkDelete = async () => {
+  const handleBulkDeleteConfirm = async () => {
+    setBulkDeleteConfirm(false);
     setBulkDeletePending(true);
     const ids = Array.from(selected);
     for (const id of ids) {
@@ -194,10 +196,23 @@ export const VendorBooksPage = () => {
   const startItem    = (page - 1) * limit + 1;
   const endItem      = Math.min(page * limit, total);
 
-  const pageNumbers = () => {
-    const pages: number[] = [];
-    for (let i = 1; i <= Math.min(totalPages, 5); i++) pages.push(i);
-    return pages;
+  /**
+   * Returns page numbers to render as buttons, using a sliding window of ±2
+   * around the current page, plus always first and last pages with ellipsis.
+   */
+  const pageNumbers = (): (number | '…')[] => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const window = 2;
+    const lo = Math.max(2, page - window);
+    const hi = Math.min(totalPages - 1, page + window);
+    const items: (number | '…')[] = [1];
+    if (lo > 2) items.push('…');
+    for (let i = lo; i <= hi; i++) items.push(i);
+    if (hi < totalPages - 1) items.push('…');
+    items.push(totalPages);
+    return items;
   };
 
   // ── Topbar content ──
@@ -266,6 +281,7 @@ export const VendorBooksPage = () => {
           <option value="">Tất cả trạng thái</option>
           <option value="published">Công khai</option>
           <option value="draft">Nháp</option>
+          <option value="hidden">Ẩn</option>
         </select>
       </div>
 
@@ -278,9 +294,9 @@ export const VendorBooksPage = () => {
             padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12px',
           }}
         >
-          <span style={{ fontWeight: 600 }}>{selected.size} đã chọn</span>
+          <span style={{ fontWeight: 600 }}>{selected.size} sách đã chọn</span>
           <button
-            onClick={handleBulkDelete}
+            onClick={() => setBulkDeleteConfirm(true)}
             disabled={bulkDeletePending}
             style={{
               height: '28px', padding: '0 10px', background: 'none', color: '#B43A3A',
@@ -523,21 +539,34 @@ export const VendorBooksPage = () => {
                 >
                   ←
                 </button>
-                {pageNumbers().map((n) => (
-                  <button
-                    key={n}
-                    onClick={() => setPage(n)}
-                    style={{
-                      height: '28px', minWidth: '28px', padding: '0 8px',
-                      border: '1px solid #ECEAE5', borderRadius: '2px',
-                      background: n === page ? '#16161A' : '#FFFFFF',
-                      color: n === page ? '#FBFAF8' : '#6B6B73',
-                      fontSize: '12px', cursor: 'pointer',
-                    }}
-                  >
-                    {n}
-                  </button>
-                ))}
+                {pageNumbers().map((n, i) =>
+                  n === '…' ? (
+                    <span
+                      key={`ellipsis-${i}`}
+                      style={{
+                        height: '28px', minWidth: '28px', padding: '0 4px',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '12px', color: '#A8A8AE',
+                      }}
+                    >
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={n}
+                      onClick={() => setPage(n as number)}
+                      style={{
+                        height: '28px', minWidth: '28px', padding: '0 8px',
+                        border: '1px solid #ECEAE5', borderRadius: '2px',
+                        background: n === page ? '#16161A' : '#FFFFFF',
+                        color: n === page ? '#FBFAF8' : '#6B6B73',
+                        fontSize: '12px', cursor: 'pointer',
+                      }}
+                    >
+                      {n}
+                    </button>
+                  )
+                )}
                 <button
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page >= totalPages}
@@ -580,6 +609,16 @@ export const VendorBooksPage = () => {
           message={`Bạn có chắc muốn xóa "${deleteTarget.title}"? Thao tác này sẽ ẩn E-book khỏi catalog, lịch sử đơn hàng vẫn được giữ lại.`}
           onConfirm={handleDeleteConfirm}
           onCancel={() => setDeleteTarget(null)}
+        />
+      )}
+
+      {/* ── Bulk delete confirm dialog ── */}
+      {bulkDeleteConfirm && (
+        <ConfirmDialog
+          title="Xóa E-book đã chọn"
+          message={`Xóa ${selected.size} E-book đã chọn? Thao tác này sẽ ẩn các E-book khỏi catalog, lịch sử đơn hàng vẫn được giữ lại.`}
+          onConfirm={handleBulkDeleteConfirm}
+          onCancel={() => setBulkDeleteConfirm(false)}
         />
       )}
     </VendorShell>
