@@ -150,4 +150,52 @@ describe('Admin Vendors API', () => {
 
     expect(res.status).toBe(403);
   });
+
+  // ── AV7: manager can lock vendor → 200 + DB updated ─────────────────
+  it('AV7. manager locks vendor — 200 + vendors.status AND users.status = locked', async () => {
+    // Ensure vendor starts as active
+    await vendorRecord.update({ status: 'active' });
+    await vendorUser.update({ status: 'active' });
+
+    const res = await request(app)
+      .patch(`/api/v1/admin/vendors/${vendorUser.id}/status`)
+      .set('Authorization', `Bearer ${managerToken}`)
+      .send({ status: 'locked' });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.status).toBe('locked');
+
+    // Assert both DB rows updated atomically
+    const dbVendor = await Vendor.findOne({ where: { userId: vendorUser.id } });
+    const dbUser = await User.findByPk(vendorUser.id);
+    expect(dbVendor!.status).toBe('locked');
+    expect(dbUser!.status).toBe('locked');
+    // no password hash
+    expect(res.body.data.passwordHash).toBeUndefined();
+
+    // restore
+    await vendorRecord.update({ status: 'active' });
+    await vendorUser.update({ status: 'active' });
+  });
+
+  // ── AV8: search by owner email substring returns correct vendor ──────
+  it('AV8. GET /admin/vendors?search=<email-substring> returns matching vendor (sqlite-safe search)', async () => {
+    // vendorUser.email contains "av-v" and ends with "@test-adminv.com"
+    // Use a unique substring from the email that was seeded in beforeAll
+    const emailSubstring = 'test-adminv.com';
+
+    const res = await request(app)
+      .get(`/api/v1/admin/vendors?search=${encodeURIComponent(emailSubstring)}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body.data)).toBe(true);
+
+    // The seeded vendor's owner email must appear in results
+    const found = res.body.data.find((v: any) => v.userId === Number(vendorUser.id));
+    expect(found).toBeDefined();
+    expect(found.ownerEmail).toContain(emailSubstring);
+    // no password
+    expect(found.passwordHash).toBeUndefined();
+  });
 });

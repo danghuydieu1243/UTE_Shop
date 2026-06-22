@@ -1,4 +1,4 @@
-import { Op, WhereOptions, literal } from 'sequelize';
+import { Op, WhereOptions, Transaction, where, col } from 'sequelize';
 import { User, Vendor, Book } from '../../db/models';
 import { AdminVendorDTO, PaginationMeta } from './admin.schema';
 
@@ -45,11 +45,10 @@ export async function listVendors(opts: {
   }
 
   if (opts.search) {
-    // search in both shop_name and owner email
-    // We'll do shop_name in vendorWhere OR email in userWhere via $user.email$
+    // search in both shop_name and owner email — dialect-neutral, bound params
     vendorWhere[Op.or as any] = [
       { shopName: { [Op.like]: `%${opts.search}%` } },
-      literal(`\`user\`.\`email\` LIKE '%${opts.search.replace(/'/g, "''")}%'`),
+      where(col('user.email'), { [Op.like]: `%${opts.search}%` }),
     ];
   }
 
@@ -89,8 +88,8 @@ export async function findVendorById(vendorUserId: number): Promise<Vendor | nul
 export async function setVendorAndUserStatus(
   vendorUserId: number,
   status: 'active' | 'locked',
+  t: Transaction,
 ): Promise<void> {
-  // Transaction handled in service; repo does raw updates
-  await Vendor.update({ status }, { where: { userId: vendorUserId } });
-  await User.update({ status }, { where: { id: vendorUserId } });
+  await Vendor.update({ status }, { where: { userId: vendorUserId }, transaction: t });
+  await User.update({ status }, { where: { id: vendorUserId }, transaction: t });
 }

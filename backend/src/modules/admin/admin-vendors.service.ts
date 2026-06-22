@@ -33,8 +33,8 @@ export async function updateVendorStatus(
   }
 
   // Transaction: set both vendors.status and users.status
-  await sequelize.transaction(async () => {
-    await repo.setVendorAndUserStatus(vendorUserId, body.status);
+  await sequelize.transaction(async (t) => {
+    await repo.setVendorAndUserStatus(vendorUserId, body.status, t);
   });
 
   // Re-fetch updated vendor
