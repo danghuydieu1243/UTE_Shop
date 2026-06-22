@@ -26,6 +26,9 @@ import { OrderDetailPage } from './features/orders/pages/OrderDetailPage';
 import MyEbooksPage from './features/library/pages/MyEbooksPage';
 import WishlistPage from './features/wishlist/pages/WishlistPage';
 import { RequireAuth, RequireRole } from './shared/auth/guards';
+import { AdminShell } from './features/admin/components/AdminShell';
+import { AdminDashboardPage } from './features/admin/pages/AdminDashboardPage';
+import { AdminPermissionsPage } from './features/admin/pages/AdminPermissionsPage';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
@@ -74,9 +77,20 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
             <Route path="/vendor/promotions/:id/edit" element={<VendorPromotionFormPage />} />
           </Route>
 
-          {/* Protected: admin/manager only */}
+          {/* Protected: admin/manager only — wrapped in AdminShell */}
           <Route element={<RequireRole roles={['admin', 'manager']} />}>
-            <Route path="/admin/dashboard" element={<div className="p-10 text-ink">Admin Dashboard</div>} />
+            <Route element={<AdminShell />}>
+              {/* Shared: admin + manager */}
+              <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
+              <Route path="/admin/vendors" element={<div className="p-10 text-ink">Admin Vendors — Phase 4b Task 6</div>} />
+              <Route path="/admin/products" element={<div className="p-10 text-ink">Admin Products — Phase 4b Task 7</div>} />
+              <Route path="/admin/orders" element={<div className="p-10 text-ink">Admin Orders — Phase 4b Task 8</div>} />
+              {/* Admin-only (nested RequireRole) */}
+              <Route element={<RequireRole roles={['admin']} />}>
+                <Route path="/admin/users" element={<div className="p-10 text-ink">Admin Users — Phase 4b Task 5</div>} />
+                <Route path="/admin/permissions" element={<AdminPermissionsPage />} />
+              </Route>
+            </Route>
           </Route>
 
           {/* Utility */}
