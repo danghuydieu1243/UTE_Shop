@@ -269,7 +269,7 @@ export async function cancelOrder(userId: number, code: string): Promise<OrderDe
         transaction: t,
       });
       await LoyaltyTransaction.create(
-        { userId, type: 'redeem', points: Number(order.pointsUsed), orderId: Number(order.id), note: 'Hoàn điểm do hủy đơn' },
+        { userId, type: 'earn', points: Number(order.pointsUsed), orderId: Number(order.id), note: 'Hoàn điểm do hủy đơn' },
         { transaction: t }
       );
     }

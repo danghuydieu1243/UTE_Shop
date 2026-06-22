@@ -10,7 +10,7 @@ import { createApp } from '../../../app';
 import {
   User, Vendor, Book, BookFile,
   Order, OrderItem, Payment, Entitlement, Author,
-  Coupon, CouponRedemption,
+  Coupon, CouponRedemption, Cart, CartItem,
 } from '../../../db/models';
 import { signAccessToken } from '../../auth/token.service';
 import { env } from '../../../config/env';
@@ -510,5 +510,74 @@ describe('completePayment — coupon used_count wiring', () => {
 
     const updatedCoupon = await Coupon.findByPk(coupon.id);
     expect(Number(updatedCoupon!.usedCount)).toBe(1);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Test 13: E2E payment+coupon amount — createOrder through real service
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('E2E payment+coupon amount via real createOrder (D10)', () => {
+  it('13. payment.amount === subtotal − couponDiscount when coupon applied at checkout', async () => {
+    const user = await seedUser('user', `e2ec13-${Date.now()}`);
+    const token = makeToken(user.id);
+
+    const vendor = await seedUser('vendor', `e2ev13-${Date.now()}`);
+    await Vendor.create({
+      userId: vendor.id,
+      shopName: `Shop E2E13 ${Date.now()}`,
+      shopSlug: `shop-e2e13-${Date.now()}`,
+    });
+
+    // Book: 100000 VND
+    const book = await seedBook(vendor.id, { price: 100000 });
+
+    // Coupon: fixed 20000 for this vendor
+    const coupon = await Coupon.create({
+      vendorUserId: vendor.id,
+      code: `E2EC13-${Date.now()}`,
+      type: 'fixed',
+      value: 20000,
+      status: 'active',
+    });
+
+    // Add book to cart via DB (mimics addBookToCart in orders tests)
+    const [cart] = await Cart.findOrCreate({ where: { userId: user.id }, defaults: { userId: user.id } });
+    await CartItem.create({ cartId: cart.id, bookId: book.id, unitPrice: Number(book.price) });
+
+    // Checkout with coupon via real orders API (uses createOrder service with couponCode)
+    const checkoutRes = await request(app)
+      .post('/api/v1/orders')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ couponCode: coupon.code });
+
+    expect(checkoutRes.status).toBe(201);
+    const d = checkoutRes.body.data;
+
+    // subtotal = 100000, couponDiscount = 20000, total = 80000
+    expect(d.subtotal).toBe(100000);
+    expect(d.couponDiscount).toBe(20000);
+    expect(d.total).toBe(80000);
+
+    // payment.amount must equal discounted total (NOT full subtotal)
+    expect(d.payment.amount).toBe(80000);
+
+    // Simulate payment to complete order
+    const paymentId = d.payment.id;
+    const simRes = await request(app)
+      .post(`/api/v1/payments/${paymentId}/simulate`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(simRes.status).toBe(200);
+    expect(simRes.body.data.status).toBe('COMPLETED');
+
+    // Coupon used_count must be exactly 1 after payment completes
+    const updatedCoupon = await Coupon.findByPk(coupon.id);
+    expect(Number(updatedCoupon!.usedCount)).toBe(1);
+
+    // CouponRedemption row exists with correct discountAmount
+    const order = await Order.findOne({ where: { code: d.code } });
+    const redemption = await CouponRedemption.findOne({ where: { orderId: order!.id } });
+    expect(redemption).not.toBeNull();
+    expect(Number(redemption!.discountAmount)).toBe(20000);
   });
 });
