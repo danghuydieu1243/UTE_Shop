@@ -30,5 +30,8 @@ Review.init(
   {
     sequelize,
     tableName: 'reviews',
+    indexes: [
+      { unique: true, fields: ['user_id', 'book_id'], name: 'reviews_user_id_book_id_unique' },
+    ],
   },
 );

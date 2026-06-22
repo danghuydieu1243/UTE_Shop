@@ -12,6 +12,7 @@ import { ordersRouter } from './modules/orders';
 import { paymentsRouter } from './modules/payments';
 import { entitlementsRouter, downloadRouter } from './modules/entitlements';
 import { wishlistRouter } from './modules/wishlist';
+import { meReviewsRouter, bookReviewsRouter, vendorReviewsRouter } from './modules/reviews';
 import { notFound } from './shared/middleware/notFound';
 import { errorHandler } from './shared/middleware/errorHandler';
 import { env } from './config/env';
@@ -40,6 +41,9 @@ export const createApp = () => {
   app.use('/api/v1/payments', paymentsRouter);
   app.use('/api/v1/me/ebooks', entitlementsRouter);
   app.use('/api/v1/me/wishlist', wishlistRouter);
+  app.use('/api/v1/me/reviews', meReviewsRouter);
+  app.use('/api/v1/books/:idOrSlug/reviews', bookReviewsRouter);
+  app.use('/api/v1/vendor/reviews', vendorReviewsRouter);
   app.use('/api/v1/download', downloadRouter);
 
   app.use(notFound);
