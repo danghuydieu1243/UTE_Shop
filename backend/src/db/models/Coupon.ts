@@ -38,5 +38,8 @@ Coupon.init(
   {
     sequelize,
     tableName: 'coupons',
+    indexes: [
+      { unique: true, fields: ['vendor_user_id', 'code'], name: 'coupons_vendor_user_id_code_unique' },
+    ],
   },
 );
