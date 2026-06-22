@@ -41,7 +41,7 @@ const MATRIX: PermRow[] = [
   },
   {
     group: 'Quản lý đơn hàng toàn sàn',
-    guest: '—', user: '—', vendor: '—', manager: '✓', admin: '✓',
+    guest: '—', user: '—', vendor: '—', manager: '—', admin: '✓',
   },
   {
     group: 'Quản lý người dùng',
