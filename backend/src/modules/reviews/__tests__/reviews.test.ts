@@ -323,6 +323,7 @@ describe('Reviews API', () => {
         .send({ reply: 'Không phải sách của tôi' });
 
       expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
     });
 
     it('9. vendor reply vào book không thuộc về mình → 403', async () => {
@@ -345,6 +346,7 @@ describe('Reviews API', () => {
         .send({ reply: 'I should not be able to reply' });
 
       expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('AUTH_FORBIDDEN');
     });
   });
 

@@ -4,6 +4,7 @@ import {
   Review,
   LoyaltyAccount,
   LoyaltyTransaction,
+  User,
 } from '../../db/models';
 import { AppError } from '../../shared/errors/AppError';
 import * as repo from './reviews.repository';
@@ -25,7 +26,10 @@ export async function createReview(
     throw AppError.from('REVIEW_NOT_ALLOWED', 'Bạn cần mua và hoàn thành đơn hàng chứa sách này trước khi đánh giá');
   }
 
-  const review = await sequelize.transaction(async (t) => {
+  const { review, userName } = await sequelize.transaction(async (t) => {
+    // 0. Fetch requesting user's name for the response DTO
+    const userRecord = await User.findByPk(userId, { attributes: ['fullName'], transaction: t });
+
     // 1. Create review — UNIQUE(user_id, book_id) guard via catch
     let newReview: Review;
     try {
@@ -69,14 +73,14 @@ export async function createReview(
       { transaction: t },
     );
 
-    return newReview;
+    return { review: newReview, userName: userRecord?.fullName ?? '' };
   });
 
   return {
     id: Number(review.id),
     rating: review.rating,
     comment: review.comment ?? null,
-    userName: '',        // caller doesn't need userName on create response
+    userName,
     createdAt: review.created_at ?? null,
     vendorReply: null,
     vendorRepliedAt: null,
