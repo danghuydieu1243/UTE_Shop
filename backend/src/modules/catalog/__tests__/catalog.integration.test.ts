@@ -411,5 +411,40 @@ describe('Catalog API', () => {
       const titles = res.body.data.bestsellers.map((b: any) => b.title);
       expect(titles).not.toContain('Sách Vendor Bị Khóa');
     });
+
+    it('home featured does NOT include locked vendor book', async () => {
+      const res = await request(app).get('/api/v1/catalog/home');
+      expect(res.status).toBe(200);
+      const titles = res.body.data.featured.map((b: any) => b.title);
+      expect(titles).not.toContain('Sách Vendor Bị Khóa');
+    });
+
+    it('relatedByAuthor of active book does NOT include locked vendor book sharing same author', async () => {
+      // 'Đắc Nhân Tâm' shares author Dale Carnegie with 'Sách Vendor Bị Khóa'
+      const res = await request(app).get('/api/v1/catalog/books/dac-nhan-tam');
+      expect(res.status).toBe(200);
+      const related = res.body.data.relatedByAuthor as any[];
+      const titles = related.map((b: any) => b.title);
+      expect(titles).not.toContain('Sách Vendor Bị Khóa');
+    });
+
+    it('relatedByCategory of active book does NOT include locked vendor book sharing same category', async () => {
+      // 'Đắc Nhân Tâm' shares category Văn học with 'Sách Vendor Bị Khóa'
+      const res = await request(app).get('/api/v1/catalog/books/dac-nhan-tam');
+      expect(res.status).toBe(200);
+      const related = res.body.data.relatedByCategory as any[];
+      const titles = related.map((b: any) => b.title);
+      expect(titles).not.toContain('Sách Vendor Bị Khóa');
+    });
+
+    it('categories bookCount for Văn học excludes locked vendor book (count = 2)', async () => {
+      // catVanHoc has: 'Đắc Nhân Tâm' (active) + 'Sách Rẻ Hơn' (active) + 'Sách Vendor Bị Khóa' (locked vendor, excluded)
+      const res = await request(app).get('/api/v1/catalog/categories');
+      expect(res.status).toBe(200);
+      const cats = res.body.data.categories as any[];
+      const vanHoc = cats.find((c: any) => c.slug === 'van-hoc');
+      expect(vanHoc).toBeDefined();
+      expect(vanHoc.bookCount).toBe(2);
+    });
   });
 });
