@@ -60,3 +60,35 @@ export interface VendorBooksParams {
   page?: number;
   limit?: number;
 }
+
+// ── Vendor Orders ─────────────────────────────────────────────────────────────
+
+export type VendorOrderStatus = 'NEW' | 'COMPLETED' | 'CANCELLED';
+
+/** A vendor's book item within an order (only this vendor's items are returned) */
+export interface VendorOrderItem {
+  titleSnapshot: string;
+  unitPrice: number;
+}
+
+/** Order row returned by GET /vendor/orders */
+export interface VendorOrderRow {
+  code: string;
+  status: VendorOrderStatus;
+  total: number;
+  createdAt: string;
+  items: VendorOrderItem[];
+}
+
+/** Result shape returned by getVendorOrders */
+export interface VendorOrdersResult {
+  orders: VendorOrderRow[];
+  pagination: VendorPagination;
+}
+
+/** Query params for GET /vendor/orders */
+export interface VendorOrdersParams {
+  status?: VendorOrderStatus | '';
+  page?: number;
+  limit?: number;
+}
