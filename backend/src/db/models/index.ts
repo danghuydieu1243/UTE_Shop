@@ -17,6 +17,12 @@ import { OrderItem } from './OrderItem';
 import { Payment } from './Payment';
 import { Entitlement } from './Entitlement';
 import { DownloadLog } from './DownloadLog';
+import { Review } from './Review';
+import { Wishlist } from './Wishlist';
+import { Coupon } from './Coupon';
+import { CouponRedemption } from './CouponRedemption';
+import { LoyaltyAccount } from './LoyaltyAccount';
+import { LoyaltyTransaction } from './LoyaltyTransaction';
 
 // ── Phase 1 Associations ────────────────────────────────────────────────────
 User.hasOne(Vendor, { foreignKey: 'user_id', as: 'vendor', onDelete: 'RESTRICT' });
@@ -84,6 +90,51 @@ DownloadLog.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 DownloadLog.belongsTo(Book, { foreignKey: 'book_id', as: 'book' });
 DownloadLog.belongsTo(Entitlement, { foreignKey: 'entitlement_id', as: 'entitlement' });
 
+// ── Phase 4 Associations ────────────────────────────────────────────────────
+// Review
+User.hasMany(Review, { foreignKey: 'user_id', as: 'reviews' });
+Review.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+Book.hasMany(Review, { foreignKey: 'book_id', as: 'reviews' });
+Review.belongsTo(Book, { foreignKey: 'book_id', as: 'book' });
+
+Review.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
+Order.hasMany(Review, { foreignKey: 'order_id', as: 'reviews' });
+
+// Wishlist
+User.hasMany(Wishlist, { foreignKey: 'user_id', as: 'wishlists' });
+Wishlist.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+Book.hasMany(Wishlist, { foreignKey: 'book_id', as: 'wishlists' });
+Wishlist.belongsTo(Book, { foreignKey: 'book_id', as: 'book' });
+
+// Coupon
+User.hasMany(Coupon, { foreignKey: 'vendor_user_id', as: 'coupons' });
+Coupon.belongsTo(User, { foreignKey: 'vendor_user_id', as: 'vendor' });
+
+Coupon.hasMany(CouponRedemption, { foreignKey: 'coupon_id', as: 'redemptions' });
+CouponRedemption.belongsTo(Coupon, { foreignKey: 'coupon_id', as: 'coupon' });
+
+// CouponRedemption
+User.hasMany(CouponRedemption, { foreignKey: 'user_id', as: 'couponRedemptions' });
+CouponRedemption.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+Order.hasOne(CouponRedemption, { foreignKey: 'order_id', as: 'couponRedemption' });
+CouponRedemption.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
+
+Order.belongsTo(Coupon, { foreignKey: 'coupon_id', as: 'coupon' });
+
+// LoyaltyAccount
+User.hasOne(LoyaltyAccount, { foreignKey: 'user_id', as: 'loyaltyAccount' });
+LoyaltyAccount.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+// LoyaltyTransaction
+User.hasMany(LoyaltyTransaction, { foreignKey: 'user_id', as: 'loyaltyTransactions' });
+LoyaltyTransaction.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+LoyaltyTransaction.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
+LoyaltyTransaction.belongsTo(Review, { foreignKey: 'review_id', as: 'review' });
+
 export {
   sequelize,
   User, Vendor, OtpCode, RefreshToken, AuditLog,
@@ -91,4 +142,5 @@ export {
   Cart, CartItem,
   Order, OrderItem, Payment,
   Entitlement, DownloadLog,
+  Review, Wishlist, Coupon, CouponRedemption, LoyaltyAccount, LoyaltyTransaction,
 };
