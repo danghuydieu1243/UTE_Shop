@@ -167,7 +167,7 @@ export const ReviewSection = ({
       return;
     }
     try {
-      await createReview({ bookId, rating, comment: comment.trim() || undefined });
+      await createReview({ bookId, rating, comment: comment.trim() || undefined, idOrSlug: bookSlug });
       show('Đã gửi đánh giá thành công!');
       setRating(0);
       setComment('');

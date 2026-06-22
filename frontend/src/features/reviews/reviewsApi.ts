@@ -38,13 +38,14 @@ const reviewsApi = baseApi.injectEndpoints({
 
     // POST /me/reviews — requireRole('user')
     createReview: build.mutation<ReviewDTO, CreateReviewBody>({
-      query: (body) => ({
+      query: ({ idOrSlug: _idOrSlug, ...body }) => ({
         url: '/me/reviews',
         method: 'POST',
         data: body,
       }),
-      invalidatesTags: [
+      invalidatesTags: (_res, _err, arg) => [
         { type: 'Review' as const, id: 'LIST' },
+        { type: 'Book' as const, id: String(arg.idOrSlug) },
         { type: 'Book' as const, id: 'LIST' },
       ],
     }),

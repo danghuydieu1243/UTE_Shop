@@ -110,7 +110,7 @@ describe('ReviewSection', () => {
 
   /* ── Test 1: renders list of reviews ── */
   describe('renders review list', () => {
-    it('renders comment and userName of each review from array shape (not .reviews)', () => {
+    it('renders comment and userName of each review (from transformResponse data.reviews)', () => {
       setupDefaultMocks();
       // Verify that component reads resp directly as array — simulate correct shape
       mockUseGetBookReviewsQuery.mockReturnValue({
@@ -240,6 +240,7 @@ describe('ReviewSection', () => {
           bookId: 29,
           rating: 5,
           comment: 'Sách rất tốt',
+          idOrSlug: 'tuoi-tre-dang-gia-bao-nhieu',
         });
       });
     });

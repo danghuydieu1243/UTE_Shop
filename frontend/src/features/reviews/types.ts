@@ -30,4 +30,6 @@ export interface CreateReviewBody {
   bookId: number;
   rating: number;
   comment?: string;
+  /** Used only for RTK Query cache invalidation — NOT sent in POST body */
+  idOrSlug: string | number;
 }
