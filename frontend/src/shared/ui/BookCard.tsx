@@ -1,6 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import type { BookCard as BookCardDTO } from '../../features/catalog/types';
 import { formatVND, formatFileSize, formatCount } from '../format';
+import { useAppSelector } from '../../app/hooks';
+import { useAddToWishlistMutation, useRemoveFromWishlistMutation } from '../../features/wishlist/wishlistApi';
 
 /** Ảnh bìa dùng chung (data giả): lưu ở frontend/public, phục vụ tại /book-cover-placeholder.svg */
 export const COVER_PLACEHOLDER = '/book-cover-placeholder.svg';
@@ -40,6 +42,8 @@ interface BookCardProps {
   onAddToCart?: (book: BookCardDTO) => void;
   /** Highlight this query string in title + author */
   highlightQuery?: string;
+  /** Nếu true, heart đang ở trạng thái "đã thêm" (tim đặc) */
+  isWishlisted?: boolean;
 }
 
 /**
@@ -47,9 +51,17 @@ interface BookCardProps {
  * Root = <article> (not <a>) so the "Thêm vào giỏ" <button> is a valid sibling,
  * avoiding button-inside-anchor (invalid HTML5).
  * Hover: .book-cover đổi nền sang #EFEDE6; .cover-rule giãn rộng (home_preview.html).
+ *
+ * Heart toggle (Phase 4):
+ * - role 'user': hiển thị tim, click → addToWishlist hoặc removeFromWishlist
+ * - guest (null): click → navigate /login
+ * - vendor/admin: ẩn heart (không hiện)
  */
-export const BookCard = ({ book, className = '', rank, onAddToCart, highlightQuery }: BookCardProps) => {
+export const BookCard = ({ book, className = '', rank, onAddToCart, highlightQuery, isWishlisted = false }: BookCardProps) => {
   const navigate = useNavigate();
+  const user = useAppSelector((s) => s.auth.user);
+  const [addToWishlist] = useAddToWishlistMutation();
+  const [removeFromWishlist] = useRemoveFromWishlistMutation();
 
   const {
     slug,
@@ -82,6 +94,26 @@ export const BookCard = ({ book, className = '', rank, onAddToCart, highlightQue
     return '★'.repeat(fullStars) + '☆'.repeat(5 - fullStars);
   };
 
+  // Heart toggle handler — chỉ dành cho role 'user'
+  // guest → redirect /login; vendor/admin → không hiển thị button
+  const handleHeartClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!user) {
+      navigate(`/login?returnUrl=/books/${slug}`);
+      return;
+    }
+    if (user.role !== 'user') return;
+    if (isWishlisted) {
+      removeFromWishlist(book.id);
+    } else {
+      addToWishlist({ bookId: book.id });
+    }
+  };
+
+  // Chỉ hiển thị heart cho user đã đăng nhập với role 'user', hoặc cho guest (→ redirect login)
+  // vendor/admin: ẩn hoàn toàn
+  const showHeart = !user || user.role === 'user';
+
   return (
     <article
       role="link"
@@ -100,12 +132,38 @@ export const BookCard = ({ book, className = '', rank, onAddToCart, highlightQue
           </span>
         )}
 
-        {/* Rank badge — top-right (optional) */}
+        {/* Rank badge — top-left when heart is present, top-right otherwise */}
         {rank != null && (
-          <span className="absolute right-3.5 top-3 font-[500] tabular-nums text-ink-3">
+          <span
+            className={`absolute top-3 font-[500] tabular-nums text-ink-3 ${showHeart ? 'left-3.5' : 'right-3.5'}`}
+          >
             <span className="text-[9px] mr-0.5">No.</span>
             <span className="text-[13px]">{rank}</span>
           </span>
+        )}
+
+        {/* Heart toggle — top-right (chỉ user + guest; ẩn với vendor/admin) */}
+        {showHeart && (
+          <button
+            type="button"
+            aria-label={isWishlisted ? 'Bỏ yêu thích' : 'Thêm vào yêu thích'}
+            onClick={handleHeartClick}
+            className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-surface border border-line text-ink-2 transition-[border-color,color] duration-200 hover:border-ink hover:text-ink"
+          >
+            <svg
+              width="13"
+              height="13"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              viewBox="0 0 24 24"
+              fill={isWishlisted ? 'currentColor' : 'none'}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+            </svg>
+          </button>
         )}
 
         {/* Ảnh bìa: dùng URL thật nếu có, hỏng/thiếu → placeholder dùng chung */}

@@ -11,6 +11,19 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => mockNavigate };
 });
 
+// Mock wishlistApi — BookCard ใช้ hooks này ตั้งแต่ Phase 4; mock để test không phึงใช้ Provider
+vi.mock('../../../features/wishlist/wishlistApi', () => ({
+  useGetWishlistQuery: vi.fn(() => ({ data: undefined, isLoading: false })),
+  useAddToWishlistMutation: vi.fn(() => [vi.fn(), { isLoading: false }]),
+  useRemoveFromWishlistMutation: vi.fn(() => [vi.fn(), { isLoading: false }]),
+}));
+
+// Mock useAppSelector — trả về null (guest) để heart render; không cần Provider
+vi.mock('../../../app/hooks', () => ({
+  useAppSelector: vi.fn(() => null),
+  useAppDispatch: vi.fn(() => vi.fn()),
+}));
+
 const baseBook: BookCardDTO = {
   id: 1,
   slug: 'dac-nhan-tam',

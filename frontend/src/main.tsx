@@ -21,6 +21,7 @@ import { CheckoutQrPage } from './features/orders/pages/CheckoutQrPage';
 import { OrderHistoryPage } from './features/orders/pages/OrderHistoryPage';
 import { OrderDetailPage } from './features/orders/pages/OrderDetailPage';
 import MyEbooksPage from './features/library/pages/MyEbooksPage';
+import WishlistPage from './features/wishlist/pages/WishlistPage';
 import { RequireAuth, RequireRole } from './shared/auth/guards';
 import './index.css';
 
@@ -55,6 +56,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
             <Route path="/user/orders" element={<OrderHistoryPage />} />
             <Route path="/user/orders/:code" element={<OrderDetailPage />} />
             <Route path="/user/ebooks" element={<MyEbooksPage />} />
+            <Route path="/user/wishlist" element={<WishlistPage />} />
           </Route>
 
           {/* Protected: vendor only */}

@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { SiteHeader, SiteFooter, BookCard, COVER_PLACEHOLDER } from '../../../shared/ui';
 import { useGetBookDetailQuery } from '../catalogApi';
 import { useAddToCartMutation } from '../../cart/cartApi';
+import { useAddToWishlistMutation, useRemoveFromWishlistMutation, useGetWishlistQuery } from '../../wishlist/wishlistApi';
 import type { BookCard as BookCardDTO } from '../types';
 import { formatVND, formatFileSize, formatCount } from '../../../shared/format';
 import { useAppSelector } from '../../../app/hooks';
@@ -161,6 +162,15 @@ export const BookDetailPage = () => {
   const { show, ToastLayer } = useToast();
 
   const [addToCart] = useAddToCartMutation();
+  const [addToWishlist] = useAddToWishlistMutation();
+  const [removeFromWishlist] = useRemoveFromWishlistMutation();
+
+  // Wishlist: chỉ fetch khi đã đăng nhập với role 'user'
+  const isUserRole = user?.role === 'user';
+  const { data: wishlistData } = useGetWishlistQuery(
+    { page: 1, limit: 100 },
+    { skip: !isUserRole },
+  );
 
   const { data: book, isLoading, isError, error } = useGetBookDetailQuery(
     { idOrSlug },
@@ -262,13 +272,30 @@ export const BookDetailPage = () => {
     }
   };
 
-  const handleWishlist = () => {
+  // Kiểm tra book có trong wishlist không (dựa vào danh sách đã fetch)
+  const isWishlisted = book
+    ? (wishlistData?.items ?? []).some((it) => it.book.id === book.id)
+    : false;
+
+  const handleWishlist = async () => {
     if (!user) {
       navigate(`/login?returnUrl=/books/${idOrSlug}`);
       return;
     }
-    // TODO Phase 4: toggle wishlist
-    show('Tính năng Wishlist sẽ có ở bước sau');
+    // vendor/admin không được dùng wishlist
+    if (user.role !== 'user') return;
+    if (!book) return;
+    try {
+      if (isWishlisted) {
+        await removeFromWishlist(book.id).unwrap();
+        show(`Đã xóa "${book.title}" khỏi Wishlist`);
+      } else {
+        await addToWishlist({ bookId: book.id }).unwrap();
+        show(`Đã thêm "${book.title}" vào Wishlist`);
+      }
+    } catch {
+      show('Không thể cập nhật Wishlist. Vui lòng thử lại.');
+    }
   };
 
   /* ── Breadcrumb ── */
@@ -337,17 +364,19 @@ export const BookDetailPage = () => {
                 {book.fileFormat}
               </span>
 
-              {/* Wishlist heart */}
-              <button
-                type="button"
-                aria-label="Lưu vào Wishlist"
-                onClick={handleWishlist}
-                className="absolute right-[14px] top-[14px] flex h-9 w-9 items-center justify-center rounded-full border border-line bg-surface text-ink-2 transition-[border-color,color] duration-200 hover:border-ink hover:text-ink"
-              >
-                <svg width="16" height="16" stroke="currentColor" strokeWidth="1.6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
+              {/* Wishlist heart — hiển thị cho user + guest (ẩn với vendor/admin) */}
+              {(!user || user.role === 'user') && (
+                <button
+                  type="button"
+                  aria-label={isWishlisted ? 'Bỏ yêu thích' : 'Lưu vào Wishlist'}
+                  onClick={handleWishlist}
+                  className="absolute right-[14px] top-[14px] flex h-9 w-9 items-center justify-center rounded-full border border-line bg-surface text-ink-2 transition-[border-color,color] duration-200 hover:border-ink hover:text-ink"
+                >
+                  <svg width="16" height="16" stroke="currentColor" strokeWidth="1.6" viewBox="0 0 24 24" fill={isWishlisted ? 'currentColor' : 'none'} aria-hidden="true">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              )}
 
               {/* Cover content with fade */}
               <div
@@ -541,16 +570,18 @@ export const BookDetailPage = () => {
               >
                 Thêm vào giỏ
               </button>
-              <button
-                type="button"
-                onClick={handleWishlist}
-                className="inline-flex items-center gap-2 self-start bg-transparent border-none py-2 text-[13px] text-ink-2 transition-colors duration-200 hover:text-ink"
-              >
-                <svg width="15" height="15" stroke="currentColor" strokeWidth="1.6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                Lưu vào Wishlist
-              </button>
+              {(!user || user.role === 'user') && (
+                <button
+                  type="button"
+                  onClick={handleWishlist}
+                  className="inline-flex items-center gap-2 self-start bg-transparent border-none py-2 text-[13px] text-ink-2 transition-colors duration-200 hover:text-ink"
+                >
+                  <svg width="15" height="15" stroke="currentColor" strokeWidth="1.6" viewBox="0 0 24 24" fill={isWishlisted ? 'currentColor' : 'none'} aria-hidden="true">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  {isWishlisted ? 'Đã lưu vào Wishlist' : 'Lưu vào Wishlist'}
+                </button>
+              )}
             </div>
           </div>
         </div>
