@@ -2,6 +2,39 @@ import { Op, Transaction } from 'sequelize';
 import { Coupon, CouponRedemption, Order } from '../../db/models';
 import { CreateCouponInput, ListCouponsQuery } from './coupons.schema';
 
+// ── Canonical coupon DTO (snake_case — matches FE Coupon type) ────────────────
+export interface CouponDTO {
+  id: number;
+  code: string;
+  type: string;
+  value: number;
+  min_order: number;
+  max_uses: number | null;
+  max_uses_per_user: number;
+  used_count: number;
+  starts_at: Date | null;
+  ends_at: Date | null;
+  status: string;
+  created_at: Date;
+}
+
+export function mapCouponDTO(c: Coupon): CouponDTO {
+  return {
+    id: c.id,
+    code: c.code,
+    type: c.type,
+    value: Number(c.value),
+    min_order: Number(c.minOrder),
+    max_uses: c.maxUses != null ? Number(c.maxUses) : null,
+    max_uses_per_user: Number(c.maxUsesPerUser),
+    used_count: Number(c.usedCount),
+    starts_at: c.startsAt ?? null,
+    ends_at: c.endsAt ?? null,
+    status: c.status,
+    created_at: c.created_at,
+  };
+}
+
 // ── Create ────────────────────────────────────────────────────────────────────
 export async function createCoupon(data: {
   vendorUserId: number;

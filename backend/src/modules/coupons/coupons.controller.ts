@@ -3,6 +3,7 @@ import { ok, created } from '../../shared/http/response';
 import { AppError } from '../../shared/errors/AppError';
 import { Book } from '../../db/models';
 import * as service from './coupons.service';
+import { mapCouponDTO } from './coupons.repository';
 import {
   createCouponSchema,
   updateCouponSchema,
@@ -18,7 +19,7 @@ export const listCoupons = asyncHandler(async (req, res) => {
 
   const { rows, count } = await service.listCoupons(req.user!.id, qResult.data);
   const totalPages = Math.ceil(count / qResult.data.limit);
-  ok(res, { coupons: rows }, {
+  ok(res, rows.map(mapCouponDTO), {
     pagination: {
       page: qResult.data.page,
       limit: qResult.data.limit,
@@ -34,7 +35,7 @@ export const createCoupon = asyncHandler(async (req, res) => {
   if (!bodyResult.success) throw AppError.from('VALIDATION', 'Dữ liệu không hợp lệ', bodyResult.error.issues);
 
   const coupon = await service.createCoupon(req.user!.id, bodyResult.data);
-  created(res, { id: coupon.id, code: coupon.code, type: coupon.type, value: Number(coupon.value), status: coupon.status });
+  created(res, mapCouponDTO(coupon));
 });
 
 // ── Update (vendor) ───────────────────────────────────────────────────────────
@@ -46,18 +47,7 @@ export const updateCoupon = asyncHandler(async (req, res) => {
   if (!bodyResult.success) throw AppError.from('VALIDATION', 'Dữ liệu không hợp lệ', bodyResult.error.issues);
 
   const coupon = await service.updateCoupon(req.user!.id, pResult.data.id, bodyResult.data);
-  ok(res, {
-    id: coupon.id,
-    code: coupon.code,
-    type: coupon.type,
-    value: Number(coupon.value),
-    minOrder: Number(coupon.minOrder),
-    maxUses: coupon.maxUses,
-    maxUsesPerUser: coupon.maxUsesPerUser,
-    status: coupon.status,
-    startsAt: coupon.startsAt,
-    endsAt: coupon.endsAt,
-  });
+  ok(res, mapCouponDTO(coupon));
 });
 
 // ── Delete (vendor) ───────────────────────────────────────────────────────────

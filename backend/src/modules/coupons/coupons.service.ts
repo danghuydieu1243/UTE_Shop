@@ -93,7 +93,7 @@ export async function validateAndPriceCoupon(
   const now = new Date();
 
   // 2. D15: validity
-  if (coupon.status === 'disabled') {
+  if (coupon.status === 'disabled' || coupon.status === 'ended') {
     throw AppError.from('COUPON_INVALID', 'Mã giảm giá không còn hiệu lực');
   }
   if (coupon.startsAt && now < coupon.startsAt) {

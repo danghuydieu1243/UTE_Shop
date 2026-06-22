@@ -10,7 +10,7 @@ export const createCouponSchema = z
     maxUsesPerUser: z.number().int().positive().optional(),
     startsAt: z.coerce.date().nullable().optional(),
     endsAt: z.coerce.date().nullable().optional(),
-    status: z.enum(['scheduled', 'running', 'disabled']).optional(),
+    status: z.enum(['scheduled', 'running', 'ended', 'disabled']).optional(),
   })
   .refine((d) => d.type !== 'percent' || (d.value >= 1 && d.value <= 100), {
     message: 'percent value phải từ 1-100',
@@ -31,7 +31,7 @@ export const updateCouponSchema = z
     maxUsesPerUser: z.number().int().positive().optional(),
     startsAt: z.coerce.date().nullable().optional(),
     endsAt: z.coerce.date().nullable().optional(),
-    status: z.enum(['scheduled', 'running', 'disabled']).optional(),
+    status: z.enum(['scheduled', 'running', 'ended', 'disabled']).optional(),
   })
   .refine(
     (d) => {

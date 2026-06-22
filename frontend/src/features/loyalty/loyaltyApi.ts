@@ -4,7 +4,7 @@ export interface LoyaltyTransaction {
   id: number;
   type: string;
   points: number;
-  description: string;
+  note: string | null;
   createdAt: string;
 }
 

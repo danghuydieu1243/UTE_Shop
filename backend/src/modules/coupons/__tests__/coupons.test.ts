@@ -274,6 +274,36 @@ describe('coupons service', () => {
     ).rejects.toMatchObject({ code: 'COUPON_INVALID' });
   });
 
+  // ── Test 9b: create coupon with status 'ended' succeeds (no 422) ────────────
+  it('9b. create coupon with status \'ended\' → succeeds (valid status)', async () => {
+    const result = await service.createCoupon(vendor1.id, {
+      code: `ENDED${Date.now()}`,
+      type: 'fixed',
+      value: 1000,
+      status: 'ended',
+    });
+    expect(result.id).toBeDefined();
+    expect(result.status).toBe('ended');
+  });
+
+  // ── Test 9c: validateAndPriceCoupon rejects status='ended' → COUPON_INVALID ─
+  it('9c. validateAndPriceCoupon rejects coupon with status \'ended\' → COUPON_INVALID', async () => {
+    const book = await seedBook(vendor1.id);
+    const coupon = await service.createCoupon(vendor1.id, {
+      code: `ENDEDVAL${Date.now()}`,
+      type: 'percent',
+      value: 5,
+      status: 'ended',
+    });
+    await expect(
+      service.validateAndPriceCoupon(
+        coupon.code,
+        [{ bookId: book.id, vendorUserId: vendor1.id, price: book.price }],
+        regularUser.id,
+      ),
+    ).rejects.toMatchObject({ code: 'COUPON_INVALID' });
+  });
+
   // ── Test 10: validate exceeding max_uses_per_user → COUPON_USAGE_EXCEEDED ───
   it('10. validate exceeding max_uses_per_user → COUPON_USAGE_EXCEEDED', async () => {
     const book = await seedBook(vendor1.id);
@@ -338,14 +368,38 @@ describe('coupons routes (supertest)', () => {
     expect(res.body.data.code).toBeDefined();
   });
 
-  // ── GET /api/v1/vendor/coupons returns 200 list ──────────────────────────────
-  it('GET /api/v1/vendor/coupons returns 200 list', async () => {
+  // ── GET /api/v1/vendor/coupons returns 200 list as bare array ───────────────
+  it('GET /api/v1/vendor/coupons returns 200 list — data is bare array with canonical DTO fields', async () => {
+    // Ensure at least one coupon exists for this vendor
+    await request(app)
+      .post('/api/v1/vendor/coupons')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ code: `LISTDTO${Date.now()}`, type: 'percent', value: 10, status: 'running' });
+
     const res = await request(app)
       .get('/api/v1/vendor/coupons')
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
-    expect(Array.isArray(res.body.data.coupons)).toBe(true);
+    // Finding 1: data must be a bare array (not an object { coupons: [...] })
+    expect(Array.isArray(res.body.data)).toBe(true);
+    // Finding 2: first item must have canonical snake_case DTO fields
+    const first = res.body.data[0];
+    expect(first).toHaveProperty('id');
+    expect(first).toHaveProperty('code');
+    expect(first).toHaveProperty('type');
+    expect(first).toHaveProperty('value');
+    expect(first).toHaveProperty('min_order');
+    expect(first).toHaveProperty('max_uses');
+    expect(first).toHaveProperty('max_uses_per_user');
+    expect(first).toHaveProperty('used_count');
+    expect(first).toHaveProperty('starts_at');
+    expect(first).toHaveProperty('ends_at');
+    expect(first).toHaveProperty('status');
+    // Must NOT leak raw camelCase fields
+    expect(first).not.toHaveProperty('minOrder');
+    expect(first).not.toHaveProperty('maxUses');
+    expect(first).not.toHaveProperty('usedCount');
   });
 
   // ── PATCH /api/v1/vendor/coupons/:id updates ok ──────────────────────────────
