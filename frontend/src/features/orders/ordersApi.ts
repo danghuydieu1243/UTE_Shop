@@ -5,8 +5,9 @@ import type { OrderDetail, Payment, GetOrdersParams, OrderSummary, OrdersResult 
 export const ordersApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
     // POST /orders — tạo đơn hàng từ giỏ hàng hiện tại
-    createOrder: build.mutation<OrderDetail, void>({
-      query: () => ({ url: '/orders', method: 'POST', data: {} }),
+    // Task 8: nhận thêm couponCode và pointsToUse
+    createOrder: build.mutation<OrderDetail, { couponCode?: string; pointsToUse?: number }>({
+      query: (body) => ({ url: '/orders', method: 'POST', data: body ?? {} }),
       invalidatesTags: ['Cart', 'Order'],
     }),
 
