@@ -1,5 +1,13 @@
 import { z } from 'zod';
 
+// ── Body schemas ──────────────────────────────────────────────────────────────
+
+export const createOrderBodySchema = z.object({
+  couponCode: z.string().optional(),
+  pointsToUse: z.number().int().min(0).optional(),
+});
+export type CreateOrderBody = z.infer<typeof createOrderBodySchema>;
+
 // ── Query params ──────────────────────────────────────────────────────────────
 
 export const listOrdersQuerySchema = z.object({

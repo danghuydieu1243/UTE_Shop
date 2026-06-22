@@ -7,6 +7,7 @@ import { authRouter } from './modules/auth';
 import { usersRouter } from './modules/users';
 import { catalogRouter } from './modules/catalog';
 import { vendorBooksRouter } from './modules/vendor-books';
+import { vendorOrdersRouter } from './modules/vendor-orders';
 import { cartRouter } from './modules/cart';
 import { ordersRouter } from './modules/orders';
 import { paymentsRouter } from './modules/payments';
@@ -38,6 +39,7 @@ export const createApp = () => {
   app.use('/api/v1/users', usersRouter);
   app.use('/api/v1/catalog', catalogRouter);
   app.use('/api/v1/vendor/books', vendorBooksRouter);
+  app.use('/api/v1/vendor/orders', vendorOrdersRouter);
   app.use('/api/v1/cart', cartRouter);
   app.use('/api/v1/orders', ordersRouter);
   app.use('/api/v1/payments', paymentsRouter);

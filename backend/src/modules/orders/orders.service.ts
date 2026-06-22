@@ -2,6 +2,7 @@ import {
   sequelize,
   Cart, CartItem, Book, Entitlement,
   Order, OrderItem, Payment,
+  LoyaltyAccount, LoyaltyTransaction, CouponRedemption,
 } from '../../db/models';
 import { AppError } from '../../shared/errors/AppError';
 import * as cartCache from '../../shared/cache/cartCache';
@@ -12,7 +13,9 @@ import {
   OrderSummaryDTO,
   PaymentDTO,
   PaginationMeta,
+  CreateOrderBody,
 } from './orders.schema';
+import { validateAndPriceCoupon } from '../coupons/coupons.service';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -24,7 +27,7 @@ function addMinutes(date: Date, minutes: number): Date {
 
 // ── createOrder (checkout) ────────────────────────────────────────────────────
 
-export async function createOrder(userId: number): Promise<OrderDetailDTO> {
+export async function createOrder(userId: number, input: CreateOrderBody = {}): Promise<OrderDetailDTO> {
   // Bọc toàn bộ trong transaction; kết quả được capture để xử lý cache SAU KHI commit
   const result = await sequelize.transaction(async (t) => {
     // 1. Lấy cart của user
@@ -77,7 +80,41 @@ export async function createOrder(userId: number): Promise<OrderDetailDTO> {
       const book = (ci as any).book as Book;
       return sum + Number(book.price);
     }, 0);
-    const total = subtotal;
+
+    // --- Coupon ---
+    let couponId: number | null = null;
+    let couponDiscount = 0;
+    if (input.couponCode) {
+      const eligibleItemsForCoupon = eligibleItems.map((ci) => {
+        const book = (ci as any).book as Book;
+        return { bookId: Number(book.id), vendorUserId: Number(book.vendorUserId), price: Number(book.price) };
+      });
+      const { coupon, discount } = await validateAndPriceCoupon(
+        input.couponCode, eligibleItemsForCoupon, userId, { transaction: t }
+      );
+      couponId = Number(coupon.id);
+      couponDiscount = discount;
+    }
+
+    // --- Loyalty ---
+    let loyaltyDiscount = 0;
+    let pointsActuallyUsed = 0;
+    let loyaltyAccount: LoyaltyAccount | null = null;
+    if (input.pointsToUse && input.pointsToUse > 0) {
+      const [acc] = await LoyaltyAccount.findOrCreate({
+        where: { userId },
+        defaults: { userId, balancePoints: 0 },
+        transaction: t,
+      });
+      loyaltyAccount = acc;
+      if (input.pointsToUse > Number(acc.balancePoints)) {
+        throw AppError.from('LOYALTY_INSUFFICIENT', 'Số điểm không đủ');
+      }
+      loyaltyDiscount = Math.min(input.pointsToUse * 100, subtotal - couponDiscount);
+      pointsActuallyUsed = Math.ceil(loyaltyDiscount / 100);
+    }
+
+    const total = subtotal - couponDiscount - loyaltyDiscount;
 
     // 5. Tạo order
     const code = await generateOrderCode();
@@ -87,8 +124,10 @@ export async function createOrder(userId: number): Promise<OrderDetailDTO> {
         code,
         status: 'NEW',
         subtotal,
-        couponDiscount: 0,
-        loyaltyDiscount: 0,
+        couponId,
+        couponDiscount,
+        loyaltyDiscount,
+        pointsUsed: pointsActuallyUsed,
         total,
         currency: 'VND',
       },
@@ -107,6 +146,23 @@ export async function createOrder(userId: number): Promise<OrderDetailDTO> {
       };
     });
     await OrderItem.bulkCreate(orderItemsData, { transaction: t });
+
+    // --- CouponRedemption ---
+    if (couponId) {
+      await CouponRedemption.create(
+        { couponId, userId, orderId: Number(order.id), discountAmount: couponDiscount },
+        { transaction: t }
+      );
+    }
+
+    // --- Loyalty deduction ---
+    if (pointsActuallyUsed > 0 && loyaltyAccount) {
+      await loyaltyAccount.decrement('balancePoints', { by: pointsActuallyUsed, transaction: t });
+      await LoyaltyTransaction.create(
+        { userId, type: 'redeem', points: -pointsActuallyUsed, orderId: Number(order.id) },
+        { transaction: t }
+      );
+    }
 
     // 7. Tạo payment intent PENDING
     const now = new Date();
@@ -204,6 +260,23 @@ export async function cancelOrder(userId: number, code: string): Promise<OrderDe
       { status: 'CANCELLED', cancelledAt: new Date() },
       { transaction: t },
     );
+
+    // Refund loyalty points
+    if (Number(order.pointsUsed) > 0) {
+      await LoyaltyAccount.increment('balancePoints', {
+        by: Number(order.pointsUsed),
+        where: { userId },
+        transaction: t,
+      });
+      await LoyaltyTransaction.create(
+        { userId, type: 'redeem', points: Number(order.pointsUsed), orderId: Number(order.id), note: 'Hoàn điểm do hủy đơn' },
+        { transaction: t }
+      );
+    }
+    // Delete CouponRedemption
+    if (order.couponId) {
+      await CouponRedemption.destroy({ where: { orderId: Number(order.id) }, transaction: t });
+    }
 
     // Cập nhật tất cả payment PENDING → FAILED
     await Payment.update(

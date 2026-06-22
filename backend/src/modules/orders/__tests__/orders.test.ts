@@ -4,6 +4,7 @@ import {
   User, Vendor, Author, Book,
   Cart, CartItem,
   Order, OrderItem, Payment, Entitlement,
+  Coupon, CouponRedemption, LoyaltyAccount, LoyaltyTransaction,
 } from '../../../db/models';
 import { signAccessToken } from '../../auth/token.service';
 
@@ -538,5 +539,261 @@ describe('Orders API', () => {
       // Kiểm trong items
       expect(d.items[0]).not.toHaveProperty('providerTxnId');
     });
+  });
+});
+
+// ── Pricing Tests (5b/5c) ────────────────────────────────────────────────────
+
+describe('Orders Pricing — coupon/points/cancel wiring', () => {
+  let vendorPricing: User;
+  let userPricing: User;
+  let tokenPricing: string;
+  let bookPricingA: Book; // vendor's book
+  let bookPricingB: Book; // different vendor's book
+  let differentVendor: User;
+
+  beforeAll(async () => {
+    vendorPricing = await seedUser('vendor', `vp-${Date.now()}`);
+    await Vendor.create({ userId: vendorPricing.id, shopName: 'Pricing Shop', shopSlug: `priceshop-${Date.now()}` });
+    differentVendor = await seedUser('vendor', `vdiff-${Date.now()}`);
+    await Vendor.create({ userId: differentVendor.id, shopName: 'Diff Shop', shopSlug: `diffshop-${Date.now()}` });
+    userPricing = await seedUser('user', `up-${Date.now()}`);
+    tokenPricing = makeToken(userPricing.id, 'user');
+    bookPricingA = await seedBook(vendorPricing.id, { price: 100000 });
+    bookPricingB = await seedBook(differentVendor.id, { price: 50000 });
+  });
+
+  async function addBookToCart(userId: number, bookId: number) {
+    const [cart] = await Cart.findOrCreate({ where: { userId }, defaults: { userId } });
+    await CartItem.create({ cartId: cart.id, bookId, unitPrice: 0 });
+    return cart;
+  }
+
+  async function seedCoupon(vendorUserId: number, opts: { type?: string; value?: number; code?: string; maxUses?: number } = {}) {
+    return Coupon.create({
+      vendorUserId,
+      code: opts.code ?? `COUP-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      type: opts.type ?? 'percent',
+      value: opts.value ?? 10,
+      status: 'active',
+      maxUses: opts.maxUses ?? null,
+    });
+  }
+
+  // P8a: no coupon/points → total === subtotal (P3 regression)
+  it('P8a. no coupon/points → total === subtotal (P3 regression)', async () => {
+    const u = await seedUser('user', `p8a-${Date.now()}`);
+    const t = makeToken(u.id, 'user');
+    const b = await seedBook(vendorPricing.id, { price: 80000 });
+    await addBookToCart(u.id, b.id);
+
+    const res = await request(app).post('/api/v1/orders').set('Authorization', `Bearer ${t}`).send({});
+    expect(res.status).toBe(201);
+    const d = res.body.data;
+    expect(d.subtotal).toBe(80000);
+    expect(d.couponDiscount).toBe(0);
+    expect(d.loyaltyDiscount).toBe(0);
+    expect(d.total).toBe(80000);
+    expect(d.payment.amount).toBe(80000);
+  });
+
+  // P8b: coupon percent → couponDiscount correct + CouponRedemption row
+  it('P8b. coupon percent → couponDiscount correct + CouponRedemption row created', async () => {
+    const u = await seedUser('user', `p8b-${Date.now()}`);
+    const tok = makeToken(u.id, 'user');
+    const b = await seedBook(vendorPricing.id, { price: 100000 });
+    await addBookToCart(u.id, b.id);
+    const coupon = await seedCoupon(vendorPricing.id, { type: 'percent', value: 10 }); // 10% → 10000
+
+    const res = await request(app)
+      .post('/api/v1/orders')
+      .set('Authorization', `Bearer ${tok}`)
+      .send({ couponCode: coupon.code });
+
+    expect(res.status).toBe(201);
+    const d = res.body.data;
+    expect(d.couponDiscount).toBe(10000);
+    expect(d.loyaltyDiscount).toBe(0);
+    expect(d.total).toBe(90000);
+    expect(d.payment.amount).toBe(90000);
+
+    // CouponRedemption created
+    const order = await Order.findOne({ where: { code: d.code } });
+    const redemption = await CouponRedemption.findOne({ where: { orderId: order!.id } });
+    expect(redemption).not.toBeNull();
+    expect(Number(redemption!.discountAmount)).toBe(10000);
+  });
+
+  // P8c: coupon fixed
+  it('P8c. coupon fixed → couponDiscount correct', async () => {
+    const u = await seedUser('user', `p8c-${Date.now()}`);
+    const tok = makeToken(u.id, 'user');
+    const b = await seedBook(vendorPricing.id, { price: 100000 });
+    await addBookToCart(u.id, b.id);
+    const coupon = await seedCoupon(vendorPricing.id, { type: 'fixed', value: 15000 });
+
+    const res = await request(app)
+      .post('/api/v1/orders')
+      .set('Authorization', `Bearer ${tok}`)
+      .send({ couponCode: coupon.code });
+
+    expect(res.status).toBe(201);
+    const d = res.body.data;
+    expect(d.couponDiscount).toBe(15000);
+    expect(d.total).toBe(85000);
+  });
+
+  // P8d: points only → loyaltyDiscount correct + balance decremented + redeem txn
+  it('P8d. points only → loyaltyDiscount correct + balance decremented + redeem txn', async () => {
+    const u = await seedUser('user', `p8d-${Date.now()}`);
+    const tok = makeToken(u.id, 'user');
+    // Give user 500 points (50000 value)
+    await LoyaltyAccount.create({ userId: u.id, balancePoints: 500 });
+    const b = await seedBook(vendorPricing.id, { price: 100000 });
+    await addBookToCart(u.id, b.id);
+
+    const res = await request(app)
+      .post('/api/v1/orders')
+      .set('Authorization', `Bearer ${tok}`)
+      .send({ pointsToUse: 100 }); // 100 pts = 10000 discount
+
+    expect(res.status).toBe(201);
+    const d = res.body.data;
+    expect(d.loyaltyDiscount).toBe(10000);
+    expect(d.couponDiscount).toBe(0);
+    expect(d.total).toBe(90000);
+    expect(d.payment.amount).toBe(90000);
+
+    // Balance decremented
+    const acc = await LoyaltyAccount.findOne({ where: { userId: u.id } });
+    expect(Number(acc!.balancePoints)).toBe(400); // 500 - 100
+
+    // LoyaltyTransaction created
+    const order = await Order.findOne({ where: { code: d.code } });
+    const txn = await LoyaltyTransaction.findOne({ where: { userId: u.id, orderId: order!.id } });
+    expect(txn).not.toBeNull();
+    expect(txn!.points).toBe(-100);
+    expect(txn!.type).toBe('redeem');
+  });
+
+  // P8e: coupon + points stacked
+  it('P8e. coupon+points stacked → total = subtotal-coupon-loyalty', async () => {
+    const u = await seedUser('user', `p8e-${Date.now()}`);
+    const tok = makeToken(u.id, 'user');
+    await LoyaltyAccount.create({ userId: u.id, balancePoints: 200 });
+    const b = await seedBook(vendorPricing.id, { price: 100000 });
+    await addBookToCart(u.id, b.id);
+    const coupon = await seedCoupon(vendorPricing.id, { type: 'fixed', value: 10000 });
+
+    const res = await request(app)
+      .post('/api/v1/orders')
+      .set('Authorization', `Bearer ${tok}`)
+      .send({ couponCode: coupon.code, pointsToUse: 100 }); // fixed 10000 + 100pts=10000
+
+    expect(res.status).toBe(201);
+    const d = res.body.data;
+    expect(d.couponDiscount).toBe(10000);
+    expect(d.loyaltyDiscount).toBe(10000);
+    expect(d.total).toBe(80000);
+  });
+
+  // P8f: pointsToUse > balance → LOYALTY_INSUFFICIENT
+  it('P8f. pointsToUse > balance → LOYALTY_INSUFFICIENT', async () => {
+    const u = await seedUser('user', `p8f-${Date.now()}`);
+    const tok = makeToken(u.id, 'user');
+    await LoyaltyAccount.create({ userId: u.id, balancePoints: 50 });
+    const b = await seedBook(vendorPricing.id, { price: 100000 });
+    await addBookToCart(u.id, b.id);
+
+    const res = await request(app)
+      .post('/api/v1/orders')
+      .set('Authorization', `Bearer ${tok}`)
+      .send({ pointsToUse: 100 });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('LOYALTY_INSUFFICIENT');
+  });
+
+  // P8g: points capped by (subtotal - coupon) → only pointsActuallyUsed deducted
+  it('P8g. points capped → only pointsActuallyUsed deducted', async () => {
+    const u = await seedUser('user', `p8g-${Date.now()}`);
+    const tok = makeToken(u.id, 'user');
+    // subtotal = 100000, coupon = 90000, remaining = 10000 → 100pts would give 10000 but loyalty capped at 10000
+    // Use 200 pts (=20000 value) but capped at 10000 → actually deducts ceil(10000/100)=100 pts
+    await LoyaltyAccount.create({ userId: u.id, balancePoints: 300 });
+    const b = await seedBook(vendorPricing.id, { price: 100000 });
+    await addBookToCart(u.id, b.id);
+    const coupon = await seedCoupon(vendorPricing.id, { type: 'fixed', value: 90000 });
+
+    const res = await request(app)
+      .post('/api/v1/orders')
+      .set('Authorization', `Bearer ${tok}`)
+      .send({ couponCode: coupon.code, pointsToUse: 200 }); // 200*100=20000, but only 10000 remaining
+
+    expect(res.status).toBe(201);
+    const d = res.body.data;
+    expect(d.loyaltyDiscount).toBe(10000); // capped at remaining
+    expect(d.total).toBe(0);
+
+    // Only 100 pts deducted (ceil(10000/100)=100), not 200
+    const acc = await LoyaltyAccount.findOne({ where: { userId: u.id } });
+    expect(Number(acc!.balancePoints)).toBe(200); // 300 - 100
+  });
+
+  // P8h: cancel refunds points + deletes CouponRedemption
+  it('P8h. cancel → refunds points + CouponRedemption deleted', async () => {
+    const u = await seedUser('user', `p8h-${Date.now()}`);
+    const tok = makeToken(u.id, 'user');
+    await LoyaltyAccount.create({ userId: u.id, balancePoints: 200 });
+    const b = await seedBook(vendorPricing.id, { price: 100000 });
+    await addBookToCart(u.id, b.id);
+    const coupon = await seedCoupon(vendorPricing.id, { type: 'fixed', value: 10000 });
+
+    const orderRes = await request(app)
+      .post('/api/v1/orders')
+      .set('Authorization', `Bearer ${tok}`)
+      .send({ couponCode: coupon.code, pointsToUse: 50 }); // 50 pts = 5000 loyalty
+    expect(orderRes.status).toBe(201);
+    const code = orderRes.body.data.code;
+
+    // Check balance after order
+    const accAfterOrder = await LoyaltyAccount.findOne({ where: { userId: u.id } });
+    expect(Number(accAfterOrder!.balancePoints)).toBe(150); // 200-50
+
+    // Cancel
+    const cancelRes = await request(app)
+      .post(`/api/v1/orders/${code}/cancel`)
+      .set('Authorization', `Bearer ${tok}`);
+    expect(cancelRes.status).toBe(200);
+
+    // Balance restored
+    const accAfterCancel = await LoyaltyAccount.findOne({ where: { userId: u.id } });
+    expect(Number(accAfterCancel!.balancePoints)).toBe(200); // back to 200
+
+    // CouponRedemption deleted
+    const order = await Order.findOne({ where: { code } });
+    const redemption = await CouponRedemption.findOne({ where: { orderId: order!.id } });
+    expect(redemption).toBeNull();
+  });
+
+  // P8i: coupon with mixed-vendor items → COUPON_INVALID
+  it('P8i. coupon with mixed-vendor items → COUPON_INVALID (via createOrder)', async () => {
+    const u = await seedUser('user', `p8i-${Date.now()}`);
+    const tok = makeToken(u.id, 'user');
+    // Add books from BOTH vendors
+    const bA = await seedBook(vendorPricing.id, { price: 50000 });
+    const bB = await seedBook(differentVendor.id, { price: 50000 });
+    await addBookToCart(u.id, bA.id);
+    await addBookToCart(u.id, bB.id);
+    // Coupon belongs to vendorPricing only
+    const coupon = await seedCoupon(vendorPricing.id, { type: 'percent', value: 10 });
+
+    const res = await request(app)
+      .post('/api/v1/orders')
+      .set('Authorization', `Bearer ${tok}`)
+      .send({ couponCode: coupon.code });
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('COUPON_INVALID');
   });
 });

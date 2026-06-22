@@ -4,7 +4,7 @@
 
 import {
   sequelize,
-  Payment, Order, OrderItem, Book, Entitlement,
+  Payment, Order, OrderItem, Book, Entitlement, Coupon,
 } from '../../db/models';
 import { AppError } from '../../shared/errors/AppError';
 import { mapOrderDetailDTO } from '../orders/orders.repository';
@@ -123,6 +123,11 @@ export async function completePayment(
     }
 
     // TODO P6: cộng ví Vendor (bảng vendor_wallets tạo ở Phase 6)
+
+    // D10: increment coupon used_count on first COMPLETED (guard is the payment.status===PAID early return above)
+    if (order.couponId) {
+      await Coupon.increment('usedCount', { by: 1, where: { id: Number(order.couponId) }, transaction: t });
+    }
 
     // 11. Load lại order đầy đủ để build DTO
     const reloaded = await reloadOrder(Number(order.id), t);

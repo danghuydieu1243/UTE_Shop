@@ -10,6 +10,7 @@ import { createApp } from '../../../app';
 import {
   User, Vendor, Book, BookFile,
   Order, OrderItem, Payment, Entitlement, Author,
+  Coupon, CouponRedemption,
 } from '../../../db/models';
 import { signAccessToken } from '../../auth/token.service';
 import { env } from '../../../config/env';
@@ -450,5 +451,64 @@ describe('GET /api/v1/download', () => {
 
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('DOWNLOAD_TOKEN_INVALID');
+  });
+});
+
+// ── Test 11/12: coupon used_count on completePayment (D10) ───────────────────
+
+describe('completePayment — coupon used_count wiring', () => {
+  it('11. completePayment with coupon → usedCount==1', async () => {
+    const user = await seedUser('user', `wc11-${Date.now()}`);
+    const token = makeToken(user.id);
+
+    const vendor = await seedUser('vendor', `wv11-${Date.now()}`);
+    const book = await seedBook(vendor.id);
+
+    const coupon = await Coupon.create({
+      vendorUserId: vendor.id,
+      code: `WTEST11-${Date.now()}`,
+      type: 'fixed',
+      value: 5000,
+      status: 'active',
+    });
+
+    const { order, payment } = await createPendingOrder(user.id, vendor.id, book.id);
+    // Set couponId on order
+    await order.update({ couponId: Number(coupon.id), couponDiscount: 5000 });
+
+    const res = await request(app)
+      .post(`/api/v1/payments/${payment.id}/simulate`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+
+    const updatedCoupon = await Coupon.findByPk(coupon.id);
+    expect(Number(updatedCoupon!.usedCount)).toBe(1);
+  });
+
+  it('12. simulate twice → usedCount stays 1 (idempotent)', async () => {
+    const user = await seedUser('user', `wc12-${Date.now()}`);
+    const token = makeToken(user.id);
+
+    const vendor = await seedUser('vendor', `wv12-${Date.now()}`);
+    const book = await seedBook(vendor.id);
+
+    const coupon = await Coupon.create({
+      vendorUserId: vendor.id,
+      code: `WTEST12-${Date.now()}`,
+      type: 'fixed',
+      value: 5000,
+      status: 'active',
+    });
+
+    const { order, payment } = await createPendingOrder(user.id, vendor.id, book.id);
+    await order.update({ couponId: Number(coupon.id), couponDiscount: 5000 });
+
+    // First simulate
+    await request(app).post(`/api/v1/payments/${payment.id}/simulate`).set('Authorization', `Bearer ${token}`);
+    // Second simulate (idempotent — payment already PAID)
+    await request(app).post(`/api/v1/payments/${payment.id}/simulate`).set('Authorization', `Bearer ${token}`);
+
+    const updatedCoupon = await Coupon.findByPk(coupon.id);
+    expect(Number(updatedCoupon!.usedCount)).toBe(1);
   });
 });

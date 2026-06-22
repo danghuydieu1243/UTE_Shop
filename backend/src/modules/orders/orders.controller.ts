@@ -1,14 +1,18 @@
 import { AppError } from '../../shared/errors/AppError';
 import { asyncHandler } from '../../shared/http/asyncHandler';
 import { ok, created } from '../../shared/http/response';
-import { listOrdersQuerySchema, orderCodeParamSchema } from './orders.schema';
+import { listOrdersQuerySchema, orderCodeParamSchema, createOrderBodySchema } from './orders.schema';
 import * as ordersService from './orders.service';
 
 // ── POST /orders — checkout ───────────────────────────────────────────────────
 
 export const createOrder = asyncHandler(async (req, res) => {
   const userId = req.user!.id;
-  const dto = await ordersService.createOrder(userId);
+  const parsed = createOrderBodySchema.safeParse(req.body);
+  if (!parsed.success) {
+    throw AppError.from('VALIDATION', 'Tham số không hợp lệ', parsed.error.issues);
+  }
+  const dto = await ordersService.createOrder(userId, parsed.data);
   created(res, dto);
 });
 
