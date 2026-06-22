@@ -16,6 +16,7 @@ import { wishlistRouter } from './modules/wishlist';
 import { meReviewsRouter, bookReviewsRouter, vendorReviewsRouter } from './modules/reviews';
 import { vendorCouponsRouter, meCouponsRouter } from './modules/coupons';
 import { loyaltyRouter } from './modules/loyalty';
+import { adminRouter } from './modules/admin';
 import { notFound } from './shared/middleware/notFound';
 import { errorHandler } from './shared/middleware/errorHandler';
 import { env } from './config/env';
@@ -52,6 +53,7 @@ export const createApp = () => {
   app.use('/api/v1/me/coupons', meCouponsRouter);
   app.use('/api/v1/download', downloadRouter);
   app.use('/api/v1/me/loyalty', loyaltyRouter);
+  app.use('/api/v1/admin', adminRouter);
 
   app.use(notFound);
   app.use(errorHandler);
