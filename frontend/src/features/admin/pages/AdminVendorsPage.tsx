@@ -270,8 +270,8 @@ export const AdminVendorsPage = () => {
             }}
           >
             {tab.label}
-            {/* Only show total count on "Tất cả" tab from meta.pagination.total */}
-            {tab.value === '' && total > 0 && (
+            {/* Only show total count on "Tất cả" tab when that tab is active */}
+            {tab.value === '' && statusTab === '' && total > 0 && (
               <span
                 style={{
                   marginLeft: '6px', fontSize: '10px', fontWeight: 500,

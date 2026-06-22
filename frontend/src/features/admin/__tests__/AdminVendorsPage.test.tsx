@@ -222,6 +222,27 @@ describe('AdminVendorsPage — status tabs', () => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 3b. "Tất cả" count badge visibility
+// ─────────────────────────────────────────────────────────────────────────────
+describe('AdminVendorsPage — "Tất cả" count badge', () => {
+  it('shows count badge on "Tất cả" tab when it is the active tab', async () => {
+    await renderPage();
+    // Default tab is "Tất cả" (statusTab = ''), total = 3
+    const tatCaBtn = screen.getByRole('button', { name: /Tất cả/i });
+    expect(tatCaBtn).toHaveTextContent('3');
+  });
+
+  it('does NOT show count badge on "Tất cả" tab when a different tab is active', async () => {
+    await renderPage();
+    // Switch to "Đang hoạt động" tab
+    fireEvent.click(screen.getByRole('button', { name: /Đang hoạt động/i }));
+    const tatCaBtn = screen.getByRole('button', { name: /Tất cả/i });
+    // Badge span (the count number) must NOT appear inside the "Tất cả" button
+    expect(tatCaBtn.querySelector('span')).toBeNull();
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 4. Search input updates query arg
 // ─────────────────────────────────────────────────────────────────────────────
 describe('AdminVendorsPage — search', () => {
