@@ -15,6 +15,8 @@ import { CatalogPage } from './features/catalog/pages/CatalogPage';
 import { BookDetailPage } from './features/catalog/pages/BookDetailPage';
 import { VendorBooksPage } from './features/vendor/pages/VendorBooksPage';
 import { VendorBookFormPage } from './features/vendor/pages/VendorBookFormPage';
+import { VendorPromotionsPage } from './features/vendor/pages/VendorPromotionsPage';
+import { VendorPromotionFormPage } from './features/vendor/pages/VendorPromotionFormPage';
 import { CartPage } from './features/cart/pages/CartPage';
 import { CheckoutPage } from './features/orders/pages/CheckoutPage';
 import { CheckoutQrPage } from './features/orders/pages/CheckoutQrPage';
@@ -65,6 +67,9 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
             <Route path="/vendor/books" element={<VendorBooksPage />} />
             <Route path="/vendor/books/new" element={<VendorBookFormPage />} />
             <Route path="/vendor/books/:id/edit" element={<VendorBookFormPage />} />
+            <Route path="/vendor/promotions" element={<VendorPromotionsPage />} />
+            <Route path="/vendor/promotions/new" element={<VendorPromotionFormPage />} />
+            <Route path="/vendor/promotions/:id/edit" element={<VendorPromotionFormPage />} />
           </Route>
 
           {/* Protected: admin/manager only */}
