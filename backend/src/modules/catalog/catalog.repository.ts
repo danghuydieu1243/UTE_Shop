@@ -10,6 +10,38 @@ const bookIncludes = [
   { model: BookImage, as: 'images', attributes: ['url', 'alt', 'sortOrder'] },
 ];
 
+/**
+ * Include fragment that enforces vendor.status = 'active'.
+ * Book → User (as 'vendor') → Vendor (as 'vendor', required, status='active').
+ * required: true on both levels so books with no matching active vendor are excluded.
+ * Safe for SQLite (tests) and MySQL (production) — no dialect-specific SQL.
+ */
+const activeVendorInclude = {
+  model: User,
+  as: 'vendor',
+  attributes: [],
+  required: true,
+  include: [
+    {
+      model: Vendor as typeof Vendor,
+      as: 'vendor',
+      attributes: [],
+      required: true,
+      where: { status: 'active' },
+    },
+  ],
+};
+
+/**
+ * Reusable WHERE fragment: vendor_user_id must be an active vendor.
+ * Uses a subquery so it works in GROUP BY queries without extra GROUP BY columns.
+ */
+const activeVendorWhere = {
+  vendorUserId: {
+    [Op.in]: literal('(SELECT user_id FROM vendors WHERE status = \'active\')'),
+  },
+};
+
 const vendorInclude = {
   model: User,
   as: 'vendor',
@@ -56,7 +88,7 @@ export function toBookCard(b: Book & Record<string, any>) {
 export async function getNewReleases(limit = 10): Promise<Book[]> {
   return Book.findAll({
     where: { status: 'published' },
-    include: bookIncludes,
+    include: [...bookIncludes, activeVendorInclude],
     order: [['published_at', 'DESC']],
     limit,
   });
@@ -65,7 +97,7 @@ export async function getNewReleases(limit = 10): Promise<Book[]> {
 export async function getBestsellers(limit = 10): Promise<Book[]> {
   return Book.findAll({
     where: { status: 'published' },
-    include: bookIncludes,
+    include: [...bookIncludes, activeVendorInclude],
     order: [['purchase_count', 'DESC'], ['published_at', 'DESC']],
     limit,
   });
@@ -74,7 +106,7 @@ export async function getBestsellers(limit = 10): Promise<Book[]> {
 export async function getFeatured(limit = 10): Promise<Book[]> {
   return Book.findAll({
     where: { status: 'published' },
-    include: bookIncludes,
+    include: [...bookIncludes, activeVendorInclude],
     order: [['rating_avg', 'DESC'], ['published_at', 'DESC']],
     limit,
   });
@@ -86,9 +118,9 @@ export async function getCategoriesWithCount(): Promise<Array<{ id: number; slug
     order: [['sort_order', 'ASC']],
   });
 
-  // Count published books per category
+  // Count published books per category (active vendors only)
   const bookCounts = await Book.findAll({
-    where: { status: 'published' },
+    where: { status: 'published', ...activeVendorWhere },
     attributes: ['categoryId', [fn('COUNT', col('id')), 'cnt']],
     group: ['category_id'],
     raw: true,
@@ -201,6 +233,7 @@ export async function listBooks(q: ListBooksQuery): Promise<{ rows: Book[]; coun
       publisherInclude,
       categoryInclude,
       { model: BookImage, as: 'images', attributes: ['url', 'alt', 'sortOrder'] },
+      activeVendorInclude,
     ],
     order,
     limit: q.limit,
@@ -222,7 +255,22 @@ export async function findBookByIdOrSlug(idOrSlug: string): Promise<Book | null>
     include: [
       ...bookIncludes,
       { model: BookFile, as: 'file', attributes: ['fileFormat', 'fileSizeBytes'] },
-      vendorInclude,
+      // Require active vendor for display AND access control
+      {
+        model: User,
+        as: 'vendor',
+        attributes: [],
+        required: true,
+        include: [
+          {
+            model: Vendor as typeof Vendor,
+            as: 'vendor',
+            attributes: ['shopName', 'shopSlug'],
+            required: true,
+            where: { status: 'active' },
+          },
+        ],
+      },
     ],
   });
 }
@@ -231,7 +279,7 @@ export async function getRelatedByAuthor(book: Book, limit = 10): Promise<Book[]
   if (!book.authorId) return [];
   return Book.findAll({
     where: { status: 'published', authorId: book.authorId, id: { [Op.ne]: book.id } },
-    include: bookIncludes,
+    include: [...bookIncludes, activeVendorInclude],
     order: [['published_at', 'DESC']],
     limit,
   });
@@ -241,7 +289,7 @@ export async function getRelatedByCategory(book: Book, limit = 10): Promise<Book
   if (!book.categoryId) return [];
   return Book.findAll({
     where: { status: 'published', categoryId: book.categoryId, id: { [Op.ne]: book.id } },
-    include: bookIncludes,
+    include: [...bookIncludes, activeVendorInclude],
     order: [['published_at', 'DESC']],
     limit,
   });
@@ -260,9 +308,9 @@ export interface FilterOptions {
 }
 
 export async function getFilterOptions(): Promise<FilterOptions> {
-  // Authors with published book counts
+  // Authors with published book counts (active vendors only)
   const authorRows = await Book.findAll({
-    where: { status: 'published', authorId: { [Op.ne]: null } },
+    where: { status: 'published', authorId: { [Op.ne]: null }, ...activeVendorWhere },
     attributes: ['authorId', [fn('COUNT', col('Book.id')), 'cnt']],
     include: [{ model: Author, as: 'author', attributes: ['name', 'slug'] }],
     group: ['author_id', 'author.id', 'author.name', 'author.slug'],
@@ -276,9 +324,9 @@ export async function getFilterOptions(): Promise<FilterOptions> {
     count: Number((r as any).getDataValue ? (r as any).getDataValue('cnt') : r.cnt),
   }));
 
-  // Publishers with published book counts
+  // Publishers with published book counts (active vendors only)
   const publisherRows = await Book.findAll({
-    where: { status: 'published', publisherId: { [Op.ne]: null } },
+    where: { status: 'published', publisherId: { [Op.ne]: null }, ...activeVendorWhere },
     attributes: ['publisherId', [fn('COUNT', col('Book.id')), 'cnt']],
     include: [{ model: Publisher, as: 'publisher', attributes: ['name', 'slug'] }],
     group: ['publisher_id', 'publisher.id', 'publisher.name', 'publisher.slug'],
@@ -292,9 +340,9 @@ export async function getFilterOptions(): Promise<FilterOptions> {
     count: Number((r as any).getDataValue ? (r as any).getDataValue('cnt') : r.cnt),
   }));
 
-  // Price range
+  // Price range (active vendors only)
   const priceRow = await Book.findOne({
-    where: { status: 'published' },
+    where: { status: 'published', ...activeVendorWhere },
     attributes: [[fn('MIN', col('price')), 'minP'], [fn('MAX', col('price')), 'maxP']],
     raw: true,
   }) as any;
@@ -303,9 +351,9 @@ export async function getFilterOptions(): Promise<FilterOptions> {
     max: Number(priceRow?.maxP ?? 0),
   };
 
-  // Formats
+  // Formats (active vendors only)
   const formatRows = await Book.findAll({
-    where: { status: 'published' },
+    where: { status: 'published', ...activeVendorWhere },
     attributes: ['fileFormat', [fn('COUNT', col('id')), 'cnt']],
     group: ['file_format'],
     raw: true,

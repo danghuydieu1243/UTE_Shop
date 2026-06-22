@@ -6,7 +6,7 @@ const app = createApp();
 
 // ── Seed helpers ─────────────────────────────────────────────────────────────
 async function seedData() {
-  // Vendor user
+  // Vendor A — active (existing vendor)
   const vendorUser = await User.create({
     email: 'vendor1@test.com',
     passwordHash: 'hash',
@@ -18,6 +18,22 @@ async function seedData() {
     userId: vendorUser.id,
     shopName: 'Test Shop',
     shopSlug: 'test-shop',
+    status: 'active',
+  });
+
+  // Vendor B — locked (new for DA3 tests)
+  const vendorBUser = await User.create({
+    email: 'vendor-locked@test.com',
+    passwordHash: 'hash',
+    role: 'vendor',
+    fullName: 'Vendor Locked',
+    status: 'active',
+  });
+  await Vendor.create({
+    userId: vendorBUser.id,
+    shopName: 'Locked Shop',
+    shopSlug: 'locked-shop',
+    status: 'locked',
   });
 
   // Author & Publisher
@@ -88,7 +104,22 @@ async function seedData() {
     status: 'draft',
   });
 
-  return { catVanHoc, catKinhTe, author1, author2 };
+  // Locked vendor's published book — should NOT appear in public catalog (DA3)
+  await Book.create({
+    vendorUserId: vendorBUser.id,
+    title: 'Sách Vendor Bị Khóa',
+    slug: 'sach-vendor-bi-khoa',
+    authorId: author1.id,
+    categoryId: catVanHoc.id,
+    price: 70000,
+    fileFormat: 'PDF',
+    status: 'published',
+    purchaseCount: 100,
+    ratingAvg: 4.0,
+    publishedAt: new Date('2024-05-01'),
+  });
+
+  return { catVanHoc, catKinhTe, author1, author2, vendorBUser };
 }
 
 // ── Test suite ───────────────────────────────────────────────────────────────
@@ -322,6 +353,63 @@ describe('Catalog API', () => {
       const res = await request(app).get('/api/v1/catalog/filters');
       const formats = res.body.data.formats.map((f: any) => f.value);
       expect(formats).toContain('PDF');
+    });
+  });
+
+  // ── DA3: locked vendor books hidden from public catalog ─────────────────────
+  describe('DA3 — locked vendor books hidden from public catalog', () => {
+    it('list does NOT include book from locked vendor', async () => {
+      const res = await request(app).get('/api/v1/catalog/books');
+      expect(res.status).toBe(200);
+      const titles = res.body.data.books.map((b: any) => b.title);
+      expect(titles).not.toContain('Sách Vendor Bị Khóa');
+    });
+
+    it('list DOES include books from active vendor (regression)', async () => {
+      const res = await request(app).get('/api/v1/catalog/books');
+      expect(res.status).toBe(200);
+      const titles = res.body.data.books.map((b: any) => b.title);
+      expect(titles).toContain('Đắc Nhân Tâm');
+    });
+
+    it('search matching locked vendor book title returns no result for it', async () => {
+      const res = await request(app).get('/api/v1/catalog/books?q=Vendor+Bị+Khóa');
+      expect(res.status).toBe(200);
+      const titles = res.body.data.books.map((b: any) => b.title);
+      expect(titles).not.toContain('Sách Vendor Bị Khóa');
+    });
+
+    it('search still returns active vendor books (regression)', async () => {
+      const res = await request(app).get('/api/v1/catalog/books?q=Đắc');
+      expect(res.status).toBe(200);
+      const titles = res.body.data.books.map((b: any) => b.title);
+      expect(titles).toContain('Đắc Nhân Tâm');
+    });
+
+    it('detail of locked vendor book slug returns 404 BOOK_NOT_FOUND', async () => {
+      const res = await request(app).get('/api/v1/catalog/books/sach-vendor-bi-khoa');
+      expect(res.status).toBe(404);
+      expect(res.body.error.code).toBe('BOOK_NOT_FOUND');
+    });
+
+    it('detail of active vendor book still works (regression)', async () => {
+      const res = await request(app).get('/api/v1/catalog/books/dac-nhan-tam');
+      expect(res.status).toBe(200);
+      expect(res.body.data.title).toBe('Đắc Nhân Tâm');
+    });
+
+    it('home newReleases does NOT include locked vendor book', async () => {
+      const res = await request(app).get('/api/v1/catalog/home');
+      expect(res.status).toBe(200);
+      const titles = res.body.data.newReleases.map((b: any) => b.title);
+      expect(titles).not.toContain('Sách Vendor Bị Khóa');
+    });
+
+    it('home bestsellers does NOT include locked vendor book', async () => {
+      const res = await request(app).get('/api/v1/catalog/home');
+      expect(res.status).toBe(200);
+      const titles = res.body.data.bestsellers.map((b: any) => b.title);
+      expect(titles).not.toContain('Sách Vendor Bị Khóa');
     });
   });
 });
