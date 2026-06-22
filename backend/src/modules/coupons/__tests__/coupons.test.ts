@@ -86,8 +86,8 @@ describe('coupons service', () => {
     expect(result.vendorUserId).toBe(vendor1.id);
   });
 
-  // ── Test 2: vendor create with duplicate code (same vendor) → 409 ──────────
-  it('2. vendor create with duplicate code (same vendor) → VALIDATION_ERROR 409', async () => {
+  // ── Test 2: vendor create with duplicate code (same vendor) → COUPON_DUPLICATE 409 ──
+  it('2. vendor create with duplicate code (same vendor) → COUPON_DUPLICATE 409', async () => {
     await service.createCoupon(vendor1.id, {
       code: 'DUPCODE',
       type: 'percent',
@@ -101,7 +101,7 @@ describe('coupons service', () => {
         value: 5,
         status: 'running',
       }),
-    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR', status: 409 });
+    ).rejects.toMatchObject({ code: 'COUPON_DUPLICATE', status: 409 });
   });
 
   // ── Test 3: percent value 101 → VALIDATION_ERROR (via Zod) ─────────────────
@@ -147,6 +147,29 @@ describe('coupons service', () => {
     await expect(service.removeCoupon(vendor2.id, c.id)).rejects.toMatchObject({
       code: 'AUTH_FORBIDDEN',
     });
+  });
+
+  // ── Test 5b: owner CAN update their own coupon (Number coercion regression) ──
+  it('5b. owner can update their own coupon — Number coercion regression', async () => {
+    const c = await service.createCoupon(vendor1.id, {
+      code: `OWN_UPD_${Date.now()}`,
+      type: 'fixed',
+      value: 5000,
+      status: 'running',
+    });
+    const updated = await service.updateCoupon(vendor1.id, c.id, { value: 9000 });
+    expect(Number(updated.value)).toBe(9000);
+  });
+
+  // ── Test 5c: owner CAN delete their own coupon (Number coercion regression) ──
+  it('5c. owner can delete their own coupon — Number coercion regression', async () => {
+    const c = await service.createCoupon(vendor1.id, {
+      code: `OWN_DEL_${Date.now()}`,
+      type: 'fixed',
+      value: 3000,
+      status: 'scheduled',
+    });
+    await expect(service.removeCoupon(vendor1.id, c.id)).resolves.toBeUndefined();
   });
 
   // ── Test 6a: validate happy path percent ────────────────────────────────────

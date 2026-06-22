@@ -24,7 +24,7 @@ export async function createCoupon(
     });
   } catch (err) {
     if (err instanceof UniqueConstraintError) {
-      throw new AppError('VALIDATION_ERROR', 409, 'Mã giảm giá đã tồn tại cho vendor này');
+      throw AppError.from('COUPON_DUPLICATE', 'Mã giảm giá đã tồn tại cho vendor này');
     }
     throw err;
   }
@@ -46,7 +46,7 @@ export async function updateCoupon(
 ): Promise<Coupon> {
   const coupon = await repo.findCouponById(id);
   if (!coupon) throw AppError.from('COUPON_NOT_FOUND', 'Không tìm thấy coupon');
-  if (coupon.vendorUserId !== vendorUserId) {
+  if (Number(coupon.vendorUserId) !== Number(vendorUserId)) {
     throw AppError.from('FORBIDDEN', 'Bạn không có quyền thực hiện hành động này');
   }
 
@@ -71,7 +71,7 @@ export async function updateCoupon(
 export async function removeCoupon(vendorUserId: number, id: number): Promise<void> {
   const coupon = await repo.findCouponById(id);
   if (!coupon) throw AppError.from('COUPON_NOT_FOUND', 'Không tìm thấy coupon');
-  if (coupon.vendorUserId !== vendorUserId) {
+  if (Number(coupon.vendorUserId) !== Number(vendorUserId)) {
     throw AppError.from('FORBIDDEN', 'Bạn không có quyền thực hiện hành động này');
   }
   await repo.deleteCoupon(id);

@@ -14,4 +14,4 @@ vendorCouponsRouter.delete('/:id', auth, requireRole('vendor'), c.deleteCoupon);
 // ── Me routes ─────────────────────────────────────────────────────────────────
 export const meCouponsRouter = Router();
 
-meCouponsRouter.post('/validate', auth, c.validateCoupon);
+meCouponsRouter.post('/validate', auth, requireRole('user'), c.validateCoupon);
