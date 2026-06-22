@@ -18,11 +18,13 @@ export interface AdminUserRow {
 }
 
 export interface AdminVendorRow {
-  id: number;
-  email: string;
-  fullName: string;
-  status: AdminVendorStatus;
+  userId: number;
   shopName: string;
+  shopSlug: string;
+  ownerName: string;
+  ownerEmail: string;
+  status: AdminVendorStatus;
+  bookCount: number;
   createdAt: string;
 }
 

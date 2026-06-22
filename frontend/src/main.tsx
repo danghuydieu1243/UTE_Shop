@@ -30,6 +30,7 @@ import { AdminShell } from './features/admin/components/AdminShell';
 import { AdminDashboardPage } from './features/admin/pages/AdminDashboardPage';
 import { AdminPermissionsPage } from './features/admin/pages/AdminPermissionsPage';
 import { AdminUsersPage } from './features/admin/pages/AdminUsersPage';
+import { AdminVendorsPage } from './features/admin/pages/AdminVendorsPage';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
@@ -83,7 +84,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
             <Route element={<AdminShell />}>
               {/* Shared: admin + manager */}
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-              <Route path="/admin/vendors" element={<div className="p-10 text-ink">Admin Vendors — Phase 4b Task 6</div>} />
+              <Route path="/admin/vendors" element={<AdminVendorsPage />} />
               <Route path="/admin/products" element={<div className="p-10 text-ink">Admin Products — Phase 4b Task 7</div>} />
               <Route path="/admin/orders" element={<div className="p-10 text-ink">Admin Orders — Phase 4b Task 8</div>} />
               {/* Admin-only (nested RequireRole) */}

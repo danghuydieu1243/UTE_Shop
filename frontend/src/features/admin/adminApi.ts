@@ -3,7 +3,7 @@
  */
 import { baseApi } from '../../shared/api/baseApi';
 import type { EnvelopeMeta } from '../../shared/api/baseApi';
-import type { AdminUserRow } from './types';
+import type { AdminUserRow, AdminVendorRow } from './types';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -71,6 +71,42 @@ export const transformAdminUsersResponse = (
     : DEFAULT_STATS,
 });
 
+// ── Vendor types ──────────────────────────────────────────────────────────────
+
+export interface AdminVendorsParams {
+  search?: string;
+  status?: 'active' | 'locked' | '';
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface AdminVendorsResult {
+  vendors: AdminVendorRow[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+// ── transformResponse (exported for contract testing) ─────────────────────────
+
+/**
+ * Transforms the raw baseApi response (envelope already unwrapped) into AdminVendorsResult.
+ * baseApi passes: data = res.data.data (the array), meta = res.data.meta ({ pagination }).
+ * Exported so tests can directly verify the array + meta reading logic.
+ */
+export const transformAdminVendorsResponse = (
+  resp: AdminVendorRow[],
+  meta: EnvelopeMeta | undefined,
+): AdminVendorsResult => ({
+  vendors: Array.isArray(resp) ? resp : [],
+  pagination: meta?.pagination ?? { page: 1, limit: 20, total: 0, totalPages: 0 },
+});
+
 // ── API ───────────────────────────────────────────────────────────────────────
 
 export const adminApi = baseApi.injectEndpoints({
@@ -106,6 +142,38 @@ export const adminApi = baseApi.injectEndpoints({
         { type: 'AdminUser', id: 'LIST' },
       ],
     }),
+
+    /**
+     * GET /api/v1/admin/vendors — paginated vendor list (admin + manager).
+     * baseApi unwraps envelope: data = array of vendors, meta = { pagination }.
+     */
+    getAdminVendors: build.query<AdminVendorsResult, AdminVendorsParams>({
+      query: (params) => ({ url: '/admin/vendors', method: 'GET', params }),
+      transformResponse: transformAdminVendorsResponse,
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.vendors.map(({ userId }) => ({ type: 'AdminVendor' as const, id: userId })),
+              { type: 'AdminVendor', id: 'LIST' },
+            ]
+          : [{ type: 'AdminVendor', id: 'LIST' }],
+    }),
+
+    /**
+     * PATCH /api/v1/admin/vendors/:id/status — lock or unlock a vendor.
+     * :id is the vendor's userId. Sets both vendor + owner user status (transaction).
+     */
+    updateVendorStatus: build.mutation<AdminVendorRow, { id: number; status: 'active' | 'locked' }>({
+      query: ({ id, status }) => ({
+        url: `/admin/vendors/${id}/status`,
+        method: 'PATCH',
+        data: { status },
+      }),
+      invalidatesTags: (_result, _err, { id }) => [
+        { type: 'AdminVendor', id },
+        { type: 'AdminVendor', id: 'LIST' },
+      ],
+    }),
   }),
   overrideExisting: false,
 });
@@ -113,4 +181,6 @@ export const adminApi = baseApi.injectEndpoints({
 export const {
   useGetAdminUsersQuery,
   useUpdateUserStatusMutation,
+  useGetAdminVendorsQuery,
+  useUpdateVendorStatusMutation,
 } = adminApi;
