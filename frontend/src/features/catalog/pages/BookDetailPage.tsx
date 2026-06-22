@@ -4,6 +4,7 @@ import { SiteHeader, SiteFooter, BookCard, COVER_PLACEHOLDER } from '../../../sh
 import { useGetBookDetailQuery } from '../catalogApi';
 import { useAddToCartMutation } from '../../cart/cartApi';
 import { useAddToWishlistMutation, useRemoveFromWishlistMutation, useGetWishlistQuery } from '../../wishlist/wishlistApi';
+import { ReviewSection } from '../../reviews/components/ReviewSection';
 import type { BookCard as BookCardDTO } from '../types';
 import { formatVND, formatFileSize, formatCount } from '../../../shared/format';
 import { useAppSelector } from '../../../app/hooks';
@@ -665,65 +666,17 @@ export const BookDetailPage = () => {
             )}
           </div>
 
-          {/* Panel: Đánh giá (Phase 4 — show summary only, no reviews list) */}
+          {/* Panel: Đánh giá (Phase 4) */}
           <div className={`max-w-[820px] ${activeTab !== 2 ? 'hidden' : ''}`}>
             <div className="mb-5 text-[11px] font-semibold uppercase tracking-[2px] text-ink-3">
               Đánh giá ({formatCount(book.ratingCount)})
             </div>
-
-            {book.ratingCount > 0 ? (
-              <div
-                className="mb-7 grid items-center gap-12 border-b border-line pb-8"
-                style={{ gridTemplateColumns: '200px 1fr' }}
-              >
-                <div>
-                  <div className="text-[56px] font-semibold leading-none tracking-[-2px] text-ink">
-                    {book.ratingAvg.toFixed(1)}
-                  </div>
-                  <div className="my-[10px]">{renderStars(book.ratingAvg, 'lg')}</div>
-                  <div className="text-[12px] text-ink-3">
-                    Dựa trên {formatCount(book.ratingCount)} đánh giá
-                  </div>
-                </div>
-                {/* placeholder bars — no breakdown data from API */}
-                <div className="flex flex-col gap-2">
-                  {[5, 4, 3, 2, 1].map((s) => (
-                    <div key={s} className="flex items-center gap-3 text-[12px] text-ink-2">
-                      <span className="w-7 tabular-nums text-ink-3">{s}★</span>
-                      <span className="flex-1 h-[6px] rounded-[2px] bg-line overflow-hidden">
-                        <span
-                          className="block h-full bg-ink"
-                          style={{ width: s === Math.round(book.ratingAvg) ? '80%' : `${Math.max(0, 40 - (Math.abs(s - book.ratingAvg) * 15))}%` }}
-                        />
-                      </span>
-                      <span className="w-9 text-right tabular-nums text-ink-3">—</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {/* Empty state — reviews are Phase 4 */}
-            <div className="flex flex-col items-center py-10 text-center">
-              <svg
-                className="mb-4 text-ink-3"
-                width="40"
-                height="40"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden="true"
-              >
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </svg>
-              <p className="text-[14px] font-medium text-ink">Chưa có đánh giá</p>
-              <p className="mt-1 text-[13px] text-ink-2">
-                Tính năng đánh giá sẽ có ở bước sau.
-              </p>
-            </div>
+            <ReviewSection
+              bookId={book.id}
+              bookSlug={book.slug}
+              ratingAvg={book.ratingAvg}
+              ratingCount={book.ratingCount}
+            />
           </div>
         </div>
       </section>

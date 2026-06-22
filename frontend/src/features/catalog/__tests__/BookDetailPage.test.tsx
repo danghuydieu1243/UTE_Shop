@@ -15,6 +15,22 @@ vi.mock('../catalogApi', () => ({
 import { useGetBookDetailQuery } from '../catalogApi';
 const mockUseGetBookDetailQuery = useGetBookDetailQuery as ReturnType<typeof vi.fn>;
 
+/* ── Mock reviewsApi (ReviewSection dependency) ── */
+vi.mock('../../reviews/reviewsApi', () => ({
+  useGetBookReviewsQuery: vi.fn(),
+  useCreateReviewMutation: vi.fn(),
+}));
+import { useGetBookReviewsQuery, useCreateReviewMutation } from '../../reviews/reviewsApi';
+const mockUseGetBookReviewsQuery = useGetBookReviewsQuery as ReturnType<typeof vi.fn>;
+const mockUseCreateReviewMutation = useCreateReviewMutation as ReturnType<typeof vi.fn>;
+
+/* ── Mock libraryApi (ReviewSection ownership gate) ── */
+vi.mock('../../library/libraryApi', () => ({
+  useGetMyEbooksQuery: vi.fn(),
+  useGetWishlistQuery: vi.fn(),
+}));
+import { useGetMyEbooksQuery } from '../../library/libraryApi';
+
 /* ── Mock useNavigate ── */
 const mockNavigate = vi.fn();
 vi.mock('react-router-dom', async (importOriginal) => {
@@ -99,9 +115,24 @@ const renderPage = (storeOverride?: ReturnType<typeof makeStore>) =>
     </Provider>,
   );
 
+/* ── Default ReviewSection mock setup ── */
+const setupReviewMocks = () => {
+  mockUseGetBookReviewsQuery.mockReturnValue({
+    data: { reviews: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 1 } },
+    isLoading: false,
+    isError: false,
+  });
+  mockUseCreateReviewMutation.mockReturnValue([vi.fn(), { isLoading: false }]);
+  (useGetMyEbooksQuery as ReturnType<typeof vi.fn>).mockReturnValue({
+    data: { ebooks: [], pagination: { page: 1, limit: 200, total: 0, totalPages: 0 } },
+    isLoading: false,
+  });
+};
+
 describe('BookDetailPage', () => {
   beforeEach(() => {
     mockNavigate.mockClear();
+    setupReviewMocks();
   });
 
   describe('Loading state', () => {
@@ -251,10 +282,11 @@ describe('BookDetailPage', () => {
       expect(screen.getByText('Phần I: Học')).toBeInTheDocument();
     });
 
-    it('switches to Đánh giá tab and shows empty review state', () => {
+    it('switches to Đánh giá tab and shows review section', () => {
       renderPage();
       const reviewTab = screen.getByRole('button', { name: /đánh giá/i });
       fireEvent.click(reviewTab);
+      // ReviewSection renders empty state when no reviews
       expect(screen.getByText(/chưa có đánh giá/i)).toBeInTheDocument();
     });
 
