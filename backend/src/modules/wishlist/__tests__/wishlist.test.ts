@@ -65,7 +65,7 @@ describe('Wishlist API', () => {
   // ── 1. POST /me/wishlist — thêm sách OK ──────────────────────────────────
 
   describe('POST /api/v1/me/wishlist', () => {
-    it('1. thêm sách published vào wishlist → 201 + item trả về', async () => {
+    it('1. thêm sách published vào wishlist → 201 + item trả về (cùng shape với list item)', async () => {
       const res = await request(app)
         .post('/api/v1/me/wishlist')
         .set('Authorization', `Bearer ${tokenA}`)
@@ -74,6 +74,11 @@ describe('Wishlist API', () => {
       expect(res.body.success).toBe(true);
       const d = res.body.data;
       expect(d.bookId).toBe(publishedBook.id);
+      // add response phải trả cùng shape với list item (bao gồm wishlistId)
+      expect(typeof d.wishlistId).toBe('number');
+      expect(d).toHaveProperty('addedAt');
+      expect(d).toHaveProperty('book');
+      expect(d.book).toHaveProperty('id');
 
       // Kiểm tra DB thực sự có 1 row
       const rows = await Wishlist.count({ where: { userId: userA.id, bookId: publishedBook.id } });

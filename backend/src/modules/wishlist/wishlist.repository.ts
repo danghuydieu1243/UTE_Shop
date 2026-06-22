@@ -36,23 +36,25 @@ function mapItemDTO(row: Wishlist): WishlistItemDTO {
   };
 }
 
-// ── findItem ─────────────────────────────────────────────────────────────────
-
-export async function findItem(userId: number, bookId: number): Promise<Wishlist | null> {
-  return Wishlist.findOne({ where: { userId, bookId } });
-}
-
 // ── addItem (findOrCreate) ────────────────────────────────────────────────────
 
 export async function findOrCreateItem(
   userId: number,
   bookId: number,
-): Promise<{ item: Wishlist; created: boolean }> {
-  const [item, created] = await Wishlist.findOrCreate({
+): Promise<{ item: WishlistItemDTO; created: boolean }> {
+  const [row, created] = await Wishlist.findOrCreate({
     where: { userId, bookId },
     defaults: { userId, bookId },
+    include: wishlistBookInclude,
   });
-  return { item, created };
+
+  // Reload with book if findOrCreate returned existing row without eager load
+  const loaded =
+    (row as any).book != null
+      ? row
+      : await Wishlist.findOne({ where: { userId, bookId }, include: wishlistBookInclude });
+
+  return { item: mapItemDTO(loaded!), created };
 }
 
 // ── removeItem (idempotent) ───────────────────────────────────────────────────
