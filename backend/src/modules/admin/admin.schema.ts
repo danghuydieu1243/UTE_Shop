@@ -87,3 +87,99 @@ export interface PaginationMeta {
   total: number;
   totalPages: number;
 }
+
+// ─── List Admin Orders ──────────────────────────────────────────────────────
+
+export const listAdminOrdersQuerySchema = z.object({
+  search: z.string().optional(),
+  vendorUserId: z
+    .string()
+    .optional()
+    .transform((v) => (v ? parseInt(v, 10) : undefined))
+    .pipe(z.number().int().positive().optional()),
+  status: z.enum(['NEW', 'COMPLETED', 'CANCELLED']).optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  page: pageSchema,
+  limit: limitSchema,
+});
+
+export type ListAdminOrdersQuery = z.infer<typeof listAdminOrdersQuerySchema>;
+
+// ─── List Admin Products ────────────────────────────────────────────────────
+
+export const listAdminProductsQuerySchema = z.object({
+  search: z.string().optional(),
+  vendorUserId: z
+    .string()
+    .optional()
+    .transform((v) => (v ? parseInt(v, 10) : undefined))
+    .pipe(z.number().int().positive().optional()),
+  status: z.enum(['draft', 'published', 'hidden']).optional(),
+  page: pageSchema,
+  limit: limitSchema,
+});
+
+export type ListAdminProductsQuery = z.infer<typeof listAdminProductsQuerySchema>;
+
+// ─── Patch Product Status ───────────────────────────────────────────────────
+
+export const patchProductStatusBodySchema = z.object({
+  status: z.enum(['published', 'hidden']),
+});
+
+export type PatchProductStatusBody = z.infer<typeof patchProductStatusBodySchema>;
+
+// ─── Admin Order DTOs ───────────────────────────────────────────────────────
+
+export interface AdminOrderItemDTO {
+  bookId: number;
+  titleSnapshot: string;
+  unitPrice: number;
+}
+
+export interface AdminPaymentSummaryDTO {
+  status: string;
+  amount: number;
+  expiresAt: Date | null;
+}
+
+export interface AdminOrderSummaryDTO {
+  code: string;
+  status: string;
+  buyerName: string;
+  buyerEmail: string;
+  vendorShops: string[];
+  itemsBrief: string;
+  total: number;
+  currency: string;
+  paymentStatus: string | null;
+  createdAt: Date;
+}
+
+export interface AdminOrderDetailDTO {
+  code: string;
+  status: string;
+  subtotal: number;
+  total: number;
+  currency: string;
+  items: AdminOrderItemDTO[];
+  payment: AdminPaymentSummaryDTO | null;
+  createdAt: Date;
+  completedAt: Date | null;
+  cancelledAt: Date | null;
+}
+
+// ─── Admin Product DTO ──────────────────────────────────────────────────────
+
+export interface AdminProductDTO {
+  id: number;
+  title: string;
+  slug: string | null;
+  vendorShop: string;
+  authorName: string | null;
+  price: number;
+  status: string;
+  fileFormat: string;
+  createdAt: Date;
+}
