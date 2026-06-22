@@ -63,6 +63,12 @@ export async function removeItem(userId: number, bookId: number): Promise<void> 
   await Wishlist.destroy({ where: { userId, bookId } });
 }
 
+// ── clearAll (idempotent) ─────────────────────────────────────────────────────
+
+export async function clearAll(userId: number): Promise<void> {
+  await Wishlist.destroy({ where: { userId } });
+}
+
 // ── list with pagination ─────────────────────────────────────────────────────
 
 export interface WishlistPage {

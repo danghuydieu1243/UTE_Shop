@@ -100,26 +100,17 @@ describe('Heart toggle on BookCard', () => {
   it('guest click heart → navigate đến /login', () => {
     mockUser = null; // guest
     renderCard();
-    const heartBtn = screen.queryByRole('button', { name: /yêu thích|wishlist/i });
-    if (heartBtn) {
-      fireEvent.click(heartBtn);
-      expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining('/login'));
-    } else {
-      // Nếu button ẩn hoàn toàn với guest, test pass (ẩn là valid)
-      expect(mockNavigate).not.toHaveBeenCalled();
-    }
+    // Heart hiển thị cho guest (→ redirect /login khi click)
+    const heartBtn = screen.getByRole('button', { name: /yêu thích|wishlist/i });
+    expect(heartBtn).toBeInTheDocument();
+    fireEvent.click(heartBtn);
+    expect(mockNavigate).toHaveBeenCalledWith(expect.stringContaining('/login'));
   });
 
-  it('vendor/admin không thấy hoặc click heart không gọi addToWishlist', () => {
+  it('vendor/admin không thấy heart button', () => {
     mockUser = makeUser('vendor');
     renderCard();
-    const heartBtn = screen.queryByRole('button', { name: /yêu thích|wishlist/i });
-    if (heartBtn) {
-      fireEvent.click(heartBtn);
-      expect(triggerAdd).not.toHaveBeenCalled();
-    } else {
-      // Heart ẩn hoàn toàn cho vendor — pass
-      expect(heartBtn).toBeNull();
-    }
+    // Heart ẩn hoàn toàn cho vendor/admin
+    expect(screen.queryByRole('button', { name: /yêu thích|wishlist/i })).not.toBeInTheDocument();
   });
 });

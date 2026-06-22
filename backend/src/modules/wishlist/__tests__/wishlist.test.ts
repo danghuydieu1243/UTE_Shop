@@ -182,6 +182,74 @@ describe('Wishlist API', () => {
     });
   });
 
+  // ── 8. DELETE /me/wishlist — clear all ───────────────────────────────────
+
+  describe('DELETE /api/v1/me/wishlist (clear all)', () => {
+    it('8. seed 2 items, clear-all → 200 + 0 rows trong DB', async () => {
+      const userC = await seedUser('user', 'wlc');
+      const tokenC = makeToken(userC.id, 'user');
+      const book1 = await seedBook(vendorUser.id);
+      const book2 = await seedBook(vendorUser.id);
+
+      // Seed 2 items
+      await request(app)
+        .post('/api/v1/me/wishlist')
+        .set('Authorization', `Bearer ${tokenC}`)
+        .send({ bookId: book1.id });
+      await request(app)
+        .post('/api/v1/me/wishlist')
+        .set('Authorization', `Bearer ${tokenC}`)
+        .send({ bookId: book2.id });
+
+      // Kiểm tra có 2 row trước khi clear
+      const beforeCount = await Wishlist.count({ where: { userId: userC.id } });
+      expect(beforeCount).toBe(2);
+
+      // Clear all
+      const res = await request(app)
+        .delete('/api/v1/me/wishlist')
+        .set('Authorization', `Bearer ${tokenC}`);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data.cleared).toBe(true);
+
+      // DB phải có 0 row
+      const afterCount = await Wishlist.count({ where: { userId: userC.id } });
+      expect(afterCount).toBe(0);
+    });
+
+    it('8b. clear-all trên wishlist rỗng → idempotent 200', async () => {
+      const userD = await seedUser('user', 'wld');
+      const tokenD = makeToken(userD.id, 'user');
+
+      const res = await request(app)
+        .delete('/api/v1/me/wishlist')
+        .set('Authorization', `Bearer ${tokenD}`);
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+    });
+
+    it('8c. DELETE /:bookId vẫn còn hoạt động sau khi thêm route clear-all', async () => {
+      const userE = await seedUser('user', 'wle');
+      const tokenE = makeToken(userE.id, 'user');
+      const book = await seedBook(vendorUser.id);
+
+      await request(app)
+        .post('/api/v1/me/wishlist')
+        .set('Authorization', `Bearer ${tokenE}`)
+        .send({ bookId: book.id });
+
+      const res = await request(app)
+        .delete(`/api/v1/me/wishlist/${book.id}`)
+        .set('Authorization', `Bearer ${tokenE}`);
+      expect(res.status).toBe(200);
+      expect(res.body.data.removed).toBe(true);
+
+      const count = await Wishlist.count({ where: { userId: userE.id, bookId: book.id } });
+      expect(count).toBe(0);
+    });
+  });
+
   // ── 7. RBAC: vendor bị 403 ───────────────────────────────────────────────
 
   describe('RBAC', () => {

@@ -26,6 +26,12 @@ export async function removeItem(userId: number, bookId: number): Promise<void> 
   await repo.removeItem(userId, bookId);
 }
 
+// ── clearAll (idempotent) ─────────────────────────────────────────────────────
+
+export async function clearAll(userId: number): Promise<void> {
+  await repo.clearAll(userId);
+}
+
 // ── list ──────────────────────────────────────────────────────────────────────
 
 export interface WishlistListResult {

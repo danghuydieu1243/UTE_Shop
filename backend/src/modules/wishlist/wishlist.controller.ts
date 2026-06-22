@@ -30,6 +30,14 @@ export const addItem = asyncHandler(async (req, res) => {
   created(res, result);
 });
 
+// ── DELETE /me/wishlist — clear all (idempotent) ─────────────────────────────
+
+export const clearAll = asyncHandler(async (req, res) => {
+  const userId = req.user!.id;
+  await wishlistService.clearAll(userId);
+  ok(res, { cleared: true });
+});
+
 // ── DELETE /me/wishlist/:bookId — remove ──────────────────────────────────────
 
 export const removeItem = asyncHandler(async (req, res) => {

@@ -3,6 +3,7 @@ import type { BookCard as BookCardDTO } from '../../features/catalog/types';
 import { formatVND, formatFileSize, formatCount } from '../format';
 import { useAppSelector } from '../../app/hooks';
 import { useAddToWishlistMutation, useRemoveFromWishlistMutation } from '../../features/wishlist/wishlistApi';
+import { useToast } from '../hooks/useToast';
 
 /** Ảnh bìa dùng chung (data giả): lưu ở frontend/public, phục vụ tại /book-cover-placeholder.svg */
 export const COVER_PLACEHOLDER = '/book-cover-placeholder.svg';
@@ -62,6 +63,7 @@ export const BookCard = ({ book, className = '', rank, onAddToCart, highlightQue
   const user = useAppSelector((s) => s.auth.user);
   const [addToWishlist] = useAddToWishlistMutation();
   const [removeFromWishlist] = useRemoveFromWishlistMutation();
+  const { show, ToastLayer } = useToast();
 
   const {
     slug,
@@ -104,9 +106,13 @@ export const BookCard = ({ book, className = '', rank, onAddToCart, highlightQue
     }
     if (user.role !== 'user') return;
     if (isWishlisted) {
-      removeFromWishlist(book.id);
+      removeFromWishlist(book.id)
+        .unwrap()
+        .catch(() => show('Không thể bỏ yêu thích. Vui lòng thử lại.'));
     } else {
-      addToWishlist({ bookId: book.id });
+      addToWishlist({ bookId: book.id })
+        .unwrap()
+        .catch(() => show('Không thể thêm vào Wishlist. Vui lòng thử lại.'));
     }
   };
 
@@ -123,6 +129,7 @@ export const BookCard = ({ book, className = '', rank, onAddToCart, highlightQue
       aria-label={title}
       className={`group flex flex-col cursor-pointer ${className}`}
     >
+      <ToastLayer />
       {/* Cover image */}
       <div className="relative mb-3.5 flex aspect-[2/3] flex-col items-center justify-center overflow-hidden border border-line bg-cover-bg p-[26px_22px] transition-colors duration-200 group-hover:bg-[#EFEDE6]">
         {/* Tag badge — top-left */}

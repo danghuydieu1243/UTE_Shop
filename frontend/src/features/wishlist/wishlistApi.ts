@@ -50,6 +50,15 @@ const wishlistApi = baseApi.injectEndpoints({
         { type: 'Wishlist' as const, id: 'LIST' },
       ],
     }),
+
+    // DELETE /me/wishlist — xóa toàn bộ wishlist (idempotent)
+    clearWishlist: build.mutation<void, void>({
+      query: () => ({
+        url: '/me/wishlist',
+        method: 'DELETE',
+      }),
+      invalidatesTags: [{ type: 'Wishlist' as const, id: 'LIST' }],
+    }),
   }),
 });
 
@@ -57,4 +66,5 @@ export const {
   useGetWishlistQuery,
   useAddToWishlistMutation,
   useRemoveFromWishlistMutation,
+  useClearWishlistMutation,
 } = wishlistApi;

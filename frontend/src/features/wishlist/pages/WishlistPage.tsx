@@ -1,9 +1,14 @@
 // Màn Danh sách yêu thích — Screen 16, route /user/wishlist
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AccountShell } from '../../profile/components/AccountShell';
 import { useGetMeQuery } from '../../auth/authApi';
-import { useGetWishlistQuery, useRemoveFromWishlistMutation } from '../wishlistApi';
+import {
+  useGetWishlistQuery,
+  useRemoveFromWishlistMutation,
+  useClearWishlistMutation,
+} from '../wishlistApi';
+import { useAddToCartMutation } from '../../cart/cartApi';
 import { useToast } from '../../../shared/hooks/useToast';
 import { formatVND } from '../../../shared/format';
 import type { WishlistItem } from '../types';
@@ -42,13 +47,19 @@ const WishlistCard = ({
   item,
   onRemove,
   isRemoving,
+  isHidden,
+  onAddToCart,
 }: {
   item: WishlistItem;
   onRemove: (bookId: number) => void;
   isRemoving: boolean;
+  isHidden: boolean;
+  onAddToCart: (bookId: number, title: string) => void;
 }) => {
   const navigate = useNavigate();
   const { book } = item;
+
+  if (isHidden) return null;
 
   // Render sao đánh giá
   const fullStars = Math.round(book.ratingAvg);
@@ -137,7 +148,7 @@ const WishlistCard = ({
         className="mt-auto w-full border border-ink py-2 text-[11px] font-semibold uppercase tracking-[1px] text-ink transition-colors duration-150 hover:bg-ink hover:text-paper"
         onClick={(e) => {
           e.stopPropagation();
-          // TODO Phase 4: wiring cart từ wishlist
+          onAddToCart(book.id, book.title);
         }}
       >
         Thêm vào giỏ
@@ -160,22 +171,103 @@ export default function WishlistPage() {
 
   const { data, isLoading } = useGetWishlistQuery({ page, limit: LIMIT });
   const [removeFromWishlist] = useRemoveFromWishlistMutation();
+  const [clearWishlist] = useClearWishlistMutation();
+  const [addToCart] = useAddToCartMutation();
 
-  // Theo dõi bookId đang bị xóa
+  // Theo dõi bookId đang bị xóa (pending commit)
   const [removingIds, setRemovingIds] = useState<Set<number>>(new Set());
+
+  // Undo pattern: track which bookIds are optimistically hidden (pending DELETE)
+  const [hiddenIds, setHiddenIds] = useState<Set<number>>(new Set());
+  // Map bookId → setTimeout handle (for cancellation on undo)
+  const undoTimers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
   const items = data?.items ?? [];
   const pagination = data?.pagination ?? { page: 1, limit: LIMIT, total: 0, totalPages: 0 };
 
-  const handleRemove = async (bookId: number) => {
-    setRemovingIds((prev) => new Set(prev).add(bookId));
+  // Số item đang hiển thị (tổng - ẩn optimistic)
+  const visibleCount = pagination.total - hiddenIds.size;
+
+  // I3 — Undo toast: optimistically hide card, show toast with Hoàn tác; commit DELETE after 3s
+  const handleRemove = (bookId: number) => {
     const item = items.find((it) => it.book.id === bookId);
     const title = item?.book.title ?? 'Sách';
+
+    // Optimistically hide the card
+    setHiddenIds((prev) => new Set(prev).add(bookId));
+
+    // Cancel existing timer if double-clicked
+    const existing = undoTimers.current.get(bookId);
+    if (existing) clearTimeout(existing);
+
+    // Undo: cancel the pending DELETE and restore the card
+    const undo = () => {
+      const timer = undoTimers.current.get(bookId);
+      if (timer) {
+        clearTimeout(timer);
+        undoTimers.current.delete(bookId);
+      }
+      setHiddenIds((prev) => {
+        const next = new Set(prev);
+        next.delete(bookId);
+        return next;
+      });
+    };
+
+    // Show undo toast with clickable Hoàn tác button
+    show(`Đã xóa "${title}" khỏi Wishlist`, {
+      action: { label: 'Hoàn tác', onClick: undo },
+    });
+
+    // Schedule actual DELETE after 3s
+    const timer = setTimeout(async () => {
+      undoTimers.current.delete(bookId);
+      try {
+        await removeFromWishlist(bookId).unwrap();
+      } catch {
+        // Restore card if commit fails
+        setHiddenIds((prev) => {
+          const next = new Set(prev);
+          next.delete(bookId);
+          return next;
+        });
+        show('Không thể xóa. Vui lòng thử lại.');
+      }
+    }, 3000);
+
+    undoTimers.current.set(bookId, timer);
+  };
+
+  // I2 — Xóa tất cả
+  const handleClearAll = async () => {
+    if (!window.confirm('Bạn có chắc muốn xóa toàn bộ Wishlist?')) return;
+    // Cancel any pending undo timers
+    undoTimers.current.forEach((timer) => clearTimeout(timer));
+    undoTimers.current.clear();
+    setHiddenIds(new Set());
+    setRemovingIds(new Set());
     try {
-      await removeFromWishlist(bookId).unwrap();
-      show(`Đã xóa "${title}" khỏi Wishlist`);
+      await clearWishlist().unwrap();
+      show('Đã xóa toàn bộ Wishlist');
     } catch {
-      show('Không thể xóa. Vui lòng thử lại.');
+      show('Không thể xóa toàn bộ. Vui lòng thử lại.');
+    }
+  };
+
+  // M5 — Thêm vào giỏ từ WishlistCard
+  const handleAddToCart = async (bookId: number, title: string) => {
+    setRemovingIds((prev) => new Set(prev).add(bookId));
+    try {
+      await addToCart({ bookId }).unwrap();
+      show(`Đã thêm "${title}" vào giỏ hàng`);
+    } catch (err: unknown) {
+      const e = err as { data?: { message?: string } };
+      const msg = e?.data?.message ?? '';
+      if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('đã có') || msg.toLowerCase().includes('already_owned')) {
+        show('Sách đã có trong giỏ hoặc bạn đã sở hữu');
+      } else {
+        show('Không thể thêm vào giỏ hàng');
+      }
     } finally {
       setRemovingIds((prev) => {
         const next = new Set(prev);
@@ -202,10 +294,20 @@ export default function WishlistPage() {
             Danh sách yêu thích{' '}
             {!isLoading && (
               <span className="text-ink-3 font-normal text-[15px]">
-                ({pagination.total} cuốn)
+                ({visibleCount} cuốn)
               </span>
             )}
           </h1>
+          {/* I2 — Nút "Xóa tất cả": chỉ hiện khi có item và không loading */}
+          {!isLoading && visibleCount > 0 && (
+            <button
+              type="button"
+              onClick={handleClearAll}
+              className="text-[12px] font-medium text-ink-2 underline-offset-2 hover:underline hover:text-ink transition-colors duration-150"
+            >
+              Xóa tất cả
+            </button>
+          )}
         </div>
       </div>
 
@@ -218,7 +320,7 @@ export default function WishlistPage() {
               <WishlistSkeleton key={i} />
             ))}
           </div>
-        ) : items.length === 0 ? (
+        ) : items.length === 0 && hiddenIds.size === 0 ? (
           // Empty state
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <EmptyHeartIcon />
@@ -245,6 +347,8 @@ export default function WishlistPage() {
                   item={item}
                   onRemove={handleRemove}
                   isRemoving={removingIds.has(item.book.id)}
+                  isHidden={hiddenIds.has(item.book.id)}
+                  onAddToCart={handleAddToCart}
                 />
               ))}
             </div>
@@ -276,6 +380,7 @@ export default function WishlistPage() {
           </>
         )}
       </div>
+
     </AccountShell>
   );
 }
