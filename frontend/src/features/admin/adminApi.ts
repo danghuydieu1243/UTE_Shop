@@ -17,6 +17,13 @@ export interface AdminUsersParams {
   limit?: number;
 }
 
+export interface AdminUsersStats {
+  total: number;
+  active: number;
+  locked: number;
+  pending: number;
+}
+
 export interface AdminUsersResult {
   users: AdminUserRow[];
   pagination: {
@@ -25,6 +32,7 @@ export interface AdminUsersResult {
     total: number;
     totalPages: number;
   };
+  stats: AdminUsersStats;
 }
 
 export interface AdminUserDTO {
@@ -45,12 +53,22 @@ export interface AdminUserDTO {
  * baseApi passes: data = res.data.data (the array), meta = res.data.meta ({ pagination }).
  * Exported so tests can directly verify the array + meta reading logic.
  */
+const DEFAULT_STATS: AdminUsersStats = { total: 0, active: 0, locked: 0, pending: 0 };
+
 export const transformAdminUsersResponse = (
   resp: AdminUserDTO[],
   meta: EnvelopeMeta | undefined,
 ): AdminUsersResult => ({
   users: Array.isArray(resp) ? resp : [],
   pagination: meta?.pagination ?? { page: 1, limit: 20, total: 0, totalPages: 0 },
+  stats: meta?.stats
+    ? {
+        total:   Number(meta.stats['total']   ?? 0),
+        active:  Number(meta.stats['active']  ?? 0),
+        locked:  Number(meta.stats['locked']  ?? 0),
+        pending: Number(meta.stats['pending'] ?? 0),
+      }
+    : DEFAULT_STATS,
 });
 
 // ── API ───────────────────────────────────────────────────────────────────────

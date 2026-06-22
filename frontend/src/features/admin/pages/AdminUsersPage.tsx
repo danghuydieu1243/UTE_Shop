@@ -165,9 +165,9 @@ const Toast = ({ message, type, onClose }: ToastProps) => (
 // ── Pagination helpers ────────────────────────────────────────────────────────
 const pageNumbers = (page: number, totalPages: number): (number | '…')[] => {
   if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
-  const window = 2;
-  const lo = Math.max(2, page - window);
-  const hi = Math.min(totalPages - 1, page + window);
+  const delta = 2;
+  const lo = Math.max(2, page - delta);
+  const hi = Math.min(totalPages - 1, page + delta);
   const items: (number | '…')[] = [1];
   if (lo > 2) items.push('…');
   for (let i = lo; i <= hi; i++) items.push(i);
@@ -233,9 +233,8 @@ export const AdminUsersPage = () => {
   const total      = pagination.total;
   const totalPages = pagination.totalPages;
 
-  // Derive stats from current data (meta.total for Tổng; filter counts from current page)
-  const activeCount  = users.filter((u) => u.status === 'active').length;
-  const lockedCount  = users.filter((u) => u.status === 'locked').length;
+  // Real status-breakdown stats from backend (full filtered set, not current page only)
+  const stats = data?.stats ?? { total: 0, active: 0, locked: 0, pending: 0 };
 
   // ── Lock / Unlock ──
   const handleActionClick = (user: AdminUserRow) => {
@@ -276,7 +275,7 @@ export const AdminUsersPage = () => {
 
       {/* ── Stat chips ── */}
       <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '20px' }}>
-        {/* Tổng — uses meta.total (accurate across all pages) */}
+        {/* Tổng — real total from backend stats */}
         <div
           style={{
             background: '#FFFFFF', border: '1px solid #ECEAE5', borderRadius: '4px',
@@ -287,10 +286,10 @@ export const AdminUsersPage = () => {
             Tổng
           </div>
           <div style={{ fontSize: '22px', fontWeight: 700, color: '#16161A', fontVariantNumeric: 'tabular-nums' }}>
-            {total}
+            {stats.total}
           </div>
         </div>
-        {/* Hoạt động — current page count (labelled clearly) */}
+        {/* Hoạt động — real count from backend stats (full filtered set) */}
         <div
           style={{
             background: '#FFFFFF', border: '1px solid #ECEAE5', borderRadius: '4px',
@@ -301,10 +300,10 @@ export const AdminUsersPage = () => {
             Hoạt động
           </div>
           <div style={{ fontSize: '22px', fontWeight: 700, color: '#2E7D4F', fontVariantNumeric: 'tabular-nums' }}>
-            {activeCount}
+            {stats.active}
           </div>
         </div>
-        {/* Bị khóa — current page count */}
+        {/* Bị khóa — real count from backend stats (full filtered set) */}
         <div
           style={{
             background: '#FFFFFF', border: '1px solid #ECEAE5', borderRadius: '4px',
@@ -315,7 +314,7 @@ export const AdminUsersPage = () => {
             Bị khóa
           </div>
           <div style={{ fontSize: '22px', fontWeight: 700, color: '#B43A3A', fontVariantNumeric: 'tabular-nums' }}>
-            {lockedCount}
+            {stats.locked}
           </div>
         </div>
       </div>

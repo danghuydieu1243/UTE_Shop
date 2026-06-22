@@ -23,6 +23,8 @@ interface PaginationMeta {
 /** Meta object forwarded from the backend envelope to RTK Query transformResponse. */
 export interface EnvelopeMeta {
   pagination?: PaginationMeta;
+  /** Status-breakdown stats (admin users list). */
+  stats?: Record<string, number>;
 }
 
 const rawBaseQuery: BaseQueryFn<

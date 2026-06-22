@@ -1,6 +1,6 @@
 import { Op, WhereOptions } from 'sequelize';
 import { User } from '../../db/models';
-import { AdminUserDTO, PaginationMeta } from './admin.schema';
+import { AdminUserDTO, PaginationMeta, UserStatsMeta } from './admin.schema';
 
 export function mapAdminUserDTO(user: User): AdminUserDTO {
   return {
@@ -19,15 +19,14 @@ export function buildPaginationMeta(page: number, limit: number, total: number):
   return { page, limit, total, totalPages: Math.ceil(total / limit) };
 }
 
-export async function listUsers(opts: {
+/** Build the base WHERE clause (shared between paginated query and stats counts). */
+function buildWhere(opts: {
   search?: string;
   role?: string;
   status?: string;
   from?: string;
   to?: string;
-  page: number;
-  limit: number;
-}): Promise<{ rows: User[]; count: number }> {
+}): WhereOptions<any> {
   const where: WhereOptions<any> = {};
 
   if (opts.search) {
@@ -46,6 +45,20 @@ export async function listUsers(opts: {
     where['created_at'] = range;
   }
 
+  return where;
+}
+
+export async function listUsers(opts: {
+  search?: string;
+  role?: string;
+  status?: string;
+  from?: string;
+  to?: string;
+  page: number;
+  limit: number;
+}): Promise<{ rows: User[]; count: number }> {
+  const where = buildWhere(opts);
+
   const { rows, count } = await User.findAndCountAll({
     where,
     attributes: ['id', 'email', 'fullName', 'role', 'status', 'phone', 'created_at', 'emailVerifiedAt'],
@@ -55,6 +68,32 @@ export async function listUsers(opts: {
   });
 
   return { rows, count };
+}
+
+/**
+ * Count active / locked / pending users matching the same filters as listUsers
+ * (excluding pagination).  Uses three separate User.count calls so it works
+ * on both SQLite (tests) and MySQL (production) without dialect-specific GROUP BY.
+ */
+export async function countUserStats(opts: {
+  search?: string;
+  role?: string;
+  status?: string;
+  from?: string;
+  to?: string;
+}): Promise<UserStatsMeta> {
+  // The base where clause already applies the status filter (if any).
+  // When a status filter is active the "other" statuses will return 0, which
+  // is the correct behaviour: counts are scoped to the current filter set.
+  const baseWhere = buildWhere(opts);
+
+  const [active, locked, pending] = await Promise.all([
+    User.count({ where: { ...baseWhere, status: 'active' } }),
+    User.count({ where: { ...baseWhere, status: 'locked' } }),
+    User.count({ where: { ...baseWhere, status: 'pending' } }),
+  ]);
+
+  return { total: active + locked + pending, active, locked, pending };
 }
 
 export async function findUserById(id: number): Promise<User | null> {

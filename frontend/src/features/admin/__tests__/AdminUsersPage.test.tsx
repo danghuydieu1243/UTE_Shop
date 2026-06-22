@@ -72,6 +72,7 @@ const MOCK_USERS = [
 ];
 
 const MOCK_PAGINATION = { page: 1, limit: 20, total: 3, totalPages: 1 };
+const MOCK_STATS = { total: 3, active: 2, locked: 1, pending: 0 };
 
 // ── Store factory ─────────────────────────────────────────────────────────────
 const makeStore = () =>
@@ -97,7 +98,7 @@ const renderPage = async () => {
 beforeEach(() => {
   vi.clearAllMocks();
   mockGetAdminUsers.mockReturnValue({
-    data: { users: MOCK_USERS, pagination: MOCK_PAGINATION },
+    data: { users: MOCK_USERS, pagination: MOCK_PAGINATION, stats: MOCK_STATS },
     isFetching: false,
     isLoading: false,
   });
@@ -137,10 +138,18 @@ describe('AdminUsersPage — render', () => {
     expect(screen.getAllByText('Bị khóa').length).toBeGreaterThan(0);
   });
 
-  it('renders stat chips with totals', async () => {
+  it('renders stat chips with real backend stats values', async () => {
     await renderPage();
-    // Chip "Tổng" should show total=3
+    // Chip labels — "Tổng" appears only once; "Hoạt động" and "Bị khóa" also appear
+    // in status badges and dropdown options, so use getAllByText for those.
     expect(screen.getByText('Tổng')).toBeInTheDocument();
+    expect(screen.getAllByText('Hoạt động').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Bị khóa').length).toBeGreaterThan(0);
+    // MOCK_STATS: total=3, active=2, locked=1.
+    // Numbers may appear elsewhere (pagination), so use getAllByText.
+    expect(screen.getAllByText('3').length).toBeGreaterThan(0); // total chip value
+    expect(screen.getAllByText('2').length).toBeGreaterThan(0); // active chip value
+    expect(screen.getAllByText('1').length).toBeGreaterThan(0); // locked chip value
   });
 
   it('renders Lock button for active users', async () => {
@@ -172,7 +181,7 @@ describe('adminApi.getAdminUsers transformResponse — contract lock', () => {
     //   data = res.data.data (the users array)
     //   meta = res.data.meta ({ pagination })
     const envelopeData = MOCK_USERS;
-    const envelopeMeta: EnvelopeMeta = { pagination: MOCK_PAGINATION };
+    const envelopeMeta: EnvelopeMeta = { pagination: MOCK_PAGINATION, stats: MOCK_STATS };
 
     const result = transformAdminUsersResponse(envelopeData as never, envelopeMeta);
 
@@ -181,6 +190,11 @@ describe('adminApi.getAdminUsers transformResponse — contract lock', () => {
     expect(result.users[0].email).toBe('alice@example.com');
     expect(result.pagination.total).toBe(3);
     expect(result.pagination.totalPages).toBe(1);
+    // Stats from meta
+    expect(result.stats.total).toBe(3);
+    expect(result.stats.active).toBe(2);
+    expect(result.stats.locked).toBe(1);
+    expect(result.stats.pending).toBe(0);
   });
 
   it('handles non-array data gracefully (returns empty users)', async () => {
@@ -276,13 +290,9 @@ describe('AdminUsersPage — lock error handling', () => {
     const confirmBtn = await screen.findByRole('button', { name: /Xác nhận/i });
     await user.click(confirmBtn);
 
-    // A friendly toast/error message should appear
+    // A friendly toast should show the exact message from the handler
     await waitFor(() => {
-      expect(
-        screen.getByText(/không thể khóa/i) ||
-        screen.getByText(/ADMIN_CANNOT_LOCK_SELF/i) ||
-        screen.getByText(/chính mình/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/không thể khóa chính mình/i)).toBeInTheDocument();
     });
   });
 
@@ -304,11 +314,7 @@ describe('AdminUsersPage — lock error handling', () => {
     await user.click(confirmBtn);
 
     await waitFor(() => {
-      expect(
-        screen.getByText(/không thể khóa/i) ||
-        screen.getByText(/AUTH_FORBIDDEN/i) ||
-        screen.getByText(/admin/i),
-      ).toBeInTheDocument();
+      expect(screen.getByText(/không thể khóa tài khoản admin khác/i)).toBeInTheDocument();
     });
   });
 });

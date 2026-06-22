@@ -9,8 +9,8 @@ export const listUsers = asyncHandler(async (req, res) => {
   if (!parsed.success) {
     throw AppError.from('VALIDATION', 'Tham số không hợp lệ', parsed.error.issues);
   }
-  const { data, pagination } = await service.listUsers(parsed.data);
-  ok(res, data, { pagination });
+  const { data, pagination, stats } = await service.listUsers(parsed.data);
+  ok(res, data, { pagination, stats });
 });
 
 export const updateUserStatus = asyncHandler(async (req, res) => {

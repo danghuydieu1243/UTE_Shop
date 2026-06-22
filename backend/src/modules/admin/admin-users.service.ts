@@ -1,23 +1,27 @@
 import { AppError } from '../../shared/errors/AppError';
 import * as repo from './admin-users.repository';
-import { ListUsersQuery, PatchUserStatusBody, AdminUserDTO, PaginationMeta } from './admin.schema';
+import { ListUsersQuery, PatchUserStatusBody, AdminUserDTO, PaginationMeta, UserStatsMeta } from './admin.schema';
 
 export async function listUsers(
   q: ListUsersQuery,
-): Promise<{ data: AdminUserDTO[]; pagination: PaginationMeta }> {
-  const { rows, count } = await repo.listUsers({
+): Promise<{ data: AdminUserDTO[]; pagination: PaginationMeta; stats: UserStatsMeta }> {
+  const filterOpts = {
     search: q.search,
     role: q.role,
     status: q.status,
     from: q.from,
     to: q.to,
-    page: q.page,
-    limit: q.limit,
-  });
+  };
+
+  const [{ rows, count }, stats] = await Promise.all([
+    repo.listUsers({ ...filterOpts, page: q.page, limit: q.limit }),
+    repo.countUserStats(filterOpts),
+  ]);
 
   return {
     data: rows.map(repo.mapAdminUserDTO),
     pagination: repo.buildPaginationMeta(q.page, q.limit, count),
+    stats,
   };
 }
 

@@ -88,6 +88,13 @@ export interface PaginationMeta {
   totalPages: number;
 }
 
+export interface UserStatsMeta {
+  total: number;
+  active: number;
+  locked: number;
+  pending: number;
+}
+
 // ─── List Admin Orders ──────────────────────────────────────────────────────
 
 export const listAdminOrdersQuerySchema = z.object({

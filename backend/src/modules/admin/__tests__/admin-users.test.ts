@@ -172,4 +172,33 @@ describe('Admin Users API', () => {
 
     expect(res.status).toBe(403);
   });
+
+  // ── AU11: meta.stats reflects full filtered set, not just the current page ──
+  it('AU11. meta.stats counts full filtered set across pages (not current page only)', async () => {
+    // Seed a unique email prefix so we can filter only these test users
+    const prefix = `stats-test-${Date.now()}`;
+    const seeds: User[] = [];
+
+    // 3 active, 2 locked, 1 pending — 6 total
+    for (let i = 0; i < 3; i++) seeds.push(await seedUser('user', `${prefix}-active-${i}`, 'active'));
+    for (let i = 0; i < 2; i++) seeds.push(await seedUser('user', `${prefix}-locked-${i}`, 'locked'));
+    seeds.push(await seedUser('user', `${prefix}-pending-0`, 'pending'));
+
+    // Fetch page=1 limit=2 with a search that matches only our seeded users
+    const res = await request(app)
+      .get(`/api/v1/admin/users?search=${prefix}&page=1&limit=2`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.status).toBe(200);
+    // Only 2 rows on this page
+    expect(res.body.data.length).toBeLessThanOrEqual(2);
+
+    const stats = res.body.meta?.stats;
+    expect(stats).toBeDefined();
+    // Full-set counts (not page-limited)
+    expect(stats.total).toBe(6);
+    expect(stats.active).toBe(3);
+    expect(stats.locked).toBe(2);
+    expect(stats.pending).toBe(1);
+  });
 });
