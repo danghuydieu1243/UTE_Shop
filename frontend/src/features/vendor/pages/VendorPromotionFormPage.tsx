@@ -364,6 +364,7 @@ export const VendorPromotionFormPage = () => {
           >
             <option value="scheduled">Lên lịch</option>
             <option value="running">Đang chạy</option>
+            <option value="ended">Đã kết thúc</option>
             <option value="disabled">Đã tắt</option>
           </select>
         </Card>
