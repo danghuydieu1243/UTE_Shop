@@ -96,15 +96,9 @@ describe('VendorOrdersPage', () => {
 
   it('renders status badge for each order', () => {
     renderPage();
-    // NEW → "Mới" appears in both tab and badge — getAllByText is correct
-    const moiEls = screen.getAllByText('Mới');
-    expect(moiEls.length).toBeGreaterThanOrEqual(1);
-    // COMPLETED → "Thành công" appears in both tab and badge
-    const thanhCongEls = screen.getAllByText('Thành công');
-    expect(thanhCongEls.length).toBeGreaterThanOrEqual(1);
-    // CANCELLED → "Đã hủy" appears in both tab and badge
-    const daHuyEls = screen.getAllByText('Đã hủy');
-    expect(daHuyEls.length).toBeGreaterThanOrEqual(1);
+    // One badge per order row — sampleOrders has 3 rows
+    const badges = screen.getAllByTestId('order-status-badge');
+    expect(badges).toHaveLength(sampleOrders.length);
   });
 
   it('clicking status tab "Thành công" updates query with status=COMPLETED', async () => {

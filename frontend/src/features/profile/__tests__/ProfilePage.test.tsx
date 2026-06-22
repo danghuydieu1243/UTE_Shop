@@ -75,11 +75,10 @@ describe('ProfilePage loyalty balance', () => {
       isLoading: false,
     });
     renderPage();
-    // "0" may appear multiple times — just ensure điểm thưởng label is present
     expect(screen.getByText(/điểm thưởng/i)).toBeInTheDocument();
-    // The balance value "0" appears at minimum once
-    const zeroEls = screen.getAllByText(/0/);
-    expect(zeroEls.length).toBeGreaterThanOrEqual(1);
+    // Verify the balance widget itself renders "0"
+    const balanceEl = screen.getByTestId('loyalty-balance');
+    expect(balanceEl.textContent).toMatch(/^0/);
   });
 
   it('does not show loyalty section while loading', () => {

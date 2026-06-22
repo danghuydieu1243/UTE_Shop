@@ -42,6 +42,7 @@ const StatusBadge = ({ status }: { status: VendorOrderStatus }) => {
   };
   return (
     <span
+      data-testid="order-status-badge"
       style={{
         fontSize: '9px',
         fontWeight: 600,

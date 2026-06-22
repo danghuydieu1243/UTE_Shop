@@ -42,7 +42,10 @@ export const ProfilePage = () => {
                   <div className="text-[11px] font-semibold uppercase tracking-[1px] text-ink-3">
                     Điểm thưởng
                   </div>
-                  <div className="mt-1 text-[22px] font-semibold tabular-nums text-ink">
+                  <div
+                    data-testid="loyalty-balance"
+                    className="mt-1 text-[22px] font-semibold tabular-nums text-ink"
+                  >
                     {loyaltyData.balance.toLocaleString('vi-VN')}
                     <span className="ml-2 text-[13px] font-normal text-ink-2">điểm</span>
                   </div>
