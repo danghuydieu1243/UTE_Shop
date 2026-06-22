@@ -29,6 +29,7 @@ import { RequireAuth, RequireRole } from './shared/auth/guards';
 import { AdminShell } from './features/admin/components/AdminShell';
 import { AdminDashboardPage } from './features/admin/pages/AdminDashboardPage';
 import { AdminPermissionsPage } from './features/admin/pages/AdminPermissionsPage';
+import { AdminUsersPage } from './features/admin/pages/AdminUsersPage';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
@@ -87,7 +88,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
               <Route path="/admin/orders" element={<div className="p-10 text-ink">Admin Orders — Phase 4b Task 8</div>} />
               {/* Admin-only (nested RequireRole) */}
               <Route element={<RequireRole roles={['admin']} />}>
-                <Route path="/admin/users" element={<div className="p-10 text-ink">Admin Users — Phase 4b Task 5</div>} />
+                <Route path="/admin/users" element={<AdminUsersPage />} />
                 <Route path="/admin/permissions" element={<AdminPermissionsPage />} />
               </Route>
             </Route>

@@ -2,7 +2,7 @@
  *  Grows as Tasks 5–8 add real admin endpoints.
  */
 
-export type AdminUserStatus = 'active' | 'locked';
+export type AdminUserStatus = 'active' | 'locked' | 'pending';
 export type AdminVendorStatus = 'active' | 'locked';
 export type AdminOrderStatus = 'NEW' | 'PENDING_PAYMENT' | 'COMPLETED' | 'CANCELLED';
 
@@ -12,7 +12,9 @@ export interface AdminUserRow {
   fullName: string;
   role: 'user' | 'vendor' | 'manager' | 'admin';
   status: AdminUserStatus;
+  phone: string | null;
   createdAt: string;
+  emailVerifiedAt: string | null;
 }
 
 export interface AdminVendorRow {

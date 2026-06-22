@@ -1,0 +1,630 @@
+/**
+ * AdminUsersPage — /admin/users (admin-only)
+ * Screen 23: Quản lý người dùng
+ * Ref spec: docs/UI_Design/23_Admin_Users.md
+ */
+
+import { useState, useEffect, useRef } from 'react';
+import { useGetAdminUsersQuery, useUpdateUserStatusMutation } from '../adminApi';
+import type { AdminUserRow, AdminUserStatus } from '../types';
+
+// ── Debounce ──────────────────────────────────────────────────────────────────
+function useDebounce<T>(value: T, delay = 400): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(id);
+  }, [value, delay]);
+  return debounced;
+}
+
+// ── Role badge ────────────────────────────────────────────────────────────────
+const ROLE_STYLES: Record<string, { color: string; background: string; label: string }> = {
+  user:    { color: '#2D6BE4', background: '#EFF4FD', label: 'User' },
+  vendor:  { color: '#B8893B', background: '#FBF4E8', label: 'Vendor' },
+  manager: { color: '#5C7A3E', background: '#EEF4E8', label: 'Manager' },
+  admin:   { color: '#16161A', background: '#F4F2ED', label: 'Admin' },
+};
+
+const RoleBadge = ({ role }: { role: string }) => {
+  const s = ROLE_STYLES[role] ?? { color: '#6B6B73', background: '#F4F3F0', label: role };
+  return (
+    <span
+      style={{
+        fontSize: '9px',
+        fontWeight: 600,
+        letterSpacing: '.8px',
+        textTransform: 'uppercase',
+        padding: '2px 7px',
+        borderRadius: '2px',
+        color: s.color,
+        background: s.background,
+      }}
+    >
+      {s.label}
+    </span>
+  );
+};
+
+// ── Status badge ──────────────────────────────────────────────────────────────
+const STATUS_STYLES: Record<AdminUserStatus, { color: string; background: string; label: string }> = {
+  active:  { color: '#2E7D4F', background: '#ECF6EE', label: 'Hoạt động' },
+  locked:  { color: '#B43A3A', background: '#FAEAEA', label: 'Bị khóa' },
+  pending: { color: '#A8A8AE', background: '#F4F3F0', label: 'Chưa xác thực' },
+};
+
+const StatusBadge = ({ status }: { status: AdminUserStatus }) => {
+  const s = STATUS_STYLES[status] ?? STATUS_STYLES.pending;
+  return (
+    <span
+      style={{
+        fontSize: '9px',
+        fontWeight: 600,
+        letterSpacing: '.8px',
+        textTransform: 'uppercase',
+        padding: '2px 7px',
+        borderRadius: '2px',
+        color: s.color,
+        background: s.background,
+      }}
+    >
+      {s.label}
+    </span>
+  );
+};
+
+// ── Confirm dialog ────────────────────────────────────────────────────────────
+interface ConfirmDialogProps {
+  title: string;
+  message: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+}
+const ConfirmDialog = ({ title, message, onConfirm, onCancel }: ConfirmDialogProps) => (
+  <div
+    role="dialog"
+    aria-modal="true"
+    aria-label={title}
+    style={{
+      position: 'fixed', inset: 0, zIndex: 1000,
+      background: 'rgba(22,22,26,0.4)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+    }}
+  >
+    <div
+      style={{
+        background: '#FFFFFF', borderRadius: '4px', padding: '28px 28px 24px',
+        maxWidth: '420px', width: '90%', border: '1px solid #ECEAE5',
+      }}
+    >
+      <h2 style={{ fontSize: '15px', fontWeight: 600, marginBottom: '10px', color: '#16161A' }}>
+        {title}
+      </h2>
+      <p style={{ fontSize: '13px', color: '#6B6B73', marginBottom: '22px', lineHeight: 1.6 }}>
+        {message}
+      </p>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+        <button
+          onClick={onCancel}
+          style={{
+            height: '32px', padding: '0 14px', background: 'none', color: '#16161A',
+            fontSize: '11px', fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase',
+            border: '1px solid #ECEAE5', borderRadius: '2px', cursor: 'pointer',
+          }}
+        >
+          Hủy
+        </button>
+        <button
+          onClick={onConfirm}
+          style={{
+            height: '32px', padding: '0 14px', background: '#16161A', color: '#FBFAF8',
+            fontSize: '11px', fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase',
+            border: 'none', borderRadius: '2px', cursor: 'pointer',
+          }}
+        >
+          Xác nhận
+        </button>
+      </div>
+    </div>
+  </div>
+);
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+interface ToastProps {
+  message: string;
+  type: 'error' | 'success';
+  onClose: () => void;
+}
+const Toast = ({ message, type, onClose }: ToastProps) => (
+  <div
+    role="alert"
+    style={{
+      position: 'fixed', bottom: '24px', right: '24px', zIndex: 2000,
+      background: type === 'error' ? '#FAEAEA' : '#ECF6EE',
+      border: `1px solid ${type === 'error' ? '#E8B4B4' : '#A8D5B5'}`,
+      borderRadius: '4px', padding: '12px 16px',
+      display: 'flex', alignItems: 'center', gap: '10px',
+      maxWidth: '380px', fontSize: '13px',
+      color: type === 'error' ? '#B43A3A' : '#2E7D4F',
+      boxShadow: '0 4px 16px rgba(22,22,26,0.12)',
+    }}
+  >
+    <span style={{ flex: 1 }}>{message}</span>
+    <button
+      onClick={onClose}
+      style={{
+        background: 'none', border: 'none', cursor: 'pointer',
+        color: 'inherit', fontSize: '16px', lineHeight: 1,
+      }}
+    >
+      ×
+    </button>
+  </div>
+);
+
+// ── Pagination helpers ────────────────────────────────────────────────────────
+const pageNumbers = (page: number, totalPages: number): (number | '…')[] => {
+  if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+  const window = 2;
+  const lo = Math.max(2, page - window);
+  const hi = Math.min(totalPages - 1, page + window);
+  const items: (number | '…')[] = [1];
+  if (lo > 2) items.push('…');
+  for (let i = lo; i <= hi; i++) items.push(i);
+  if (hi < totalPages - 1) items.push('…');
+  items.push(totalPages);
+  return items;
+};
+
+// ── Format date ───────────────────────────────────────────────────────────────
+const formatDate = (iso: string): string => {
+  try {
+    return new Date(iso).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  } catch {
+    return iso;
+  }
+};
+
+// ── Main page ─────────────────────────────────────────────────────────────────
+export const AdminUsersPage = () => {
+  const [page, setPage]               = useState(1);
+  const [limit, setLimit]             = useState(20);
+  const [searchInput, setSearchInput] = useState('');
+  const [roleFilter, setRoleFilter]   = useState<'user' | 'vendor' | 'manager' | 'admin' | ''>('');
+  const [statusFilter, setStatusFilter] = useState<'active' | 'locked' | 'pending' | ''>('');
+  const [fromDate, setFromDate]       = useState('');
+  const [toDate, setToDate]           = useState('');
+  const [lockTarget, setLockTarget]   = useState<AdminUserRow | null>(null);
+  const [toast, setToast]             = useState<{ message: string; type: 'error' | 'success' } | null>(null);
+
+  const debouncedSearch = useDebounce(searchInput, 400);
+
+  // Reset page when filters change
+  const prevFilters = useRef({ debouncedSearch, roleFilter, statusFilter, fromDate, toDate });
+  useEffect(() => {
+    const prev = prevFilters.current;
+    if (
+      prev.debouncedSearch !== debouncedSearch ||
+      prev.roleFilter !== roleFilter ||
+      prev.statusFilter !== statusFilter ||
+      prev.fromDate !== fromDate ||
+      prev.toDate !== toDate
+    ) {
+      setPage(1);
+      prevFilters.current = { debouncedSearch, roleFilter, statusFilter, fromDate, toDate };
+    }
+  }, [debouncedSearch, roleFilter, statusFilter, fromDate, toDate]);
+
+  const queryParams = {
+    search: debouncedSearch || undefined,
+    role: roleFilter || undefined,
+    status: statusFilter || undefined,
+    from: fromDate || undefined,
+    to: toDate || undefined,
+    page,
+    limit,
+  };
+
+  const { data, isFetching } = useGetAdminUsersQuery(queryParams);
+  const [updateUserStatus] = useUpdateUserStatusMutation();
+
+  const users      = data?.users ?? [];
+  const pagination = data?.pagination ?? { page: 1, limit, total: 0, totalPages: 1 };
+  const total      = pagination.total;
+  const totalPages = pagination.totalPages;
+
+  // Derive stats from current data (meta.total for Tổng; filter counts from current page)
+  const activeCount  = users.filter((u) => u.status === 'active').length;
+  const lockedCount  = users.filter((u) => u.status === 'locked').length;
+
+  // ── Lock / Unlock ──
+  const handleActionClick = (user: AdminUserRow) => {
+    setLockTarget(user);
+  };
+
+  const handleConfirmAction = async () => {
+    if (!lockTarget) return;
+    const newStatus = lockTarget.status === 'locked' ? 'active' : 'locked';
+    setLockTarget(null);
+    try {
+      await updateUserStatus({ id: lockTarget.id, status: newStatus }).unwrap();
+      setToast({ message: newStatus === 'locked' ? 'Đã khóa tài khoản thành công.' : 'Đã mở khóa tài khoản thành công.', type: 'success' });
+    } catch (err: unknown) {
+      const apiErr = err as { code?: string; message?: string; status?: number };
+      if (apiErr.code === 'ADMIN_CANNOT_LOCK_SELF') {
+        setToast({ message: 'Không thể khóa chính mình.', type: 'error' });
+      } else if (apiErr.code === 'AUTH_FORBIDDEN' || apiErr.status === 403) {
+        setToast({ message: 'Không thể khóa tài khoản admin khác.', type: 'error' });
+      } else {
+        setToast({ message: apiErr.message ?? 'Có lỗi xảy ra. Vui lòng thử lại.', type: 'error' });
+      }
+    }
+  };
+
+  // Pagination info
+  const startItem = total > 0 ? (page - 1) * limit + 1 : 0;
+  const endItem   = Math.min(page * limit, total);
+
+  return (
+    <div>
+      {/* ── Page heading ── */}
+      <div style={{ marginBottom: '8px' }}>
+        <h2 style={{ fontSize: '20px', fontWeight: 600, color: '#16161A', margin: 0 }}>
+          Quản lý người dùng
+        </h2>
+      </div>
+
+      {/* ── Stat chips ── */}
+      <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', marginBottom: '20px' }}>
+        {/* Tổng — uses meta.total (accurate across all pages) */}
+        <div
+          style={{
+            background: '#FFFFFF', border: '1px solid #ECEAE5', borderRadius: '4px',
+            padding: '12px 20px', minWidth: '120px',
+          }}
+        >
+          <div style={{ fontSize: '11px', color: '#6B6B73', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: '4px' }}>
+            Tổng
+          </div>
+          <div style={{ fontSize: '22px', fontWeight: 700, color: '#16161A', fontVariantNumeric: 'tabular-nums' }}>
+            {total}
+          </div>
+        </div>
+        {/* Hoạt động — current page count (labelled clearly) */}
+        <div
+          style={{
+            background: '#FFFFFF', border: '1px solid #ECEAE5', borderRadius: '4px',
+            padding: '12px 20px', minWidth: '120px',
+          }}
+        >
+          <div style={{ fontSize: '11px', color: '#2E7D4F', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: '4px' }}>
+            Hoạt động
+          </div>
+          <div style={{ fontSize: '22px', fontWeight: 700, color: '#2E7D4F', fontVariantNumeric: 'tabular-nums' }}>
+            {activeCount}
+          </div>
+        </div>
+        {/* Bị khóa — current page count */}
+        <div
+          style={{
+            background: '#FFFFFF', border: '1px solid #ECEAE5', borderRadius: '4px',
+            padding: '12px 20px', minWidth: '120px',
+          }}
+        >
+          <div style={{ fontSize: '11px', color: '#B43A3A', fontWeight: 500, textTransform: 'uppercase', letterSpacing: '.6px', marginBottom: '4px' }}>
+            Bị khóa
+          </div>
+          <div style={{ fontSize: '22px', fontWeight: 700, color: '#B43A3A', fontVariantNumeric: 'tabular-nums' }}>
+            {lockedCount}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Toolbar ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginBottom: '16px' }}>
+        {/* Search */}
+        <div style={{ position: 'relative', flex: 1, minWidth: '200px', maxWidth: '300px' }}>
+          <span
+            style={{
+              position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)',
+              color: '#A8A8AE', fontSize: '12px', pointerEvents: 'none',
+            }}
+          >
+            ⌕
+          </span>
+          <input
+            type="text"
+            placeholder="Tìm theo email hoặc tên..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            aria-label="Tìm kiếm người dùng"
+            style={{
+              width: '100%', height: '32px', padding: '0 10px 0 32px',
+              border: '1px solid #ECEAE5', borderRadius: '2px', background: '#FFFFFF',
+              fontSize: '12px', fontFamily: "'Inter', sans-serif", color: '#16161A', outline: 'none',
+            }}
+          />
+        </div>
+
+        {/* Role filter */}
+        <select
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value as typeof roleFilter)}
+          aria-label="Lọc vai trò"
+          style={{
+            height: '32px', padding: '0 10px', border: '1px solid #ECEAE5',
+            borderRadius: '2px', background: '#FFFFFF', fontSize: '12px',
+            fontFamily: "'Inter', sans-serif", color: '#16161A', cursor: 'pointer',
+          }}
+        >
+          <option value="">Tất cả vai trò</option>
+          <option value="user">User</option>
+          <option value="vendor">Vendor</option>
+          <option value="manager">Manager</option>
+          <option value="admin">Admin</option>
+        </select>
+
+        {/* Status filter */}
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+          aria-label="Lọc trạng thái"
+          style={{
+            height: '32px', padding: '0 10px', border: '1px solid #ECEAE5',
+            borderRadius: '2px', background: '#FFFFFF', fontSize: '12px',
+            fontFamily: "'Inter', sans-serif", color: '#16161A', cursor: 'pointer',
+          }}
+        >
+          <option value="">Tất cả trạng thái</option>
+          <option value="active">Hoạt động</option>
+          <option value="locked">Bị khóa</option>
+          <option value="pending">Chưa xác thực</option>
+        </select>
+
+        {/* Date range: from */}
+        <input
+          type="date"
+          value={fromDate}
+          onChange={(e) => setFromDate(e.target.value)}
+          aria-label="Từ ngày đăng ký"
+          style={{
+            height: '32px', padding: '0 10px', border: '1px solid #ECEAE5',
+            borderRadius: '2px', background: '#FFFFFF', fontSize: '12px',
+            fontFamily: "'Inter', sans-serif", color: '#16161A', cursor: 'pointer',
+          }}
+        />
+
+        {/* Date range: to */}
+        <input
+          type="date"
+          value={toDate}
+          onChange={(e) => setToDate(e.target.value)}
+          aria-label="Đến ngày đăng ký"
+          style={{
+            height: '32px', padding: '0 10px', border: '1px solid #ECEAE5',
+            borderRadius: '2px', background: '#FFFFFF', fontSize: '12px',
+            fontFamily: "'Inter', sans-serif", color: '#16161A', cursor: 'pointer',
+          }}
+        />
+      </div>
+
+      {/* ── Table ── */}
+      <div
+        style={{
+          background: '#FFFFFF', border: '1px solid #ECEAE5', borderRadius: '2px', overflow: 'hidden',
+        }}
+      >
+        {!isFetching && users.length === 0 ? (
+          <div
+            data-testid="empty-state"
+            style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              padding: '60px 24px', gap: '12px',
+            }}
+          >
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#A8A8AE" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+            </svg>
+            <p style={{ fontSize: '14px', color: '#6B6B73', margin: 0 }}>Không có người dùng nào</p>
+          </div>
+        ) : (
+          <>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#FAFAF8' }}>
+                    {['Email / Tên', 'Vai trò', 'Trạng thái', 'Ngày đăng ký', 'Thao tác'].map((h) => (
+                      <th
+                        key={h}
+                        style={{
+                          fontSize: '9px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase',
+                          color: '#A8A8AE', padding: '10px 16px', textAlign: 'left',
+                          borderBottom: '1px solid #ECEAE5', whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {isFetching
+                    ? Array.from({ length: 5 }).map((_, i) => (
+                        <tr key={i} style={{ borderBottom: '1px solid #ECEAE5' }}>
+                          {Array.from({ length: 5 }).map((__, j) => (
+                            <td key={j} style={{ padding: '12px 16px' }}>
+                              <div
+                                style={{
+                                  height: '14px', background: '#F4F3F0',
+                                  borderRadius: '2px', width: j === 0 ? '160px' : '60px',
+                                }}
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      ))
+                    : users.map((user, idx) => (
+                        <tr
+                          key={user.id}
+                          style={{ borderBottom: idx < users.length - 1 ? '1px solid #ECEAE5' : 'none' }}
+                        >
+                          {/* Email + Name */}
+                          <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                            <div style={{ fontSize: '13px', fontWeight: 500, color: '#16161A' }}>
+                              {user.email}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#6B6B73', marginTop: '2px' }}>
+                              {user.fullName}
+                            </div>
+                          </td>
+                          {/* Role badge */}
+                          <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                            <RoleBadge role={user.role} />
+                          </td>
+                          {/* Status badge */}
+                          <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                            <StatusBadge status={user.status} />
+                          </td>
+                          {/* Date */}
+                          <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                            <span style={{ fontSize: '12px', color: '#6B6B73', fontVariantNumeric: 'tabular-nums' }}>
+                              {formatDate(user.createdAt)}
+                            </span>
+                          </td>
+                          {/* Action */}
+                          <td style={{ padding: '12px 16px', verticalAlign: 'middle' }}>
+                            {user.status !== 'pending' && (
+                              <button
+                                onClick={() => handleActionClick(user)}
+                                style={{
+                                  height: '28px', padding: '0 10px', background: 'none',
+                                  color: user.status === 'locked' ? '#2D6BE4' : '#B43A3A',
+                                  fontSize: '11px', fontWeight: 500, border: '1px solid #ECEAE5',
+                                  borderRadius: '2px', cursor: 'pointer',
+                                }}
+                              >
+                                {user.status === 'locked' ? 'Mở khóa' : 'Khóa'}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                  }
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <div
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                padding: '14px 16px', borderTop: '1px solid #ECEAE5', background: '#FFFFFF',
+                flexWrap: 'wrap', gap: '8px',
+              }}
+            >
+              <div style={{ fontSize: '12px', color: '#A8A8AE', fontVariantNumeric: 'tabular-nums' }}>
+                {total > 0 ? `Hiển thị ${startItem}–${endItem} / ${total} người dùng` : ''}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <button
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  disabled={page === 1}
+                  style={{
+                    height: '28px', minWidth: '28px', padding: '0 8px',
+                    border: '1px solid #ECEAE5', borderRadius: '2px', background: '#FFFFFF',
+                    fontSize: '12px', color: page === 1 ? '#A8A8AE' : '#6B6B73',
+                    cursor: page === 1 ? 'default' : 'pointer',
+                  }}
+                >
+                  ←
+                </button>
+                {pageNumbers(page, totalPages).map((n, i) =>
+                  n === '…' ? (
+                    <span
+                      key={`ellipsis-${i}`}
+                      style={{
+                        height: '28px', minWidth: '28px', padding: '0 4px',
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '12px', color: '#A8A8AE',
+                      }}
+                    >
+                      …
+                    </span>
+                  ) : (
+                    <button
+                      key={n}
+                      onClick={() => setPage(n as number)}
+                      style={{
+                        height: '28px', minWidth: '28px', padding: '0 8px',
+                        border: '1px solid #ECEAE5', borderRadius: '2px',
+                        background: n === page ? '#16161A' : '#FFFFFF',
+                        color: n === page ? '#FBFAF8' : '#6B6B73',
+                        fontSize: '12px', cursor: 'pointer',
+                      }}
+                    >
+                      {n}
+                    </button>
+                  )
+                )}
+                <button
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={page >= totalPages}
+                  style={{
+                    height: '28px', minWidth: '28px', padding: '0 8px',
+                    border: '1px solid #ECEAE5', borderRadius: '2px', background: '#FFFFFF',
+                    fontSize: '12px', color: page >= totalPages ? '#A8A8AE' : '#6B6B73',
+                    cursor: page >= totalPages ? 'default' : 'pointer',
+                  }}
+                >
+                  →
+                </button>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#A8A8AE' }}>
+                Hiển thị
+                <select
+                  value={limit}
+                  onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
+                  aria-label="Số mục mỗi trang"
+                  style={{
+                    height: '28px', padding: '0 6px', border: '1px solid #ECEAE5',
+                    borderRadius: '2px', fontSize: '12px', fontFamily: "'Inter', sans-serif",
+                    background: '#FFFFFF',
+                  }}
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+                mục / trang
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* ── Confirm dialog ── */}
+      {lockTarget && (
+        <ConfirmDialog
+          title={lockTarget.status === 'locked' ? 'Mở khóa tài khoản' : 'Khóa tài khoản'}
+          message={
+            lockTarget.status === 'locked'
+              ? `Mở khóa tài khoản "${lockTarget.email}"?`
+              : `Khóa tài khoản "${lockTarget.email}"? Người dùng sẽ không thể đăng nhập.`
+          }
+          onConfirm={handleConfirmAction}
+          onCancel={() => setLockTarget(null)}
+        />
+      )}
+
+      {/* ── Toast ── */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+    </div>
+  );
+};
