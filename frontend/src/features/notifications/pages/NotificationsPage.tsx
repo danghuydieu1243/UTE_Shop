@@ -6,6 +6,7 @@ import {
   useGetNotificationsQuery,
   useMarkReadMutation,
   useMarkAllReadMutation,
+  NOTIFICATIONS_LIST_ARGS,
 } from '../notificationsApi';
 import { formatDateTime } from '../../../shared/format';
 import type { NotificationRow } from '../types';
@@ -224,7 +225,7 @@ function NotifSkeleton() {
 export default function NotificationsPage() {
   const navigate = useNavigate();
   const { data: me } = useGetMeQuery();
-  const { data, isLoading } = useGetNotificationsQuery({ page: 1, limit: 20 });
+  const { data, isLoading } = useGetNotificationsQuery(NOTIFICATIONS_LIST_ARGS);
   const [markRead] = useMarkReadMutation();
   const [markAllRead] = useMarkAllReadMutation();
 
@@ -234,9 +235,9 @@ export default function NotificationsPage() {
   const olderItems = notifications.filter((n) => !isToday(n.createdAt));
 
   const handleItemClick = (notif: NotificationRow) => {
-    // Mark as read if unread
+    // Mark as read if unread (fire-and-forget; nuốt lỗi để tránh unhandled rejection khi điều hướng)
     if (notif.readAt === null) {
-      markRead(notif.id);
+      markRead(notif.id).unwrap().catch(() => {});
     }
     // Navigate by type
     const orderCode = notif.data?.orderCode as string | undefined;
@@ -260,7 +261,7 @@ export default function NotificationsPage() {
   };
 
   const handleMarkAllRead = () => {
-    markAllRead();
+    markAllRead().unwrap().catch(() => {});
   };
 
   const userData = me ? { fullName: me.fullName, email: me.email } : null;

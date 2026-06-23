@@ -13,6 +13,10 @@ export interface NotificationsParams {
   limit?: number;
 }
 
+/** Args canonical cho list trang đầu — dùng chung giữa NotificationsPage và socket cache-patch
+ *  để tránh lệch cache-key (realtime prepend phải trúng đúng entry trang đang xem). */
+export const NOTIFICATIONS_LIST_ARGS: NotificationsParams = { page: 1, limit: 20 };
+
 export const transformNotificationsResponse = (
   resp: NotificationRow[],
   meta: EnvelopeMeta | undefined,
