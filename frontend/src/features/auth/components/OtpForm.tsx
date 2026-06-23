@@ -93,8 +93,8 @@ export const OtpForm = ({ email, purpose }: Props) => {
         }
       }, 600);
     } catch (err: unknown) {
-      const e = err as { data?: { message?: string } };
-      setApiError(e?.data?.message ?? 'Mã không đúng, vui lòng thử lại.');
+      const e = err as { message?: string };
+      setApiError(e?.message ?? 'Mã không đúng, vui lòng thử lại.');
       setInputState('error');
       // Trigger shake animation
       setShake(true);
@@ -117,8 +117,8 @@ export const OtpForm = ({ email, purpose }: Props) => {
       const secs = Math.max(1, Math.ceil((availableAt - now) / 1000));
       startCooldown(secs);
     } catch (err: unknown) {
-      const e = err as { data?: { message?: string } };
-      setApiError(e?.data?.message ?? 'Không thể gửi lại mã, vui lòng thử lại sau.');
+      const e = err as { message?: string };
+      setApiError(e?.message ?? 'Không thể gửi lại mã, vui lòng thử lại sau.');
       startCooldown(60);
     }
   };

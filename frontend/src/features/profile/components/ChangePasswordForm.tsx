@@ -82,11 +82,11 @@ export const ChangePasswordForm = () => {
       setSuccessMsg('Đổi mật khẩu thành công!');
       reset();
     } catch (err: unknown) {
-      const e = err as { data?: { code?: string; message?: string } };
-      if (e?.data?.code === 'PASSWORD_MISMATCH') {
-        setApiError(e?.data?.message ?? 'Mật khẩu hiện tại không đúng');
+      const e = err as { code?: string; message?: string };
+      if (e?.code === 'PASSWORD_MISMATCH') {
+        setApiError(e?.message ?? 'Mật khẩu hiện tại không đúng');
       } else {
-        setApiError(e?.data?.message ?? 'Đã có lỗi xảy ra, vui lòng thử lại.');
+        setApiError(e?.message ?? 'Đã có lỗi xảy ra, vui lòng thử lại.');
       }
     }
   };

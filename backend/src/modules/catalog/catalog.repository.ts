@@ -175,8 +175,8 @@ export async function listBooks(q: ListBooksQuery): Promise<{ rows: Book[]; coun
     publisherInclude.required = true;
   }
 
-  if (q.category) {
-    categoryInclude.where = { slug: q.category };
+  if (q.category && q.category.length > 0) {
+    categoryInclude.where = { slug: { [Op.in]: q.category } };
     categoryInclude.required = true;
   }
 

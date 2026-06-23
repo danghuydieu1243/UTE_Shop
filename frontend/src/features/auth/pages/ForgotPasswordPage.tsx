@@ -138,9 +138,9 @@ const Step1 = ({
       await forgotPassword({ email: values.email }).unwrap();
       onNext(values.email);
     } catch (err: unknown) {
-      const e = err as { data?: { message?: string } };
+      const e = err as { message?: string };
       // Show neutral/rate-limit message only
-      setApiError(e?.data?.message ?? 'Bạn đã yêu cầu quá nhiều lần. Vui lòng thử lại sau ít phút.');
+      setApiError(e?.message ?? 'Bạn đã yêu cầu quá nhiều lần. Vui lòng thử lại sau ít phút.');
       // Always proceed (neutral — don't reveal whether email exists)
       onNext(values.email);
     }
@@ -285,8 +285,8 @@ const Step2 = ({
         if ('resetToken' in data) onNext(data.resetToken);
       }, 500);
     } catch (err: unknown) {
-      const e = err as { data?: { message?: string } };
-      setApiError(e?.data?.message ?? 'Mã không đúng, vui lòng thử lại.');
+      const e = err as { message?: string };
+      setApiError(e?.message ?? 'Mã không đúng, vui lòng thử lại.');
       setInputState('error');
       setShake(true);
       setDigits(['', '', '', '', '', '']);
@@ -304,8 +304,8 @@ const Step2 = ({
       const secs = Math.max(1, Math.ceil((availableAt - Date.now()) / 1000));
       startCooldown(secs);
     } catch (err: unknown) {
-      const e = err as { data?: { message?: string } };
-      setApiError(e?.data?.message ?? 'Không thể gửi lại mã, vui lòng thử lại sau.');
+      const e = err as { message?: string };
+      setApiError(e?.message ?? 'Không thể gửi lại mã, vui lòng thử lại sau.');
       startCooldown(60);
     }
   };
@@ -517,8 +517,8 @@ const Step3 = ({ email, resetToken }: { email: string; resetToken: string }) => 
       await resetPassword({ email, resetToken, newPassword: values.newPassword }).unwrap();
       setSucceeded(true);
     } catch (err: unknown) {
-      const e = err as { data?: { message?: string } };
-      setApiError(e?.data?.message ?? 'Đã có lỗi xảy ra, vui lòng thử lại.');
+      const e = err as { message?: string };
+      setApiError(e?.message ?? 'Đã có lỗi xảy ra, vui lòng thử lại.');
     }
   };
 

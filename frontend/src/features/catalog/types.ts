@@ -132,7 +132,7 @@ export type SortOption = 'relevant' | 'newest' | 'bestselling' | 'price_asc' | '
 
 export interface CatalogBooksParams {
   q?: string;
-  category?: string;
+  category?: string | string[];
   format?: ('PDF' | 'EPUB') | ('PDF' | 'EPUB')[];
   priceMin?: number;
   priceMax?: number;

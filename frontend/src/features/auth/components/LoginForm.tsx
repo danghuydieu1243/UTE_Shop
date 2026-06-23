@@ -31,10 +31,10 @@ export const LoginForm = () => {
       const result = await login(values).unwrap();
       navigate(result.redirect);
     } catch (err: unknown) {
-      const e = err as { data?: { code?: string; message?: string } };
+      const e = err as { code?: string; message?: string };
       setApiError({
-        message: e?.data?.message ?? 'Đã có lỗi xảy ra, vui lòng thử lại.',
-        code: e?.data?.code,
+        message: e?.message ?? 'Đã có lỗi xảy ra, vui lòng thử lại.',
+        code: e?.code,
       });
     }
   };

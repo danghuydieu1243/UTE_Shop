@@ -68,8 +68,8 @@ const FilterAccordion = ({ label, defaultOpen = true, children }: AccordionProps
 /* ─────────────────────────────────────────── */
 interface StagedFilters {
   formats: ('PDF' | 'EPUB')[];
-  /** Single-select: at most one category slug (matches API contract — one category per book). */
-  category: string | null;
+  /** Multi-select: zero or more category slugs (OR filter — book matches any selected). */
+  categories: string[];
   priceMin: string;
   priceMax: string;
   rating: number | null;
@@ -79,7 +79,7 @@ interface StagedFilters {
 
 const DEFAULT_STAGED: StagedFilters = {
   formats: [],
-  category: null,
+  categories: [],
   priceMin: '',
   priceMax: '',
   rating: null,
@@ -98,7 +98,7 @@ function paramsToStaged(sp: URLSearchParams): StagedFilters {
   );
   return {
     formats,
-    category: sp.get('category') ?? null,
+    categories: getAll('category'),
     priceMin: sp.get('priceMin') ?? '',
     priceMax: sp.get('priceMax') ?? '',
     rating: sp.get('rating') ? Number(sp.get('rating')) : null,
@@ -172,8 +172,8 @@ export const CatalogPage = () => {
       await addToCart({ bookId: book.id }).unwrap();
       show('Đã thêm vào giỏ hàng');
     } catch (err: unknown) {
-      const e = err as { data?: { message?: string } };
-      const msg = e?.data?.message ?? '';
+      const e = err as { message?: string };
+      const msg = e?.message ?? '';
       if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('đã có')) {
         show('Sách đã có trong giỏ');
       } else {
@@ -218,7 +218,7 @@ export const CatalogPage = () => {
     format: committed.formats.length
       ? (committed.formats as ('PDF' | 'EPUB')[])
       : undefined,
-    category: committed.category ?? undefined,
+    category: committed.categories.length ? committed.categories : undefined,
     priceMin: committed.priceMin ? Number(committed.priceMin) : undefined,
     priceMax: committed.priceMax ? Number(committed.priceMax) : undefined,
     rating: committed.rating ?? undefined,
@@ -305,7 +305,7 @@ export const CatalogPage = () => {
     const params: Record<string, string | string[]> = {};
     if (q) params.q = q;
     if (staged.formats.length) params.format = staged.formats;
-    if (staged.category) params.category = staged.category;
+    if (staged.categories.length) params.category = staged.categories;
     if (staged.priceMin) params.priceMin = staged.priceMin;
     if (staged.priceMax) params.priceMax = staged.priceMax;
     if (staged.rating != null) params.rating = String(staged.rating);
@@ -316,13 +316,27 @@ export const CatalogPage = () => {
     setSidebarOpen(false);
   };
 
-  /* ── Clear all filters ── */
+  /* ── Clear all filters (kể cả search q) ── */
   const clearAll = () => {
     const empty = { ...DEFAULT_STAGED };
     setStaged(empty);
     setCommitted(empty);
     const params: Record<string, string> = {};
-    if (q) params.q = q;
+    // Cố ý KHÔNG giữ q — "Xóa tất cả" gỡ luôn cả từ khóa tìm kiếm.
+    if (sort && sort !== 'relevant') params.sort = sort;
+    setSearchParams(params);
+  };
+
+  /* ── Gỡ riêng search q (giữ nguyên bộ lọc) ── */
+  const removeSearch = () => {
+    const params: Record<string, string | string[]> = {};
+    if (committed.formats.length) params.format = committed.formats;
+    if (committed.categories.length) params.category = committed.categories;
+    if (committed.priceMin) params.priceMin = committed.priceMin;
+    if (committed.priceMax) params.priceMax = committed.priceMax;
+    if (committed.rating != null) params.rating = String(committed.rating);
+    if (committed.authors.length) params.author = committed.authors;
+    if (committed.publishers.length) params.publisher = committed.publishers;
     if (sort && sort !== 'relevant') params.sort = sort;
     setSearchParams(params);
   };
@@ -332,7 +346,7 @@ export const CatalogPage = () => {
     const params: Record<string, string | string[]> = {};
     if (q) params.q = q;
     if (committed.formats.length) params.format = committed.formats;
-    if (committed.category) params.category = committed.category;
+    if (committed.categories.length) params.category = committed.categories;
     if (committed.priceMin) params.priceMin = committed.priceMin;
     if (committed.priceMax) params.priceMax = committed.priceMax;
     if (committed.rating != null) params.rating = String(committed.rating);
@@ -350,7 +364,7 @@ export const CatalogPage = () => {
     const params: Record<string, string | string[]> = {};
     if (q) params.q = q;
     if (next.formats.length) params.format = next.formats;
-    if (next.category) params.category = next.category;
+    if (next.categories.length) params.category = next.categories;
     if (next.priceMin) params.priceMin = next.priceMin;
     if (next.priceMax) params.priceMax = next.priceMax;
     if (next.rating != null) params.rating = String(next.rating);
@@ -362,6 +376,13 @@ export const CatalogPage = () => {
 
   /* ── Build chips array ── */
   const chips: Chip[] = [];
+  if (q) {
+    chips.push({
+      key: 'search',
+      label: `Tìm: "${q}"`,
+      onRemove: removeSearch,
+    });
+  }
   committed.formats.forEach((f) =>
     chips.push({
       key: `format:${f}`,
@@ -370,15 +391,15 @@ export const CatalogPage = () => {
         removeChip({ formats: committed.formats.filter((x) => x !== f) }),
     }),
   );
-  if (committed.category) {
-    const catSlug = committed.category;
+  committed.categories.forEach((catSlug) => {
     const cat = categoriesData?.find((c) => c.slug === catSlug);
     chips.push({
       key: `category:${catSlug}`,
       label: cat?.name ?? catSlug,
-      onRemove: () => removeChip({ category: null }),
+      onRemove: () =>
+        removeChip({ categories: committed.categories.filter((x) => x !== catSlug) }),
     });
-  }
+  });
   if (committed.rating != null) {
     chips.push({
       key: 'rating',
@@ -420,12 +441,15 @@ export const CatalogPage = () => {
 
   const hasActiveFilters =
     committed.formats.length > 0 ||
-    committed.category != null ||
+    committed.categories.length > 0 ||
     committed.rating != null ||
     !!committed.priceMin ||
     !!committed.priceMax ||
     committed.authors.length > 0 ||
     committed.publishers.length > 0;
+
+  // "Xóa tất cả" cũng phải xuất hiện khi chỉ có search (q) để người dùng gỡ được search.
+  const showClearAll = hasActiveFilters || !!q;
 
   /* ── Helpers for staged toggles ── */
   const toggleFormat = (fmt: 'PDF' | 'EPUB') => {
@@ -436,11 +460,13 @@ export const CatalogPage = () => {
         : [...s.formats, fmt],
     }));
   };
-  // Single-select: ticking a category replaces any previous selection; ticking again deselects.
+  // Multi-select: ticking adds the category, ticking again removes it.
   const toggleCategory = (slug: string) => {
     setStaged((s) => ({
       ...s,
-      category: s.category === slug ? null : slug,
+      categories: s.categories.includes(slug)
+        ? s.categories.filter((c) => c !== slug)
+        : [...s.categories, slug],
     }));
   };
   const toggleAuthor = (slug: string) => {
@@ -478,7 +504,7 @@ export const CatalogPage = () => {
         <span className="text-[13px] font-medium uppercase tracking-[2px] text-ink">
           Bộ lọc
         </span>
-        {hasActiveFilters && (
+        {showClearAll && (
           <button
             type="button"
             onClick={clearAll}
@@ -512,7 +538,7 @@ export const CatalogPage = () => {
             <input
               type="checkbox"
               className="h-[15px] w-[15px] flex-shrink-0 rounded-[2px] border border-line accent-ink"
-              checked={staged.category === cat.slug}
+              checked={staged.categories.includes(cat.slug)}
               onChange={() => toggleCategory(cat.slug)}
             />
             <span className="text-[13px] text-ink">{cat.name}</span>

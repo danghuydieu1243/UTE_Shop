@@ -172,14 +172,14 @@ export const ReviewSection = ({
       setRating(0);
       setComment('');
     } catch (err: unknown) {
-      const e = err as { data?: { code?: string; message?: string } };
-      const code = e?.data?.code;
+      const e = err as { code?: string; message?: string };
+      const code = e?.code;
       if (code === 'REVIEW_NOT_ALLOWED') {
         show('Bạn cần mua sách để viết đánh giá');
       } else if (code === 'REVIEW_DUPLICATE') {
         show('Bạn đã đánh giá cuốn sách này rồi');
       } else {
-        show(e?.data?.message ?? 'Không thể gửi đánh giá. Vui lòng thử lại.');
+        show(e?.message ?? 'Không thể gửi đánh giá. Vui lòng thử lại.');
       }
     }
   };

@@ -261,8 +261,8 @@ export default function WishlistPage() {
       await addToCart({ bookId }).unwrap();
       show(`Đã thêm "${title}" vào giỏ hàng`);
     } catch (err: unknown) {
-      const e = err as { data?: { message?: string } };
-      const msg = e?.data?.message ?? '';
+      const e = err as { message?: string };
+      const msg = e?.message ?? '';
       if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('đã có') || msg.toLowerCase().includes('already_owned')) {
         show('Sách đã có trong giỏ hoặc bạn đã sở hữu');
       } else {

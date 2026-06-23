@@ -294,8 +294,9 @@ describe('VendorBookFormPage — edit mode', () => {
 
   it('shows API error banner when mutation rejects with error code', async () => {
     const mockUpdate = vi.fn().mockReturnValue({
+      // baseApi rejects với envelope phẳng { code, message, status } — KHÔNG bọc trong .data.
       unwrap: () =>
-        Promise.reject({ data: { code: 'FILE_TOO_LARGE', message: 'File too large' } }),
+        Promise.reject({ code: 'FILE_TOO_LARGE', message: 'File too large' }),
     });
     mockUpdateMutation.mockReturnValue([mockUpdate, { isLoading: false }]);
 

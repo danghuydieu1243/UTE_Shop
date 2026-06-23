@@ -180,8 +180,8 @@ export const VendorPromotionFormPage = () => {
       }
       navigate('/vendor/promotions');
     } catch (err: unknown) {
-      const e = err as { data?: { code?: string; message?: string } };
-      setApiError(friendlyError(e?.data?.code, e?.data?.message));
+      const e = err as { code?: string; message?: string };
+      setApiError(friendlyError(e?.code, e?.message));
     }
   });
 

@@ -200,6 +200,27 @@ describe('Catalog API', () => {
       }
     });
 
+    it('filter by single category returns only that category', async () => {
+      const res = await request(app).get('/api/v1/catalog/books?category=kinh-te');
+      expect(res.status).toBe(200);
+      const titles = res.body.data.books.map((b: any) => b.title);
+      expect(titles).toContain('Nghĩ Giàu Làm Giàu');
+      expect(titles).not.toContain('Đắc Nhân Tâm');
+    });
+
+    it('multi-select category returns the union of selected categories', async () => {
+      const res = await request(app).get(
+        '/api/v1/catalog/books?category=van-hoc&category=kinh-te',
+      );
+      expect(res.status).toBe(200);
+      const titles = res.body.data.books.map((b: any) => b.title);
+      // van-hoc (Đắc Nhân Tâm, Sách Rẻ Hơn) + kinh-te (Nghĩ Giàu Làm Giàu) = 3 (sách bị khóa bị ẩn)
+      expect(titles).toContain('Đắc Nhân Tâm');
+      expect(titles).toContain('Sách Rẻ Hơn');
+      expect(titles).toContain('Nghĩ Giàu Làm Giàu');
+      expect(res.body.meta.pagination.total).toBe(3);
+    });
+
     it('filter by priceMin/priceMax', async () => {
       const res = await request(app).get('/api/v1/catalog/books?priceMin=80000&priceMax=100000');
       expect(res.status).toBe(200);

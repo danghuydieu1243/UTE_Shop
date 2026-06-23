@@ -70,8 +70,8 @@ export const ProfileEditForm = ({ user }: Props) => {
       }).unwrap();
       setSuccessMsg('Cập nhật thành công!');
     } catch (err: unknown) {
-      const e = err as { data?: { code?: string; message?: string } };
-      setApiError(e?.data?.message ?? 'Đã có lỗi xảy ra, vui lòng thử lại.');
+      const e = err as { code?: string; message?: string };
+      setApiError(e?.message ?? 'Đã có lỗi xảy ra, vui lòng thử lại.');
     }
   };
 

@@ -149,7 +149,7 @@ describe('BookDetailPage', () => {
       mockUseGetBookDetailQuery.mockReturnValue({
         isLoading: false,
         isError: true,
-        error: { data: { code: 'BOOK_NOT_FOUND' } },
+        error: { code: 'BOOK_NOT_FOUND' },
         data: undefined,
       });
       renderPage();

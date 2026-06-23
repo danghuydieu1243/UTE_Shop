@@ -197,11 +197,10 @@ export const BookDetailPage = () => {
   if (isLoading) return <Skeleton />;
 
   /* ── 404 ── */
+  // baseApi trả error phẳng { code, message, status } — đọc trực tiếp error.code.
   const is404 =
     isError &&
-    error &&
-    'data' in error &&
-    (error.data as { code?: string })?.code === 'BOOK_NOT_FOUND';
+    (error as { code?: string } | undefined)?.code === 'BOOK_NOT_FOUND';
 
   if (isError || !book) {
     if (is404 || isError) return <NotFoundState />;
@@ -239,8 +238,8 @@ export const BookDetailPage = () => {
       await addToCart({ bookId: book.id }).unwrap();
       show('Đã thêm vào giỏ hàng');
     } catch (err: unknown) {
-      const e = err as { data?: { message?: string } };
-      const msg = e?.data?.message ?? '';
+      const e = err as { message?: string };
+      const msg = e?.message ?? '';
       if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('đã có')) {
         show('Sách đã có trong giỏ');
       } else {
@@ -262,8 +261,8 @@ export const BookDetailPage = () => {
       await addToCart({ bookId: book.id }).unwrap();
       navigate('/checkout');
     } catch (err: unknown) {
-      const e = err as { data?: { message?: string } };
-      const msg = e?.data?.message ?? '';
+      const e = err as { message?: string };
+      const msg = e?.message ?? '';
       if (msg.toLowerCase().includes('already') || msg.toLowerCase().includes('đã có')) {
         // Sách đã trong giỏ → cũng navigate checkout được
         navigate('/checkout');

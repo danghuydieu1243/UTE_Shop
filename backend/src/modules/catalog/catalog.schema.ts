@@ -2,7 +2,13 @@ import { z } from 'zod';
 
 export const listBooksQuerySchema = z.object({
   q: z.string().optional(),
-  category: z.string().optional(),
+  category: z
+    .union([z.string(), z.array(z.string())])
+    .optional()
+    .transform((v) => {
+      if (v === undefined) return undefined;
+      return Array.isArray(v) ? v : [v];
+    }),
   format: z
     .union([z.string(), z.array(z.string())])
     .optional()
