@@ -94,22 +94,22 @@ describe('VendorDashboardPage', () => {
   it('renders formatted revenue KPI', () => {
     renderPage();
     // 4500000 → "4.500.000đ"
-    expect(screen.getByText('4.500.000đ')).toBeTruthy();
+    expect(screen.getByText('4.500.000đ')).toBeInTheDocument();
   });
 
   it('renders orders KPI', () => {
     renderPage();
-    expect(screen.getByText('37')).toBeTruthy();
+    expect(screen.getByText('37')).toBeInTheDocument();
   });
 
   it('renders productsOnSale KPI', () => {
     renderPage();
-    expect(screen.getByText('12')).toBeTruthy();
+    expect(screen.getByText('12')).toBeInTheDocument();
   });
 
   it('renders avgRating KPI formatted as "x.x / 5"', () => {
     renderPage();
-    expect(screen.getByText('4.3 / 5')).toBeTruthy();
+    expect(screen.getByText('4.3 / 5')).toBeInTheDocument();
   });
 
   it('renders chart SVG with a path element', () => {
@@ -127,21 +127,22 @@ describe('VendorDashboardPage', () => {
 
   it('renders recent order code', () => {
     renderPage();
-    expect(screen.getByText('ORD-001')).toBeTruthy();
+    expect(screen.getByText('ORD-001')).toBeInTheDocument();
   });
 
   it('changing period dropdown calls query with the new period value', () => {
     renderPage();
     const select = screen.getByRole('combobox', { name: /khoảng thời gian/i });
+    const callsBefore = mockGetVendorDashboard.mock.calls.length;
     fireEvent.change(select, { target: { value: '7d' } });
-    // After change, the hook should be called with '7d'
-    const lastCall = mockGetVendorDashboard.mock.calls.at(-1);
-    expect(lastCall?.[0]).toBe('7d');
+    // Hook PHẢI được gọi lại sau khi đổi period (re-render), với arg '7d'
+    expect(mockGetVendorDashboard.mock.calls.length).toBeGreaterThan(callsBefore);
+    expect(mockGetVendorDashboard.mock.calls.at(-1)?.[0]).toBe('7d');
   });
 
   it('shows loading state while isLoading is true', () => {
     mockGetVendorDashboard.mockReturnValue({ data: undefined, isLoading: true });
     const { getByTestId } = renderPage();
-    expect(getByTestId('loading')).toBeTruthy();
+    expect(getByTestId('loading')).toBeInTheDocument();
   });
 });
