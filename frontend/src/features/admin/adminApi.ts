@@ -5,6 +5,90 @@ import { baseApi } from '../../shared/api/baseApi';
 import type { EnvelopeMeta } from '../../shared/api/baseApi';
 import type { AdminUserRow, AdminVendorRow } from './types';
 
+// ── Order types ───────────────────────────────────────────────────────────────
+
+export type AdminOrderStatus = 'NEW' | 'COMPLETED' | 'CANCELLED';
+export type AdminPaymentStatus = 'PENDING' | 'PAID' | 'EXPIRED';
+
+// Khớp chính xác BE AdminOrderSummaryDTO (admin.schema.ts)
+export interface AdminOrderSummary {
+  code: string;
+  status: AdminOrderStatus;
+  buyerName: string;
+  buyerEmail: string;
+  vendorShops: string[];
+  itemsBrief: string;
+  total: number;
+  currency: string;
+  paymentStatus: AdminPaymentStatus | string | null;
+  createdAt: string;
+}
+
+// Khớp chính xác BE AdminOrderItemDTO (e-book: không có qty, ngầm định 1)
+export interface AdminOrderItem {
+  bookId: number;
+  titleSnapshot: string;
+  unitPrice: number;
+}
+
+// Khớp chính xác BE AdminPaymentSummaryDTO
+export interface AdminPaymentSummary {
+  status: string;
+  amount: number;
+  expiresAt: string | null;
+}
+
+// Khớp chính xác BE AdminOrderDetailDTO
+export interface AdminOrderDetail {
+  code: string;
+  status: AdminOrderStatus;
+  subtotal: number;
+  total: number;
+  currency: string;
+  items: AdminOrderItem[];
+  payment: AdminPaymentSummary | null;
+  createdAt: string;
+  completedAt: string | null;
+  cancelledAt: string | null;
+}
+
+// BE listAdminOrdersQuerySchema nhận: search, vendorUserId, status, from, to, page, limit.
+// KHÔNG có paymentStatus (Zod bỏ qua key thừa) → KHÔNG expose filter đó ở FE.
+export interface AdminOrdersParams {
+  search?: string;
+  vendorUserId?: number | string;
+  status?: AdminOrderStatus | '';
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+}
+
+export interface AdminOrdersResult {
+  orders: AdminOrderSummary[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+// ── transformResponse (exported for contract testing) ─────────────────────────
+
+/**
+ * Transforms the raw baseApi response (envelope already unwrapped) into AdminOrdersResult.
+ * baseApi passes: data = res.data.data (the array), meta = res.data.meta ({ pagination }).
+ * Exported so tests can directly verify the array + meta reading logic.
+ */
+export const transformAdminOrdersResponse = (
+  resp: AdminOrderSummary[],
+  meta: EnvelopeMeta | undefined,
+): AdminOrdersResult => ({
+  orders: Array.isArray(resp) ? resp : [],
+  pagination: meta?.pagination ?? { page: 1, limit: 20, total: 0, totalPages: 0 },
+});
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface AdminUsersParams {
@@ -174,6 +258,32 @@ export const adminApi = baseApi.injectEndpoints({
         { type: 'AdminVendor', id: 'LIST' },
       ],
     }),
+
+    /**
+     * GET /api/v1/admin/orders — paginated order list (admin + manager). READ-ONLY.
+     * baseApi unwraps envelope: data = array of orders, meta = { pagination }.
+     */
+    getAdminOrders: build.query<AdminOrdersResult, AdminOrdersParams>({
+      query: (params) => ({ url: '/admin/orders', method: 'GET', params }),
+      transformResponse: transformAdminOrdersResponse,
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.orders.map(({ code }) => ({ type: 'AdminOrder' as const, id: code })),
+              { type: 'AdminOrder', id: 'LIST' },
+            ]
+          : [{ type: 'AdminOrder', id: 'LIST' }],
+    }),
+
+    /**
+     * GET /api/v1/admin/orders/:code — order detail (admin + manager). READ-ONLY.
+     * 404 RESOURCE_NOT_FOUND if missing.
+     * NEVER includes provider_txn_id.
+     */
+    getAdminOrderDetail: build.query<AdminOrderDetail, string>({
+      query: (code) => ({ url: `/admin/orders/${code}`, method: 'GET' }),
+      providesTags: (_result, _err, code) => [{ type: 'AdminOrder', id: code }],
+    }),
   }),
   overrideExisting: false,
 });
@@ -183,4 +293,6 @@ export const {
   useUpdateUserStatusMutation,
   useGetAdminVendorsQuery,
   useUpdateVendorStatusMutation,
+  useGetAdminOrdersQuery,
+  useGetAdminOrderDetailQuery,
 } = adminApi;
