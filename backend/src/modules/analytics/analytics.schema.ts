@@ -9,3 +9,11 @@ export interface VendorDashboardDTO {
   topBooks: { bookId: number; title: string; author: string | null; sold: number; revenue: number }[];
   recentOrders: { code: string; title: string; total: number }[];
 }
+
+export interface AdminDashboardDTO {
+  kpis: { totalUsers: number; totalVendors: number; orders: number; revenue: number | null };
+  revenueSeries: { date: string; value: number }[] | null;
+  newUsersSeries: { date: string; count: number }[];
+  topBooks: { bookId: number; title: string; vendorShop: string; fileFormat: string; revenue: number | null; sold: number }[];
+  recentOrders: { code: string; buyer: string; total: number; status: string; createdAt: string }[];
+}

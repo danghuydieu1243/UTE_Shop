@@ -1,1 +1,1 @@
-export { vendorAnalyticsRouter } from './analytics.routes';
+export { vendorAnalyticsRouter, adminAnalyticsRouter } from './analytics.routes';
