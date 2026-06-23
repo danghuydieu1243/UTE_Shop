@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import ReactDOM from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { store } from './app/store';
+import { useAppSelector } from './app/hooks';
+import { connectSocket, disconnectSocket } from './features/notifications/socket';
 import { LoginPage } from './features/auth/pages/LoginPage';
 import { RegisterPage } from './features/auth/pages/RegisterPage';
 import { VerifyOtpPage } from './features/auth/pages/VerifyOtpPage';
@@ -25,6 +27,7 @@ import { OrderHistoryPage } from './features/orders/pages/OrderHistoryPage';
 import { OrderDetailPage } from './features/orders/pages/OrderDetailPage';
 import MyEbooksPage from './features/library/pages/MyEbooksPage';
 import WishlistPage from './features/wishlist/pages/WishlistPage';
+import NotificationsPage from './features/notifications/pages/NotificationsPage';
 import { RequireAuth, RequireRole } from './shared/auth/guards';
 import { AdminShell } from './features/admin/components/AdminShell';
 import { AdminDashboardPage } from './features/admin/pages/AdminDashboardPage';
@@ -35,9 +38,24 @@ import { AdminOrdersPage } from './features/admin/pages/AdminOrdersPage';
 import { AdminProductsPage } from './features/admin/pages/AdminProductsPage';
 import './index.css';
 
+// ── SocketBridge: connects/disconnects realtime socket based on auth token ───
+function SocketBridge() {
+  const token = useAppSelector((s) => s.auth.accessToken);
+  useEffect(() => {
+    if (token) {
+      connectSocket(token);
+    } else {
+      disconnectSocket();
+    }
+    // Keep socket alive across route changes; only disconnect on logout (token→null)
+  }, [token]);
+  return null;
+}
+
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <Provider store={store}>
+      <SocketBridge />
       <BrowserRouter>
         <Routes>
           {/* Public: Home (guests + logged-in users) */}
@@ -67,6 +85,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
             <Route path="/user/orders/:code" element={<OrderDetailPage />} />
             <Route path="/user/ebooks" element={<MyEbooksPage />} />
             <Route path="/user/wishlist" element={<WishlistPage />} />
+            <Route path="/user/notifications" element={<NotificationsPage />} />
           </Route>
 
           {/* Protected: vendor only */}

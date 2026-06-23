@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAppSelector, useAppDispatch } from '../../../app/hooks';
 import { clearCredentials } from '../../../shared/auth/authSlice';
 import { useLogoutMutation } from '../../auth/authApi';
+import { useGetUnreadCountQuery } from '../../notifications/notificationsApi';
 
 interface Props {
   breadcrumbLabel: string;
@@ -97,6 +98,7 @@ export const AccountShell = ({ breadcrumbLabel, activeNav, children, userData }:
   const [logout] = useLogoutMutation();
   const authUser = useAppSelector((s) => s.auth.user);
   const refreshToken = useAppSelector((s) => s.auth.refreshToken);
+  const { data: unreadCount = 0 } = useGetUnreadCountQuery();
 
   const handleLogout = async () => {
     try {
@@ -211,6 +213,7 @@ export const AccountShell = ({ breadcrumbLabel, activeNav, children, userData }:
               <nav className="py-2">
                 {sidebarNavItems.map((item) => {
                   const isActive = activeNav === item.href;
+                  const isNotifications = item.href === '/user/notifications';
                   return (
                     <Link
                       key={item.href}
@@ -223,6 +226,17 @@ export const AccountShell = ({ breadcrumbLabel, activeNav, children, userData }:
                     >
                       <span className="text-current flex-shrink-0">{item.icon}</span>
                       {item.label}
+                      {isNotifications && unreadCount > 0 && (
+                        <span
+                          className="ml-auto min-w-[18px] h-[18px] px-[5px] rounded-full text-[10px] font-semibold inline-flex items-center justify-center leading-none"
+                          style={{
+                            backgroundColor: isActive ? '#B8893B' : '#16161A',
+                            color: '#FBFAF8',
+                          }}
+                        >
+                          {unreadCount}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}
