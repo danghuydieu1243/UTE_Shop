@@ -67,18 +67,18 @@ const MOCK_WALLET: WalletData = {
   transactions: [
     {
       id: 1,
-      type: 'sale',
+      type: 'sale_credit',
       amount: 90_000,
-      description: 'Bán "Clean Code"',
-      status: 'completed',
+      description: 'Doanh thu đơn hàng',
+      status: 'credited',
       createdAt: '2026-06-01T10:00:00Z',
     },
     {
       id: 2,
-      type: 'withdrawal',
-      amount: 500_000,
-      description: 'Rút tiền về TK **** 1234',
-      status: 'pending',
+      type: 'withdrawal_debit',
+      amount: -500_000,
+      description: 'Yêu cầu rút tiền',
+      status: 'processing',
       createdAt: '2026-06-02T10:00:00Z',
     },
   ],
@@ -162,13 +162,26 @@ describe('VendorWalletPage', () => {
 
   it('renders transaction description in table', () => {
     renderPage();
-    expect(screen.getByText('Bán "Clean Code"')).toBeInTheDocument();
+    expect(screen.getByText('Doanh thu đơn hàng')).toBeInTheDocument();
   });
 
-  it('renders transaction type label', () => {
+  it('maps BE tx type/status vocabulary → nhãn VN (contract lock)', () => {
     renderPage();
-    const items = screen.getAllByText('Doanh thu');
-    expect(items.length).toBeGreaterThanOrEqual(1);
+    // sale_credit → "Doanh thu" + status credited → "Đã cộng"
+    expect(screen.getAllByText('Doanh thu').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Đã cộng')).toBeInTheDocument();
+    // withdrawal_debit → "Rút tiền" trong bảng + status processing → "Đang xử lý"
+    expect(screen.getByText('Đang xử lý')).toBeInTheDocument();
+    // KHÔNG render type/status thô
+    expect(screen.queryByText('sale_credit')).not.toBeInTheDocument();
+    expect(screen.queryByText('withdrawal_debit')).not.toBeInTheDocument();
+  });
+
+  it('debit (amount<0) hiển thị dấu − màu đỏ, không phải +', () => {
+    renderPage();
+    // amount −500.000 → "−500.000đ" (abs + dấu trừ), KHÔNG "+−"
+    expect(screen.getByText('−500.000đ')).toBeInTheDocument();
+    expect(screen.queryByText('+−500.000đ')).not.toBeInTheDocument();
   });
 
   it('renders Rút tiền button in shell actions', () => {

@@ -11,34 +11,46 @@ import type { WalletTx } from '../types';
 
 type TxTab = 'all' | 'income' | 'withdrawal';
 
+// Khớp ĐÚNG type BE trả: sale_credit | withdrawal_debit | withdrawal_refund.
 const TX_TYPE_LABEL: Record<string, string> = {
-  sale: 'Doanh thu',
-  withdrawal: 'Rút tiền',
-  refund: 'Hoàn tiền',
-  fee: 'Phí',
+  sale_credit: 'Doanh thu',
+  withdrawal_debit: 'Rút tiền',
+  withdrawal_refund: 'Hoàn tiền',
 };
 
+// status BE: 'credited' (sale) | trạng thái withdrawal ('processing'/'completed'/'failed').
 const TX_STATUS_COLOR: Record<string, string> = {
+  credited: '#2D7D46',
   completed: '#2D7D46',
-  pending: '#B8893B',
   processing: '#B8893B',
+  pending: '#B8893B',
   failed: '#B43A3A',
   cancelled: '#6B6B73',
 };
 
-function txSign(tx: WalletTx): string {
-  const withdrawalTypes = ['withdrawal', 'fee'];
-  return withdrawalTypes.includes(tx.type) ? '−' : '+';
-}
+const TX_STATUS_LABEL: Record<string, string> = {
+  credited: 'Đã cộng',
+  completed: 'Đã hoàn thành',
+  processing: 'Đang xử lý',
+  pending: 'Đang xử lý',
+  failed: 'Thất bại',
+  cancelled: 'Đã hủy',
+};
 
+// Dấu/màu suy ra từ DẤU của amount (BE: debit âm, credit dương) — bền với type mới.
+function isDebit(tx: WalletTx): boolean {
+  return Number(tx.amount) < 0;
+}
+function txSign(tx: WalletTx): string {
+  return isDebit(tx) ? '−' : '+';
+}
 function txAmountColor(tx: WalletTx): string {
-  const withdrawalTypes = ['withdrawal', 'fee'];
-  return withdrawalTypes.includes(tx.type) ? '#B43A3A' : '#2D7D46';
+  return isDebit(tx) ? '#B43A3A' : '#2D7D46';
 }
 
 function filterTxByTab(txs: WalletTx[], tab: TxTab): WalletTx[] {
-  if (tab === 'income') return txs.filter((t) => !['withdrawal', 'fee'].includes(t.type));
-  if (tab === 'withdrawal') return txs.filter((t) => ['withdrawal', 'fee'].includes(t.type));
+  if (tab === 'income') return txs.filter((t) => !isDebit(t));
+  if (tab === 'withdrawal') return txs.filter((t) => isDebit(t));
   return txs;
 }
 
@@ -353,7 +365,7 @@ export function VendorWalletPage() {
                           whiteSpace: 'nowrap',
                         }}
                       >
-                        {txSign(tx)}{formatVND(tx.amount)}
+                        {txSign(tx)}{formatVND(Math.abs(Number(tx.amount)))}
                       </td>
                       <td style={{ padding: '10px 0', textAlign: 'center' }}>
                         <span
@@ -367,14 +379,14 @@ export function VendorWalletPage() {
                             textTransform: 'uppercase',
                             color: TX_STATUS_COLOR[tx.status] ?? '#6B6B73',
                             background:
-                              tx.status === 'completed'
+                              tx.status === 'completed' || tx.status === 'credited'
                                 ? '#E8F5EC'
                                 : tx.status === 'failed' || tx.status === 'cancelled'
                                 ? '#FDEAEA'
                                 : '#FDF5E6',
                           }}
                         >
-                          {tx.status}
+                          {TX_STATUS_LABEL[tx.status] ?? tx.status}
                         </span>
                       </td>
                     </tr>

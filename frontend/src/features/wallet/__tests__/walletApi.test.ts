@@ -17,18 +17,18 @@ const RAW_DATA = {
   transactions: [
     {
       id: 1,
-      type: 'sale',
+      type: 'sale_credit',
       amount: 90_000,
-      description: 'Bán "Clean Code"',
-      status: 'completed',
+      description: 'Doanh thu đơn hàng',
+      status: 'credited',
       createdAt: '2026-06-01T10:00:00Z',
     },
     {
       id: 2,
-      type: 'withdrawal',
-      amount: 500_000,
-      description: 'Rút tiền về TK **** 1234',
-      status: 'pending',
+      type: 'withdrawal_debit',
+      amount: -500_000,
+      description: 'Yêu cầu rút tiền',
+      status: 'processing',
       createdAt: '2026-06-02T10:00:00Z',
     },
   ],
@@ -74,6 +74,15 @@ describe('transformWalletResponse', () => {
   it('transactions items have camelCase createdAt', () => {
     const result = transformWalletResponse(RAW_DATA, META);
     expect(result.transactions[0].createdAt).toBe('2026-06-01T10:00:00Z');
+  });
+
+  it('giữ nguyên type/status/amount đúng vocabulary BE (contract lock)', () => {
+    const result = transformWalletResponse(RAW_DATA, META);
+    expect(result.transactions[0].type).toBe('sale_credit');
+    expect(result.transactions[0].status).toBe('credited');
+    expect(result.transactions[1].type).toBe('withdrawal_debit');
+    expect(result.transactions[1].status).toBe('processing');
+    expect(result.transactions[1].amount).toBe(-500_000); // debit âm
   });
 
   it('pagination is merged from meta', () => {
