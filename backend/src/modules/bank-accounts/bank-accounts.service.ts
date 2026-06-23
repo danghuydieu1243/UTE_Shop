@@ -25,21 +25,15 @@ export async function createAccount(
 ): Promise<BankAccountDTO> {
   const existing = await repo.findAllByVendor(vendorUserId);
 
-  // First account auto-default
+  // TK đầu tiên auto-default
   const shouldBeDefault = existing.length === 0 ? true : (input.isDefault ?? false);
 
-  if (shouldBeDefault && existing.length > 0) {
-    // Clear other defaults first — handled after creation
-  }
-
-  const account = await repo.create(vendorUserId, {
-    ...input,
-    isDefault: shouldBeDefault,
-  });
+  // Tạo non-default trước → tránh cửa sổ 2 TK cùng default; setDefault (transaction)
+  // sẽ clear các TK khác + set TK này thành default duy nhất một cách atomic.
+  const account = await repo.create(vendorUserId, { ...input, isDefault: false });
 
   if (shouldBeDefault) {
     await repo.setDefault(Number(account.id), vendorUserId);
-    // Refresh after setDefault
     const refreshed = await repo.findByIdForVendor(Number(account.id), vendorUserId);
     return toDTO(refreshed!);
   }
