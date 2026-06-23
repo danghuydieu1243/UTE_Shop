@@ -37,6 +37,7 @@ import { AdminVendorsPage } from './features/admin/pages/AdminVendorsPage';
 import { AdminOrdersPage } from './features/admin/pages/AdminOrdersPage';
 import { AdminProductsPage } from './features/admin/pages/AdminProductsPage';
 import { VendorDashboardPage } from './features/analytics/pages/VendorDashboardPage';
+import { VendorWalletPage } from './features/wallet/pages/VendorWalletPage';
 import './index.css';
 
 // ── SocketBridge: connects/disconnects realtime socket based on auth token ───
@@ -99,6 +100,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
             <Route path="/vendor/promotions" element={<VendorPromotionsPage />} />
             <Route path="/vendor/promotions/new" element={<VendorPromotionFormPage />} />
             <Route path="/vendor/promotions/:id/edit" element={<VendorPromotionFormPage />} />
+            <Route path="/vendor/wallet" element={<VendorWalletPage />} />
           </Route>
 
           {/* Protected: admin/manager only — wrapped in AdminShell */}
