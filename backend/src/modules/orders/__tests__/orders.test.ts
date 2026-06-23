@@ -4,9 +4,10 @@ import {
   User, Vendor, Author, Book,
   Cart, CartItem,
   Order, OrderItem, Payment, Entitlement,
-  Coupon, CouponRedemption, LoyaltyAccount, LoyaltyTransaction,
+  Coupon, CouponRedemption, LoyaltyAccount, LoyaltyTransaction, Notification,
 } from '../../../db/models';
 import { signAccessToken } from '../../auth/token.service';
+import { cancelOrder } from '../orders.service';
 
 const app = createApp();
 
@@ -795,5 +796,60 @@ describe('Orders Pricing — coupon/points/cancel wiring', () => {
 
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('COUPON_INVALID');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NT-cancel1: Notification on cancelOrder (6a-T3)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('cancelOrder — notification order (6a-T3)', () => {
+  let vendorNotif: User;
+
+  beforeAll(async () => {
+    vendorNotif = await seedUser('vendor', `vnotif-${Date.now()}`);
+    await Vendor.create({
+      userId: vendorNotif.id,
+      shopName: 'Shop Notif Cancel',
+      shopSlug: `shop-notif-cancel-${Date.now()}`,
+    });
+  });
+
+  it('NT-cancel1: cancelOrder tạo 1 notification order với title chứa /hủy/i', async () => {
+    const buyer = await seedUser('user', `ntcancel1-${Date.now()}`);
+    const book = await seedBook(vendorNotif.id, { price: 55000 });
+
+    // Tạo order NEW trực tiếp qua model (không qua checkout để tránh phụ thuộc cart)
+    const order = await Order.create({
+      userId: buyer.id,
+      code: `ATH-NTCANCEL-${Date.now()}`,
+      status: 'NEW',
+      subtotal: 55000,
+      total: 55000,
+      currency: 'VND',
+    });
+    await OrderItem.create({
+      orderId: Number(order.id),
+      bookId: Number(book.id),
+      vendorUserId: Number(vendorNotif.id),
+      titleSnapshot: 'Sách Test Cancel Notif',
+      unitPrice: 55000,
+    });
+    await Payment.create({
+      orderId: Number(order.id),
+      provider: 'sepay',
+      amount: 55000,
+      currency: 'VND',
+      status: 'PENDING',
+      referenceCode: order.code,
+      expiresAt: new Date(Date.now() + 15 * 60 * 1000),
+    });
+
+    // cancelOrder(userId, code) — chú ý thứ tự tham số
+    await cancelOrder(buyer.id, order.code);
+
+    const notifs = await Notification.findAll({ where: { userId: buyer.id, type: 'order' } });
+    expect(notifs.length).toBe(1);
+    expect(notifs[0].title).toMatch(/hủy/i);
   });
 });

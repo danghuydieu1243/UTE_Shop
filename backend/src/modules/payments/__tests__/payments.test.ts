@@ -10,10 +10,11 @@ import { createApp } from '../../../app';
 import {
   User, Vendor, Book, BookFile,
   Order, OrderItem, Payment, Entitlement, Author,
-  Coupon, CouponRedemption, Cart, CartItem,
+  Coupon, CouponRedemption, Cart, CartItem, Notification,
 } from '../../../db/models';
 import { signAccessToken } from '../../auth/token.service';
 import { env } from '../../../config/env';
+import { completePayment } from '../payments.service';
 
 const app = createApp();
 
@@ -510,6 +511,36 @@ describe('completePayment — coupon used_count wiring', () => {
 
     const updatedCoupon = await Coupon.findByPk(coupon.id);
     expect(Number(updatedCoupon!.usedCount)).toBe(1);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NT-pay1/NT-pay2: Notification idempotency on completePayment (6a-T3)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('completePayment — notification ebook (6a-T3)', () => {
+  it('NT-pay1: completePayment lần đầu tạo đúng 1 notification ebook', async () => {
+    const buyer = await seedUser('user', `ntpay1-${Date.now()}`);
+    const book = await seedBook(vendorUser.id);
+    const { payment } = await createPendingOrder(buyer.id, vendorUser.id, book.id);
+
+    await completePayment(payment.id, { userId: buyer.id });
+
+    const notifs = await Notification.findAll({ where: { userId: buyer.id, type: 'ebook' } });
+    expect(notifs.length).toBe(1);
+    expect(notifs[0].title).toMatch(/hoàn thành|sẵn sàng/i);
+  });
+
+  it('NT-pay2: gọi completePayment lần 2 (idempotent) KHÔNG tạo notification thứ 2', async () => {
+    const buyer = await seedUser('user', `ntpay2-${Date.now()}`);
+    const book = await seedBook(vendorUser.id);
+    const { payment } = await createPendingOrder(buyer.id, vendorUser.id, book.id);
+
+    await completePayment(payment.id, { userId: buyer.id });
+    await completePayment(payment.id, { userId: buyer.id }); // idempotent return
+
+    const notifs = await Notification.findAll({ where: { userId: buyer.id, type: 'ebook' } });
+    expect(notifs.length).toBe(1);
   });
 });
 

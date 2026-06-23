@@ -16,6 +16,7 @@ import {
   CreateOrderBody,
 } from './orders.schema';
 import { validateAndPriceCoupon } from '../coupons/coupons.service';
+import * as notificationsService from '../notifications/notifications.service';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -282,6 +283,18 @@ export async function cancelOrder(userId: number, code: string): Promise<OrderDe
     await Payment.update(
       { status: 'FAILED' },
       { where: { orderId: order.id, status: 'PENDING' }, transaction: t },
+    );
+
+    // 6a: thông báo đơn hàng đã hủy
+    await notificationsService.createNotification(
+      {
+        userId: order.userId,
+        type: 'order',
+        title: `Đơn ${order.code} đã hủy`,
+        body: 'Đơn hàng của bạn đã được hủy.',
+        data: { orderCode: order.code },
+      },
+      { transaction: t },
     );
 
     // Reload để trả DTO mới nhất

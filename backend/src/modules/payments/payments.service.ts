@@ -9,6 +9,7 @@ import {
 import { AppError } from '../../shared/errors/AppError';
 import { mapOrderDetailDTO } from '../orders/orders.repository';
 import { OrderDetailDTO } from '../orders/orders.schema';
+import * as notificationsService from '../notifications/notifications.service';
 
 // ── Tải lại order đầy đủ (items + book + payments) để build DTO ──────────────
 
@@ -123,6 +124,19 @@ export async function completePayment(
     }
 
     // TODO P6: cộng ví Vendor (bảng vendor_wallets tạo ở Phase 6)
+
+    // 6a: thông báo ebook sẵn sàng tải (idempotent — nhánh này chỉ chạy lần đầu PAID)
+    const itemCount = items.length;
+    await notificationsService.createNotification(
+      {
+        userId: opts.userId,
+        type: 'ebook',
+        title: `Đơn ${order.code} đã hoàn thành — ${itemCount} e-book sẵn sàng tải`,
+        body: 'Thanh toán đã được xác nhận. E-book đã được thêm vào thư viện của bạn.',
+        data: { orderCode: order.code, count: itemCount },
+      },
+      { transaction: t },
+    );
 
     // D10: increment coupon used_count on first COMPLETED (guard is the payment.status===PAID early return above)
     if (order.couponId) {
