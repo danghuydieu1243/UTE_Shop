@@ -32,6 +32,7 @@ import { AdminPermissionsPage } from './features/admin/pages/AdminPermissionsPag
 import { AdminUsersPage } from './features/admin/pages/AdminUsersPage';
 import { AdminVendorsPage } from './features/admin/pages/AdminVendorsPage';
 import { AdminOrdersPage } from './features/admin/pages/AdminOrdersPage';
+import { AdminProductsPage } from './features/admin/pages/AdminProductsPage';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
@@ -86,7 +87,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
               {/* Shared: admin + manager */}
               <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
               <Route path="/admin/vendors" element={<AdminVendorsPage />} />
-              <Route path="/admin/products" element={<div className="p-10 text-ink">Admin Products — Phase 4b Task 7</div>} />
+              <Route path="/admin/products" element={<AdminProductsPage />} />
               <Route path="/admin/orders" element={<AdminOrdersPage />} />
               {/* Admin-only (nested RequireRole) */}
               <Route element={<RequireRole roles={['admin']} />}>

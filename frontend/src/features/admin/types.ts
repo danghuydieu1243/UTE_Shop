@@ -36,11 +36,18 @@ export interface AdminOrderRow {
   buyerEmail: string;
 }
 
+// 'draft' = vendor chưa đăng; 'published' = công khai; 'hidden' = admin đã gỡ
+export type AdminProductStatus = 'draft' | 'published' | 'hidden';
+
+// Khớp chính xác BE AdminProductDTO (admin.schema.ts)
 export interface AdminProductRow {
   id: number;
   title: string;
-  vendorEmail: string;
-  status: string;
+  slug: string | null;
+  vendorShop: string;
+  authorName: string | null;
   price: number;
+  status: AdminProductStatus | string;
+  fileFormat: string;
   createdAt: string;
 }

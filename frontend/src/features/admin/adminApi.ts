@@ -3,7 +3,7 @@
  */
 import { baseApi } from '../../shared/api/baseApi';
 import type { EnvelopeMeta } from '../../shared/api/baseApi';
-import type { AdminUserRow, AdminVendorRow } from './types';
+import type { AdminUserRow, AdminVendorRow, AdminProductRow, AdminProductStatus } from './types';
 
 // ── Order types ───────────────────────────────────────────────────────────────
 
@@ -191,6 +191,40 @@ export const transformAdminVendorsResponse = (
   pagination: meta?.pagination ?? { page: 1, limit: 20, total: 0, totalPages: 0 },
 });
 
+// ── Product types ───────────────────────────────────────────────────────────
+
+// BE listAdminProductsQuerySchema: search, vendorUserId, status, page, limit (KHÔNG có date).
+export interface AdminProductsParams {
+  search?: string;
+  vendorUserId?: number | string;
+  status?: AdminProductStatus | '';
+  page?: number;
+  limit?: number;
+}
+
+export interface AdminProductsResult {
+  products: AdminProductRow[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+/**
+ * Transforms the raw baseApi response (envelope already unwrapped) into AdminProductsResult.
+ * baseApi passes: data = res.data.data (mảng product), meta = res.data.meta ({ pagination }).
+ * Exported để test khóa shape mảng + meta.
+ */
+export const transformAdminProductsResponse = (
+  resp: AdminProductRow[],
+  meta: EnvelopeMeta | undefined,
+): AdminProductsResult => ({
+  products: Array.isArray(resp) ? resp : [],
+  pagination: meta?.pagination ?? { page: 1, limit: 20, total: 0, totalPages: 0 },
+});
+
 // ── API ───────────────────────────────────────────────────────────────────────
 
 export const adminApi = baseApi.injectEndpoints({
@@ -284,6 +318,38 @@ export const adminApi = baseApi.injectEndpoints({
       query: (code) => ({ url: `/admin/orders/${code}`, method: 'GET' }),
       providesTags: (_result, _err, code) => [{ type: 'AdminOrder', id: code }],
     }),
+
+    /**
+     * GET /api/v1/admin/products — paginated product list toàn sàn (admin + manager).
+     * baseApi unwraps envelope: data = mảng product, meta = { pagination }.
+     */
+    getAdminProducts: build.query<AdminProductsResult, AdminProductsParams>({
+      query: (params) => ({ url: '/admin/products', method: 'GET', params }),
+      transformResponse: transformAdminProductsResponse,
+      providesTags: (result) =>
+        result
+          ? [
+              ...result.products.map(({ id }) => ({ type: 'AdminProduct' as const, id })),
+              { type: 'AdminProduct', id: 'LIST' },
+            ]
+          : [{ type: 'AdminProduct', id: 'LIST' }],
+    }),
+
+    /**
+     * PATCH /api/v1/admin/products/:id/status — gỡ ('hidden') / khôi phục ('published').
+     * 'hidden' biến mất khỏi catalog public. Idempotent.
+     */
+    updateProductStatus: build.mutation<AdminProductRow, { id: number; status: 'published' | 'hidden' }>({
+      query: ({ id, status }) => ({
+        url: `/admin/products/${id}/status`,
+        method: 'PATCH',
+        data: { status },
+      }),
+      invalidatesTags: (_result, _err, { id }) => [
+        { type: 'AdminProduct', id },
+        { type: 'AdminProduct', id: 'LIST' },
+      ],
+    }),
   }),
   overrideExisting: false,
 });
@@ -295,4 +361,6 @@ export const {
   useUpdateVendorStatusMutation,
   useGetAdminOrdersQuery,
   useGetAdminOrderDetailQuery,
+  useGetAdminProductsQuery,
+  useUpdateProductStatusMutation,
 } = adminApi;
