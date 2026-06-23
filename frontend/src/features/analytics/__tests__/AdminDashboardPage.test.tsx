@@ -183,6 +183,13 @@ describe('AdminDashboardPage', () => {
     expect(screen.getByTestId('loading')).toBeInTheDocument();
   });
 
+  it('shows error state (not blank) when query errors', () => {
+    mockGetAdminDashboard.mockReturnValue({ data: undefined, isLoading: false, isError: true, refetch: vi.fn() });
+    renderAs('admin');
+    expect(screen.getByTestId('error')).toBeInTheDocument();
+    expect(screen.getByText(/Không tải được/i)).toBeInTheDocument();
+  });
+
   it('changing period dropdown calls query with the new period value', () => {
     mockGetAdminDashboard.mockReturnValue({ data: ADMIN_DATA, isLoading: false });
     renderAs('admin');

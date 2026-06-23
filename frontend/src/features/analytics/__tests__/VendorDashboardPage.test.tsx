@@ -145,4 +145,11 @@ describe('VendorDashboardPage', () => {
     const { getByTestId } = renderPage();
     expect(getByTestId('loading')).toBeInTheDocument();
   });
+
+  it('shows error state (not blank) when query errors', () => {
+    mockGetVendorDashboard.mockReturnValue({ data: undefined, isLoading: false, isError: true, refetch: vi.fn() });
+    renderPage();
+    expect(screen.getByTestId('error')).toBeInTheDocument();
+    expect(screen.getByText(/Không tải được/i)).toBeInTheDocument();
+  });
 });

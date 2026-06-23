@@ -181,7 +181,7 @@ const TH_RIGHT: React.CSSProperties = { ...TH_STYLE, textAlign: 'right' };
 // ── Main page ─────────────────────────────────────────────────────────────────
 export const AdminDashboardPage = () => {
   const [period, setPeriod] = useState('30d');
-  const { data, isLoading } = useGetAdminDashboardQuery(period);
+  const { data, isLoading, isError, refetch } = useGetAdminDashboardQuery(period);
 
   const role = useAppSelector((s) => s.auth.user?.role);
   const isAdmin = role === 'admin';
@@ -231,7 +231,7 @@ export const AdminDashboardPage = () => {
         </select>
       </div>
 
-      {/* ── Loading state ── */}
+      {/* ── Loading state (skeleton trắng + viền để nổi trên bg #F4F3F0) ── */}
       {isLoading && (
         <div data-testid="loading" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {[1, 2, 3].map((i) => (
@@ -239,7 +239,8 @@ export const AdminDashboardPage = () => {
               key={i}
               style={{
                 height: '72px',
-                background: DS.pageBg,
+                background: DS.surface,
+                border: `1px solid ${DS.line}`,
                 borderRadius: '2px',
               }}
             />
@@ -247,8 +248,38 @@ export const AdminDashboardPage = () => {
         </div>
       )}
 
+      {/* ── Error state ── */}
+      {!isLoading && isError && (
+        <div
+          data-testid="error"
+          style={{
+            background: DS.surface,
+            border: `1px solid ${DS.line}`,
+            borderRadius: '2px',
+            padding: '40px 24px',
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ fontSize: '14px', fontWeight: 600, color: DS.ink, marginBottom: '6px' }}>
+            Không tải được dữ liệu tổng quan
+          </div>
+          <div style={{ fontSize: '13px', color: DS.ink2, marginBottom: '16px' }}>
+            Vui lòng thử lại. Nếu vẫn lỗi, hãy đăng nhập lại.
+          </div>
+          <button
+            onClick={() => refetch()}
+            style={{
+              height: '34px', padding: '0 16px', background: DS.ink, color: '#FBFAF8',
+              fontSize: '12px', fontWeight: 600, border: 'none', borderRadius: '2px', cursor: 'pointer',
+            }}
+          >
+            Thử lại
+          </button>
+        </div>
+      )}
+
       {/* ── Dashboard content ── */}
-      {!isLoading && data && (
+      {!isLoading && !isError && data && (
         <>
           {/* ── Row 1: KPI cards ── */}
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>

@@ -79,7 +79,7 @@ const SectionHeader = ({ children }: { children: React.ReactNode }) => (
 // ── Main page ─────────────────────────────────────────────────────────────────
 export const VendorDashboardPage = () => {
   const [period, setPeriod] = useState('30d');
-  const { data, isLoading } = useGetVendorDashboardQuery(period);
+  const { data, isLoading, isError, refetch } = useGetVendorDashboardQuery(period);
 
   // ── Period select (topbar actions) ──────────────────────────────────────────
   const periodSelect = (
@@ -108,7 +108,7 @@ export const VendorDashboardPage = () => {
   return (
     <VendorShell title="Tổng quan" actions={periodSelect}>
 
-      {/* ── Loading state ── */}
+      {/* ── Loading state (skeleton trên nền trắng để nổi trên bg #F4F3F0 của shell) ── */}
       {isLoading && (
         <div
           data-testid="loading"
@@ -123,17 +123,54 @@ export const VendorDashboardPage = () => {
               key={i}
               style={{
                 height: '72px',
-                background: '#F4F3F0',
+                background: '#FFFFFF',
+                border: '1px solid #ECEAE5',
                 borderRadius: '2px',
-                animation: 'pulse 1.5s ease-in-out infinite',
               }}
             />
           ))}
         </div>
       )}
 
+      {/* ── Error state ── */}
+      {!isLoading && isError && (
+        <div
+          data-testid="error"
+          style={{
+            background: '#FFFFFF',
+            border: '1px solid #ECEAE5',
+            borderRadius: '2px',
+            padding: '40px 24px',
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ fontSize: '14px', fontWeight: 600, color: '#16161A', marginBottom: '6px' }}>
+            Không tải được dữ liệu tổng quan
+          </div>
+          <div style={{ fontSize: '13px', color: '#6B6B73', marginBottom: '16px' }}>
+            Vui lòng thử lại. Nếu vẫn lỗi, hãy đăng nhập lại.
+          </div>
+          <button
+            onClick={() => refetch()}
+            style={{
+              height: '34px',
+              padding: '0 16px',
+              background: '#16161A',
+              color: '#FBFAF8',
+              fontSize: '12px',
+              fontWeight: 600,
+              border: 'none',
+              borderRadius: '2px',
+              cursor: 'pointer',
+            }}
+          >
+            Thử lại
+          </button>
+        </div>
+      )}
+
       {/* ── Dashboard content ── */}
-      {!isLoading && data && (
+      {!isLoading && !isError && data && (
         <>
           {/* ── Row 1: KPI cards ── */}
           <div
