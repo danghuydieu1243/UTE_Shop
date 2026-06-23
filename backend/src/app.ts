@@ -20,6 +20,7 @@ import { notificationsRouter } from './modules/notifications';
 import { adminRouter } from './modules/admin';
 import { vendorAnalyticsRouter, adminAnalyticsRouter } from './modules/analytics';
 import { bankAccountsRouter } from './modules/bank-accounts';
+import { walletRouter } from './modules/wallet';
 import { notFound } from './shared/middleware/notFound';
 import { errorHandler } from './shared/middleware/errorHandler';
 import { env } from './config/env';
@@ -58,6 +59,7 @@ export const createApp = () => {
   app.use('/api/v1/me/loyalty', loyaltyRouter);
   app.use('/api/v1/user/notifications', notificationsRouter);
   app.use('/api/v1/vendor/bank-accounts', bankAccountsRouter);
+  app.use('/api/v1/vendor/wallet', walletRouter);
   app.use('/api/v1/vendor/analytics', vendorAnalyticsRouter);
   app.use('/api/v1/admin/analytics', adminAnalyticsRouter);
   app.use('/api/v1/admin', adminRouter);

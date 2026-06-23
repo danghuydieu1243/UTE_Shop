@@ -10,6 +10,7 @@ import { AppError } from '../../shared/errors/AppError';
 import { mapOrderDetailDTO } from '../orders/orders.repository';
 import { OrderDetailDTO } from '../orders/orders.schema';
 import * as notificationsService from '../notifications/notifications.service';
+import * as walletService from '../wallet/wallet.service';
 
 // ── Tải lại order đầy đủ (items + book + payments) để build DTO ──────────────
 
@@ -123,8 +124,6 @@ export async function completePayment(
       });
     }
 
-    // TODO P6: cộng ví Vendor (bảng vendor_wallets tạo ở Phase 6)
-
     // 6a: thông báo ebook sẵn sàng tải (idempotent — nhánh này chỉ chạy lần đầu PAID)
     const itemCount = items.length;
     await notificationsService.createNotification(
@@ -141,6 +140,16 @@ export async function completePayment(
     // D10: increment coupon used_count on first COMPLETED (guard is the payment.status===PAID early return above)
     if (order.couponId) {
       await Coupon.increment('usedCount', { by: 1, where: { id: Number(order.couponId) }, transaction: t });
+    }
+
+    // 6c: cộng ví Vendor (mỗi vendor 1 lần, gross) — idempotent vì nhánh này chỉ chạy lần đầu PAID
+    const byVendor = new Map<number, number>();
+    for (const item of items) {
+      const v = Number(item.vendorUserId);
+      byVendor.set(v, (byVendor.get(v) ?? 0) + Number(item.unitPrice));
+    }
+    for (const [vendorUserId, amount] of byVendor) {
+      await walletService.creditSale(vendorUserId, amount, Number(order.id), t);
     }
 
     // 11. Load lại order đầy đủ để build DTO
