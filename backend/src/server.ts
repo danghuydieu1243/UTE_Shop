@@ -1,7 +1,9 @@
+import http from 'http';
 import { createApp } from './app';
 import { env } from './config/env';
 import { sequelize } from './shared/db/sequelize';
 import { connectRedis } from './shared/db/redis';
+import { initIO } from './shared/realtime/io';
 import { logger } from './shared/logger';
 
 const start = async (): Promise<void> => {
@@ -13,7 +15,9 @@ const start = async (): Promise<void> => {
   }
   await connectRedis();
   const app = createApp();
-  app.listen(env.PORT, () => logger.info(`Server running on port ${env.PORT}`));
+  const httpServer = http.createServer(app);
+  initIO(httpServer);
+  httpServer.listen(env.PORT, () => logger.info(`Server running on port ${env.PORT}`));
 };
 
 void start();

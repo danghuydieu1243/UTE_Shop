@@ -3,6 +3,7 @@ import { Notification } from '../../db/models';
 import { AppError } from '../../shared/errors/AppError';
 import * as repo from './notifications.repository';
 import { NotificationDTO } from './notifications.schema';
+import { emitToUser } from '../../shared/realtime/io';
 
 export interface CreateNotificationInput {
   userId: number;
@@ -12,7 +13,6 @@ export interface CreateNotificationInput {
   data?: object | null;
 }
 
-// T1: chỉ INSERT + map. T2 sẽ bổ sung emit socket sau commit.
 export async function createNotification(
   input: CreateNotificationInput,
   opts?: { transaction?: Transaction },
@@ -25,9 +25,16 @@ export async function createNotification(
       body: input.body ?? null,
       data: input.data ?? null,
     },
-    { transaction: opts?.transaction },
+    opts?.transaction ? { transaction: opts.transaction } : {},
   );
-  return repo.mapNotificationDTO(row);
+  const dto = repo.mapNotificationDTO(row);
+  const emit = () => emitToUser(input.userId, 'notification', dto);
+  if (opts?.transaction) {
+    opts.transaction.afterCommit(() => emit());
+  } else {
+    emit();
+  }
+  return dto;
 }
 
 export async function listNotifications(userId: number, page: number, limit: number) {
