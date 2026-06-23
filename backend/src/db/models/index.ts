@@ -23,6 +23,7 @@ import { Coupon } from './Coupon';
 import { CouponRedemption } from './CouponRedemption';
 import { LoyaltyAccount } from './LoyaltyAccount';
 import { LoyaltyTransaction } from './LoyaltyTransaction';
+import { Notification } from './Notification';
 
 // ── Phase 1 Associations ────────────────────────────────────────────────────
 User.hasOne(Vendor, { foreignKey: 'user_id', as: 'vendor', onDelete: 'RESTRICT' });
@@ -135,6 +136,10 @@ LoyaltyTransaction.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 LoyaltyTransaction.belongsTo(Order, { foreignKey: 'order_id', as: 'order' });
 LoyaltyTransaction.belongsTo(Review, { foreignKey: 'review_id', as: 'review' });
 
+// ── Phase 6 Associations ────────────────────────────────────────────────────
+User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications', onDelete: 'RESTRICT' });
+Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
 export {
   sequelize,
   User, Vendor, OtpCode, RefreshToken, AuditLog,
@@ -143,4 +148,5 @@ export {
   Order, OrderItem, Payment,
   Entitlement, DownloadLog,
   Review, Wishlist, Coupon, CouponRedemption, LoyaltyAccount, LoyaltyTransaction,
+  Notification,
 };
