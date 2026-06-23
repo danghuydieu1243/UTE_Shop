@@ -214,11 +214,11 @@ describe('AdminDashboardPage', () => {
       expect(container.querySelector('path')).not.toBeNull();
     });
 
-    it('renders "Doanh thu" column header in Top Sách table', () => {
+    it('renders "Doanh thu" column header trong bảng Top Sách (scope đúng table header)', () => {
       renderAs('admin');
-      // getAllByText because it might also appear in chart section header
-      const elements = screen.getAllByText(/^Doanh thu$/i);
-      expect(elements.length).toBeGreaterThanOrEqual(1);
+      const tableHeaders = screen.queryAllByRole('columnheader');
+      const revenueHeader = tableHeaders.find((th) => th.textContent?.includes('Doanh thu'));
+      expect(revenueHeader).toBeDefined();
     });
 
     it('renders top book title and vendor', () => {
