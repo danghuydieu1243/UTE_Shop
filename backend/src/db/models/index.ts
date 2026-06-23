@@ -24,6 +24,10 @@ import { CouponRedemption } from './CouponRedemption';
 import { LoyaltyAccount } from './LoyaltyAccount';
 import { LoyaltyTransaction } from './LoyaltyTransaction';
 import { Notification } from './Notification';
+import { VendorWallet } from './VendorWallet';
+import { WalletTransaction } from './WalletTransaction';
+import { Withdrawal } from './Withdrawal';
+import { VendorBankAccount } from './VendorBankAccount';
 
 // ── Phase 1 Associations ────────────────────────────────────────────────────
 User.hasOne(Vendor, { foreignKey: 'user_id', as: 'vendor', onDelete: 'RESTRICT' });
@@ -140,6 +144,15 @@ LoyaltyTransaction.belongsTo(Review, { foreignKey: 'review_id', as: 'review' });
 User.hasMany(Notification, { foreignKey: 'user_id', as: 'notifications', onDelete: 'RESTRICT' });
 Notification.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
+// ── Phase 6c Associations ───────────────────────────────────────────────────
+User.hasOne(VendorWallet, { foreignKey: 'vendor_user_id', as: 'wallet' });
+VendorWallet.belongsTo(User, { foreignKey: 'vendor_user_id', as: 'vendor' });
+User.hasMany(WalletTransaction, { foreignKey: 'vendor_user_id', as: 'walletTransactions' });
+User.hasMany(VendorBankAccount, { foreignKey: 'vendor_user_id', as: 'bankAccounts' });
+User.hasMany(Withdrawal, { foreignKey: 'vendor_user_id', as: 'withdrawals' });
+Withdrawal.belongsTo(VendorBankAccount, { foreignKey: 'bank_account_id', as: 'bankAccount' });
+WalletTransaction.belongsTo(Withdrawal, { foreignKey: 'withdrawal_id', as: 'withdrawal' });
+
 export {
   sequelize,
   User, Vendor, OtpCode, RefreshToken, AuditLog,
@@ -149,4 +162,5 @@ export {
   Entitlement, DownloadLog,
   Review, Wishlist, Coupon, CouponRedemption, LoyaltyAccount, LoyaltyTransaction,
   Notification,
+  VendorWallet, WalletTransaction, Withdrawal, VendorBankAccount,
 };
