@@ -41,7 +41,7 @@ export async function createWithdrawal(
         bankAccountId: input.bankAccountId,
         amount: input.amount,
         status: 'processing',
-        requestedAt: new Date().toISOString().slice(0, 10),
+        requestedAt: new Date(),
       },
       { transaction: t },
     );
@@ -62,7 +62,7 @@ export async function createWithdrawal(
       amount: Number(wd.amount),
       status: wd.status,
       bankAccountId: input.bankAccountId,
-      requestedAt: wd.requestedAt,
+      requestedAt: new Date(wd.requestedAt).toISOString(),
     };
   });
 }

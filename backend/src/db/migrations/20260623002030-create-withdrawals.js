@@ -7,8 +7,8 @@ module.exports = {
       bank_account_id: { type: S.BIGINT.UNSIGNED, allowNull: false, references: { model: 'vendor_bank_accounts', key: 'id' }, onDelete: 'RESTRICT', onUpdate: 'CASCADE' },
       amount: { type: S.BIGINT.UNSIGNED, allowNull: false },
       status: { type: S.STRING(12), allowNull: false, defaultValue: 'processing' },
-      requested_at: { type: S.DATEONLY, allowNull: false },
-      processed_at: { type: S.DATEONLY, allowNull: true },
+      requested_at: { type: S.DATE, allowNull: false },
+      processed_at: { type: S.DATE, allowNull: true },
     });
     await q.addIndex('withdrawals', ['vendor_user_id', 'status']);
   },

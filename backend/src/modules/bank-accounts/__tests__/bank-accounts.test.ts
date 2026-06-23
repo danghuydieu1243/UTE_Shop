@@ -200,7 +200,7 @@ it('BA7: DELETE account with processing withdrawal → 409 BANK_ACCOUNT_IN_USE',
     bankAccountId: accountId,
     amount: 100000,
     status: 'processing',
-    requestedAt: new Date().toISOString().slice(0, 10),
+    requestedAt: new Date(),
   });
 
   const res = await request(app)
