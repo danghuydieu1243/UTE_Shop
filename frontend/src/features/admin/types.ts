@@ -4,7 +4,7 @@
 
 export type AdminUserStatus = 'active' | 'locked' | 'pending';
 export type AdminVendorStatus = 'active' | 'locked';
-export type AdminOrderStatus = 'NEW' | 'PENDING_PAYMENT' | 'COMPLETED' | 'CANCELLED';
+// Lưu ý: order status canonical (NEW|COMPLETED|CANCELLED) định nghĩa trong adminApi.ts.
 
 export interface AdminUserRow {
   id: number;
@@ -20,20 +20,12 @@ export interface AdminUserRow {
 export interface AdminVendorRow {
   userId: number;
   shopName: string;
-  shopSlug: string;
+  shopSlug: string | null;
   ownerName: string;
   ownerEmail: string;
   status: AdminVendorStatus;
   bookCount: number;
   createdAt: string;
-}
-
-export interface AdminOrderRow {
-  code: string;
-  status: AdminOrderStatus;
-  total: number;
-  createdAt: string;
-  buyerEmail: string;
 }
 
 // 'draft' = vendor chưa đăng; 'published' = công khai; 'hidden' = admin đã gỡ
