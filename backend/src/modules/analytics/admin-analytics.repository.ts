@@ -25,7 +25,7 @@ export async function completedOrders(from: Date, to: Date) {
 
 /** Users role 'user' tạo trong [from,to] — dùng cho newUsersSeries. */
 export async function newUsers(from: Date, to: Date) {
-  return User.unscoped().findAll({
+  return User.findAll({
     where: { role: 'user', created_at: { [Op.between]: [from, to] } },
     attributes: ['id', 'created_at'],
   });

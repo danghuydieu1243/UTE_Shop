@@ -5,13 +5,15 @@ import { AdminDashboardDTO } from './analytics.schema';
 export async function getAdminDashboard(period: string, role: string): Promise<AdminDashboardDTO> {
   const { from, to } = resolvePeriod(period);
   const isAdmin = role === 'admin';
+  // newUsersSeries luôn là cửa sổ 7 ngày gần nhất (độc lập với period KPI) — fetch đúng khoảng đó.
+  const wk = resolvePeriod('7d');
 
   const [totalUsers, totalVendors, orders, completed, newU, items, recent] = await Promise.all([
     repo.countUsers(),
     repo.countActiveVendors(),
     repo.countOrdersInPeriod(from, to),
     repo.completedOrders(from, to),
-    repo.newUsers(from, to),
+    repo.newUsers(wk.from, wk.to),
     repo.completedItems(from, to),
     repo.recentOrders(5),
   ]);
@@ -26,8 +28,7 @@ export async function getAdminDashboard(period: string, role: string): Promise<A
     to,
   );
 
-  // newUsersSeries: últimos 7 dias (resolvePeriod('7d'))
-  const wk = resolvePeriod('7d');
+  // newUsersSeries: 7 ngày gần nhất
   const newUsersSeries = bucketByDay(
     newU.map((u) => ({ date: new Date(u.created_at), value: 1 })),
     wk.from,
