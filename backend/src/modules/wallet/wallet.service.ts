@@ -1,4 +1,5 @@
 import { Transaction } from 'sequelize';
+import { WalletTransaction } from '../../db/models';
 import * as repo from './wallet.repository';
 import { WalletDTO } from './wallet.schema';
 
@@ -11,7 +12,6 @@ export async function creditSale(
   const wallet = await repo.findOrCreateWallet(vendorUserId, t);
   const newBalance = Number(wallet.availableBalance) + amount;
   await wallet.update({ availableBalance: newBalance }, { transaction: t });
-  const { WalletTransaction } = await import('../../db/models');
   await WalletTransaction.create(
     { vendorUserId, type: 'sale_credit', amount, orderId, balanceAfter: newBalance },
     { transaction: t },
