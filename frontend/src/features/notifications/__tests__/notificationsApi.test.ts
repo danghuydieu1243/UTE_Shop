@@ -13,8 +13,16 @@ describe('transformNotificationsResponse — contract lock', () => {
     const r = transformNotificationsResponse(ROWS as never, meta);
     expect(Array.isArray(r.notifications)).toBe(true);
     expect(r.notifications).toHaveLength(2);
+    // Khóa TỪNG field DTO (bug-class #1 dự án: FE↔BE shape/casing drift)
+    expect(r.notifications[0].id).toBe(2);
+    expect(r.notifications[0].type).toBe('ebook');
+    expect(r.notifications[0].title).toBe('B');
+    expect(r.notifications[0].body).toBeNull();
+    expect(r.notifications[0].data).toEqual({ orderCode: 'X' });
     expect(r.notifications[0].readAt).toBeNull();         // camelCase đúng
     expect(r.notifications[0].createdAt).toBe('2026-06-23T08:00:00.000Z');
+    expect(r.notifications[1].readAt).toBe('2026-06-23T07:00:00.000Z'); // ca readAt non-null
+    expect(r.notifications[1].body).toBe('x');
     expect(r.unreadCount).toBe(1);
     expect(r.pagination.total).toBe(2);
   });
