@@ -25,6 +25,8 @@ export interface EnvelopeMeta {
   pagination?: PaginationMeta;
   /** Status-breakdown stats (admin users list). */
   stats?: Record<string, number>;
+  /** Số thông báo chưa đọc (notifications list). */
+  unreadCount?: number;
 }
 
 const rawBaseQuery: BaseQueryFn<
@@ -107,6 +109,6 @@ const baseQueryWithReauth: BaseQueryFn<
 export const baseApi = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['Me', 'Book', 'VendorBook', 'Categories', 'Cart', 'Order', 'Ebook', 'Wishlist', 'Review', 'VendorCoupon', 'VendorOrder', 'AdminUser', 'AdminVendor', 'AdminOrder', 'AdminProduct'],
+  tagTypes: ['Me', 'Book', 'VendorBook', 'Categories', 'Cart', 'Order', 'Ebook', 'Wishlist', 'Review', 'VendorCoupon', 'VendorOrder', 'AdminUser', 'AdminVendor', 'AdminOrder', 'AdminProduct', 'Notification'],
   endpoints: () => ({}),
 });
