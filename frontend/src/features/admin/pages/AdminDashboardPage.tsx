@@ -119,12 +119,11 @@ const CardHeader = ({ children, link }: { children: React.ReactNode; link?: { to
 );
 
 // ── Status badge ──────────────────────────────────────────────────────────────
+// Order.status từ BE là UPPERCASE: NEW | COMPLETED | CANCELLED (khớp AdminOrdersPage).
 const STATUS_MAP: Record<string, { bg: string; color: string; label: string }> = {
-  pending:   { bg: DS.warningBg, color: DS.warning, label: 'Chờ xử lý' },
-  paid:      { bg: DS.infoBg,    color: DS.info,    label: 'Đã thanh toán' },
-  completed: { bg: DS.successBg, color: DS.success, label: 'Hoàn thành' },
-  cancelled: { bg: DS.dangerBg,  color: DS.danger,  label: 'Đã huỷ' },
-  refunded:  { bg: DS.dangerBg,  color: DS.danger,  label: 'Đã hoàn tiền' },
+  NEW:       { bg: DS.infoBg,    color: DS.info,    label: 'Mới' },
+  COMPLETED: { bg: DS.successBg, color: DS.success, label: 'Hoàn thành' },
+  CANCELLED: { bg: DS.dangerBg,  color: DS.danger,  label: 'Đã hủy' },
 };
 
 const StatusBadge = ({ status }: { status: string }) => {

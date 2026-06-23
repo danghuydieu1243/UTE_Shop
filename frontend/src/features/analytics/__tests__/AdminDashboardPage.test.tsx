@@ -65,14 +65,14 @@ const ADMIN_DATA: AdminDashboard = {
       code: 'ORD-001',
       buyer: 'Nguyễn Văn A',
       total: 90_000,
-      status: 'completed',
+      status: 'COMPLETED',
       createdAt: '2026-06-01T03:30:00Z',
     },
     {
       code: 'ORD-002',
       buyer: 'Trần Thị B',
       total: 180_000,
-      status: 'paid',
+      status: 'NEW',
       createdAt: '2026-06-02T10:00:00Z',
     },
   ],
@@ -106,7 +106,7 @@ const MANAGER_DATA: AdminDashboard = {
       code: 'ORD-001',
       buyer: 'Nguyễn Văn A',
       total: 90_000,
-      status: 'completed',
+      status: 'COMPLETED',
       createdAt: '2026-06-01T03:30:00Z',
     },
   ],
@@ -235,6 +235,14 @@ describe('AdminDashboardPage', () => {
     it('renders recent order code', () => {
       renderAs('admin');
       expect(screen.getByText('ORD-001')).toBeInTheDocument();
+    });
+
+    it('maps UPPERCASE order status to Vietnamese badge label (contract lock)', () => {
+      renderAs('admin');
+      // status 'COMPLETED' → "Hoàn thành", 'NEW' → "Mới" (KHÔNG hiện token thô)
+      expect(screen.getByText('Hoàn thành')).toBeInTheDocument();
+      expect(screen.getByText('Mới')).toBeInTheDocument();
+      expect(screen.queryByText('COMPLETED')).not.toBeInTheDocument();
     });
 
     it('renders "Xem tất cả →" link to /admin/orders', () => {
