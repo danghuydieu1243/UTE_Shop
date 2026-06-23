@@ -25,7 +25,7 @@ export async function createNotification(
       body: input.body ?? null,
       data: input.data ?? null,
     },
-    opts?.transaction ? { transaction: opts.transaction } : {},
+    { transaction: opts?.transaction },
   );
   return repo.mapNotificationDTO(row);
 }
@@ -45,9 +45,14 @@ export async function getUnreadCount(userId: number): Promise<number> {
 }
 
 export async function markRead(userId: number, id: number): Promise<void> {
-  const exists = await repo.existsForUser(userId, id);
-  if (!exists) throw AppError.from('NOT_FOUND', 'Không tìm thấy thông báo');
-  await repo.markOneRead(userId, id); // idempotent: đã đọc rồi vẫn OK
+  // Happy path 1 query: UPDATE WHERE id+userId+chưa đọc. affected=0 → phân biệt
+  // "không tồn tại/không phải chủ" (404) với "đã đọc rồi" (idempotent, bỏ qua).
+  const affected = await repo.markOneRead(userId, id);
+  if (affected === 0) {
+    const exists = await repo.existsForUser(userId, id);
+    if (!exists) throw AppError.from('NOT_FOUND', 'Không tìm thấy thông báo');
+    // else: đã đọc rồi → idempotent, không lỗi
+  }
 }
 
 export async function markAllRead(userId: number): Promise<void> {

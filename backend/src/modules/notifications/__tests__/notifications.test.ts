@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { createApp } from '../../../app';
-import { sequelize, User, Notification } from '../../../db/models';
+import { User, Notification } from '../../../db/models';
 import { signAccessToken } from '../../auth/token.service';
 
 const app = createApp();
@@ -72,7 +72,8 @@ describe('Notifications API', () => {
     const u = await makeUser();
     await Notification.create({ userId: u.id, type: 'order', title: 'A' } as any);
     await Notification.create({ userId: u.id, type: 'order', title: 'B' } as any);
-    await request(app).put('/api/v1/user/notifications/read-all').set('Authorization', `Bearer ${u.token}`);
+    const res = await request(app).put('/api/v1/user/notifications/read-all').set('Authorization', `Bearer ${u.token}`);
+    expect(res.status).toBe(200);
     const cnt = await Notification.count({ where: { userId: u.id, readAt: null } });
     expect(cnt).toBe(0);
   });
@@ -81,5 +82,14 @@ describe('Notifications API', () => {
     const v = await makeUser('vendor');
     const res = await request(app).get('/api/v1/user/notifications').set('Authorization', `Bearer ${v.token}`);
     expect(res.status).toBe(403);
+  });
+
+  it('NT9: PUT /:id/read lần 2 (đã đọc) vẫn 200 — idempotent', async () => {
+    const u = await makeUser();
+    const n = await Notification.create({ userId: u.id, type: 'order', title: 'A' } as any);
+    const first = await request(app).put(`/api/v1/user/notifications/${n.id}/read`).set('Authorization', `Bearer ${u.token}`);
+    expect(first.status).toBe(200);
+    const second = await request(app).put(`/api/v1/user/notifications/${n.id}/read`).set('Authorization', `Bearer ${u.token}`);
+    expect(second.status).toBe(200);
   });
 });
