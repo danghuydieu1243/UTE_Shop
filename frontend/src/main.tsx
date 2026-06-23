@@ -36,6 +36,7 @@ import { AdminUsersPage } from './features/admin/pages/AdminUsersPage';
 import { AdminVendorsPage } from './features/admin/pages/AdminVendorsPage';
 import { AdminOrdersPage } from './features/admin/pages/AdminOrdersPage';
 import { AdminProductsPage } from './features/admin/pages/AdminProductsPage';
+import { VendorDashboardPage } from './features/analytics/pages/VendorDashboardPage';
 import './index.css';
 
 // ── SocketBridge: connects/disconnects realtime socket based on auth token ───
@@ -90,7 +91,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
 
           {/* Protected: vendor only */}
           <Route element={<RequireRole roles={['vendor']} />}>
-            <Route path="/vendor/dashboard" element={<div className="p-10 text-ink">Vendor Dashboard</div>} />
+            <Route path="/vendor/dashboard" element={<VendorDashboardPage />} />
             <Route path="/vendor/books" element={<VendorBooksPage />} />
             <Route path="/vendor/books/new" element={<VendorBookFormPage />} />
             <Route path="/vendor/books/:id/edit" element={<VendorBookFormPage />} />
