@@ -19,7 +19,7 @@ export const bankAccountsApi = baseApi.injectEndpoints({
         method: 'POST',
         data: body,
       }),
-      invalidatesTags: ['BankAccount'],
+      invalidatesTags: ['BankAccount', 'Wallet'],
     }),
 
     updateBankAccount: build.mutation<BankAccount, { id: number } & UpdateBankAccountInput>({
@@ -28,7 +28,7 @@ export const bankAccountsApi = baseApi.injectEndpoints({
         method: 'PATCH',
         data: body,
       }),
-      invalidatesTags: ['BankAccount'],
+      invalidatesTags: ['BankAccount', 'Wallet'],
     }),
 
     setDefaultBankAccount: build.mutation<BankAccount, number>({
@@ -36,7 +36,7 @@ export const bankAccountsApi = baseApi.injectEndpoints({
         url: `/vendor/bank-accounts/${id}/default`,
         method: 'PATCH',
       }),
-      invalidatesTags: ['BankAccount'],
+      invalidatesTags: ['BankAccount', 'Wallet'],
     }),
 
     deleteBankAccount: build.mutation<null, number>({
@@ -44,7 +44,7 @@ export const bankAccountsApi = baseApi.injectEndpoints({
         url: `/vendor/bank-accounts/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['BankAccount'],
+      invalidatesTags: ['BankAccount', 'Wallet'],
     }),
   }),
   overrideExisting: false,

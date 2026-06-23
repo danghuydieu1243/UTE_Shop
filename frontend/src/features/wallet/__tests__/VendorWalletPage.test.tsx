@@ -224,6 +224,21 @@ describe('VendorWalletPage', () => {
       expect(mockWithdrawFn).not.toHaveBeenCalled();
     });
 
+    it('blocks submit when amount > availableBalance', async () => {
+      openModal();
+      const input = screen.getByLabelText('Số tiền rút');
+      // availableBalance = 3.500.000 → 9.000.000 vượt quá
+      fireEvent.change(input, { target: { value: '9000000' } });
+
+      const submitBtn = screen.getByRole('button', { name: /xác nhận rút/i });
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        expect(screen.getByText(/vượt quá số dư/i)).toBeInTheDocument();
+      });
+      expect(mockWithdrawFn).not.toHaveBeenCalled();
+    });
+
     it('calls createWithdrawal on valid submit', async () => {
       openModal();
       const input = screen.getByLabelText('Số tiền rút');
