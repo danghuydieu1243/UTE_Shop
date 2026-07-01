@@ -72,11 +72,17 @@ const TABS: { label: string; value: TabValue }[] = [
 // ── Main page ─────────────────────────────────────────────────────────────────
 export const VendorOrdersPage = () => {
   const [statusFilter, setStatusFilter] = useState<TabValue>('');
+  const [searchTerm, setSearchTerm]     = useState('');
+  const [fromDate, setFromDate]         = useState('');
+  const [toDate, setToDate]             = useState('');
   const [page, setPage]                 = useState(1);
   const limit                           = 10;
 
   const { data, isFetching } = useGetVendorOrdersQuery({
+    q: searchTerm.trim() || undefined,
     status: statusFilter || undefined,
+    fromDate: fromDate || undefined,
+    toDate: toDate || undefined,
     page,
     limit,
   });
@@ -88,6 +94,21 @@ export const VendorOrdersPage = () => {
 
   const handleTabChange = (value: TabValue) => {
     setStatusFilter(value);
+    setPage(1);
+  };
+
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setPage(1);
+  };
+
+  const handleFromDateChange = (value: string) => {
+    setFromDate(value);
+    setPage(1);
+  };
+
+  const handleToDateChange = (value: string) => {
+    setToDate(value);
     setPage(1);
   };
 
@@ -103,6 +124,84 @@ export const VendorOrdersPage = () => {
 
   return (
     <VendorShell title={topbarTitle}>
+      <div
+        style={{
+          background: C.white,
+          border: `1px solid ${C.line}`,
+          borderRadius: '2px',
+          padding: '16px',
+          display: 'grid',
+          gridTemplateColumns: 'minmax(280px, 1.4fr) repeat(2, minmax(160px, 0.7fr))',
+          gap: '12px',
+          alignItems: 'end',
+        }}
+      >
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '.8px', textTransform: 'uppercase', color: C.ink3 }}>
+            Tìm kiếm
+          </span>
+          <input
+            type="text"
+            value={searchTerm}
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Mã đơn hoặc tên sách"
+            style={{
+              height: '40px',
+              border: `1px solid ${C.line}`,
+              borderRadius: '2px',
+              padding: '0 12px',
+              fontSize: '13px',
+              color: C.ink,
+              outline: 'none',
+              background: C.white,
+            }}
+          />
+        </label>
+
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '.8px', textTransform: 'uppercase', color: C.ink3 }}>
+            Từ ngày
+          </span>
+          <input
+            aria-label="Từ ngày"
+            type="date"
+            value={fromDate}
+            onChange={(e) => handleFromDateChange(e.target.value)}
+            style={{
+              height: '40px',
+              border: `1px solid ${C.line}`,
+              borderRadius: '2px',
+              padding: '0 12px',
+              fontSize: '13px',
+              color: C.ink,
+              outline: 'none',
+              background: C.white,
+            }}
+          />
+        </label>
+
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          <span style={{ fontSize: '11px', fontWeight: 600, letterSpacing: '.8px', textTransform: 'uppercase', color: C.ink3 }}>
+            Đến ngày
+          </span>
+          <input
+            aria-label="Đến ngày"
+            type="date"
+            value={toDate}
+            onChange={(e) => handleToDateChange(e.target.value)}
+            style={{
+              height: '40px',
+              border: `1px solid ${C.line}`,
+              borderRadius: '2px',
+              padding: '0 12px',
+              fontSize: '13px',
+              color: C.ink,
+              outline: 'none',
+              background: C.white,
+            }}
+          />
+        </label>
+      </div>
 
       {/* ── Status filter tabs ── */}
       <div

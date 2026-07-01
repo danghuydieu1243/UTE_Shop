@@ -39,6 +39,9 @@ describe('GET /api/v1/vendor/orders', () => {
   let buyer: User;
   let tokenVendor: string;
   let tokenUser: string;
+  let vendorOrderCode: string;
+  let recentVendorOrderCode: string;
+  let localBoundaryOrderCode: string;
 
   beforeAll(async () => {
     vendor = await seedUser('vendor', `vo1-${Date.now()}`);
@@ -60,6 +63,7 @@ describe('GET /api/v1/vendor/orders', () => {
       currency: 'VND',
       completedAt: new Date(),
     });
+    vendorOrderCode = order.code;
     await OrderItem.create({
       orderId: Number(order.id),
       bookId: Number(vendorBook.id),
@@ -67,6 +71,54 @@ describe('GET /api/v1/vendor/orders', () => {
       titleSnapshot: 'Sách Test VO',
       unitPrice: 50000,
     });
+    await Order.update(
+      { created_at: new Date('2026-06-06T10:00:00.000Z') },
+      { where: { id: order.id }, silent: true },
+    );
+
+    const recentVendorBook = await seedBook(vendor.id, { price: 70000 });
+    const recentVendorOrder = await Order.create({
+      userId: buyer.id,
+      code: `ATH-VO-SEARCH-${Date.now()}`,
+      status: 'NEW',
+      subtotal: 70000,
+      total: 70000,
+      currency: 'VND',
+    });
+    recentVendorOrderCode = recentVendorOrder.code;
+    await OrderItem.create({
+      orderId: Number(recentVendorOrder.id),
+      bookId: Number(recentVendorBook.id),
+      vendorUserId: Number(vendor.id),
+      titleSnapshot: 'Atomic Habits tiếng Việt',
+      unitPrice: 70000,
+    });
+    await Order.update(
+      { created_at: new Date('2026-06-20T08:30:00.000Z') },
+      { where: { id: recentVendorOrder.id }, silent: true },
+    );
+
+    const localBoundaryBook = await seedBook(vendor.id, { price: 65000 });
+    const localBoundaryOrder = await Order.create({
+      userId: buyer.id,
+      code: `ATH-VO-LOCAL-${Date.now()}`,
+      status: 'NEW',
+      subtotal: 65000,
+      total: 65000,
+      currency: 'VND',
+    });
+    localBoundaryOrderCode = localBoundaryOrder.code;
+    await OrderItem.create({
+      orderId: Number(localBoundaryOrder.id),
+      bookId: Number(localBoundaryBook.id),
+      vendorUserId: Number(vendor.id),
+      titleSnapshot: 'Boundary Local Time',
+      unitPrice: 65000,
+    });
+    await Order.update(
+      { created_at: new Date('2026-06-20T00:30:00.000+07:00') },
+      { where: { id: localBoundaryOrder.id }, silent: true },
+    );
 
     // Create an order for otherVendor only (not related to vendor)
     const otherBook = await seedBook(otherVendor.id, { price: 30000 });
@@ -131,5 +183,42 @@ describe('GET /api/v1/vendor/orders', () => {
       .set('Authorization', `Bearer ${tokenUser}`);
 
     expect(res.status).toBe(403);
+  });
+
+  it('VO4. filters by q matching order code or vendor book title', async () => {
+    const byCode = await request(app)
+      .get(`/api/v1/vendor/orders?q=${encodeURIComponent('search')}`)
+      .set('Authorization', `Bearer ${tokenVendor}`);
+
+    expect(byCode.status).toBe(200);
+    expect(byCode.body.data.map((o: any) => o.code)).toEqual([recentVendorOrderCode]);
+
+    const byTitle = await request(app)
+      .get(`/api/v1/vendor/orders?q=${encodeURIComponent('atomic')}`)
+      .set('Authorization', `Bearer ${tokenVendor}`);
+
+    expect(byTitle.status).toBe(200);
+    expect(byTitle.body.data.map((o: any) => o.code)).toEqual([recentVendorOrderCode]);
+  });
+
+  it('VO5. filters by created date range inclusively by day', async () => {
+    const res = await request(app)
+      .get('/api/v1/vendor/orders?fromDate=2026-06-15&toDate=2026-06-20')
+      .set('Authorization', `Bearer ${tokenVendor}`);
+
+    expect(res.status).toBe(200);
+    const codes = res.body.data.map((o: any) => o.code);
+    expect(codes).toContain(recentVendorOrderCode);
+    expect(codes).not.toContain(vendorOrderCode);
+  });
+
+  it('VO6. keeps orders created on the selected local day without requiring previous date', async () => {
+    const res = await request(app)
+      .get('/api/v1/vendor/orders?fromDate=2026-06-20&toDate=2026-06-20')
+      .set('Authorization', `Bearer ${tokenVendor}`);
+
+    expect(res.status).toBe(200);
+    const codes = res.body.data.map((o: any) => o.code);
+    expect(codes).toContain(localBoundaryOrderCode);
   });
 });

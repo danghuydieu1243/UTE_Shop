@@ -1,6 +1,18 @@
-import { Op } from 'sequelize';
+import { Op, where, fn, col, literal } from 'sequelize';
 import { Order, OrderItem } from '../../db/models';
-import { VendorOrderDTO, VendorOrderItemDTO, PaginationMeta } from './vendor-orders.schema';
+import { sequelize } from '../../shared/db/sequelize';
+import {
+  ListVendorOrdersQuery,
+  VendorOrderDTO,
+  VendorOrderItemDTO,
+  PaginationMeta,
+} from './vendor-orders.schema';
+
+function orderLocalDateExpr() {
+  return sequelize.getDialect() === 'sqlite'
+    ? fn('date', fn('datetime', col('Order.created_at'), '+7 hours'))
+    : fn('date', literal('date_add(`Order`.`created_at`, interval 7 hour)'));
+}
 
 export function mapVendorOrderDTO(order: Order, vendorUserId: number): VendorOrderDTO {
   const allItems = ((order as any).items as OrderItem[]) ?? [];
@@ -23,28 +35,59 @@ export function mapVendorOrderDTO(order: Order, vendorUserId: number): VendorOrd
 
 export async function listVendorOrders(
   vendorUserId: number,
-  page: number,
-  limit: number,
-  status?: string,
+  query: ListVendorOrdersQuery,
 ): Promise<{ rows: Order[]; count: number }> {
+  const { page, limit, status, q, fromDate, toDate } = query;
+
   // Find distinct order IDs that contain items belonging to this vendor
+  const itemWhere: any = { vendorUserId };
+  if (q) {
+    itemWhere.titleSnapshot = where(fn('lower', col('title_snapshot')), {
+      [Op.like]: `%${q.toLowerCase()}%`,
+    });
+  }
+
   const vendorItemOrderIds = await OrderItem.findAll({
+    attributes: ['orderId'],
+    where: itemWhere,
+    group: ['order_id'],
+    raw: true,
+  });
+  const matchingTitleOrderIds = vendorItemOrderIds.map((item: any) => Number(item.orderId));
+
+  const vendorScopedOrderIds = await OrderItem.findAll({
     attributes: ['orderId'],
     where: { vendorUserId },
     group: ['order_id'],
     raw: true,
   });
-  const orderIds = vendorItemOrderIds.map((item: any) => Number(item.orderId));
+  const orderIds = vendorScopedOrderIds.map((item: any) => Number(item.orderId));
 
   if (orderIds.length === 0) {
     return { rows: [], count: 0 };
   }
 
-  const where: any = { id: { [Op.in]: orderIds } };
-  if (status) where.status = status;
+  const orderWhere: any = { id: { [Op.in]: orderIds } };
+  if (status) orderWhere.status = status;
+  if (q) {
+    orderWhere[Op.or] = [
+      where(fn('lower', col('Order.code')), { [Op.like]: `%${q.toLowerCase()}%` }),
+      { id: { [Op.in]: matchingTitleOrderIds.length > 0 ? matchingTitleOrderIds : [-1] } },
+    ];
+  }
+  if (fromDate || toDate) {
+    const dateFilters = [];
+    if (fromDate) {
+      dateFilters.push(where(orderLocalDateExpr(), { [Op.gte]: fromDate }));
+    }
+    if (toDate) {
+      dateFilters.push(where(orderLocalDateExpr(), { [Op.lte]: toDate }));
+    }
+    orderWhere[Op.and] = [...(orderWhere[Op.and] ?? []), ...dateFilters];
+  }
 
   const { rows, count } = await Order.findAndCountAll({
-    where,
+    where: orderWhere,
     include: [
       {
         model: OrderItem,

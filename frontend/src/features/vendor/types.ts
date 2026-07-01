@@ -106,7 +106,10 @@ export interface VendorOrdersResult {
 
 /** Query params for GET /vendor/orders */
 export interface VendorOrdersParams {
+  q?: string;
   status?: VendorOrderStatus | '';
+  fromDate?: string;
+  toDate?: string;
   page?: number;
   limit?: number;
 }

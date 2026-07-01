@@ -127,6 +127,38 @@ describe('VendorOrdersPage', () => {
     });
   });
 
+  it('updates query with q when searching by order code or book title', async () => {
+    renderPage();
+
+    fireEvent.change(screen.getByPlaceholderText(/mã đơn hoặc tên sách/i), {
+      target: { value: 'atomic' },
+    });
+
+    await waitFor(() => {
+      const calls = mockGetVendorOrders.mock.calls as Array<[{ q?: string }]>;
+      const hasSearch = calls.some((call) => call[0]?.q === 'atomic');
+      expect(hasSearch).toBe(true);
+    });
+  });
+
+  it('updates query with fromDate and toDate when date range changes', async () => {
+    renderPage();
+
+    const fromInput = screen.getByLabelText(/từ ngày/i);
+    const toInput = screen.getByLabelText(/đến ngày/i);
+
+    fireEvent.change(fromInput, { target: { value: '2026-06-15' } });
+    fireEvent.change(toInput, { target: { value: '2026-06-20' } });
+
+    await waitFor(() => {
+      const calls = mockGetVendorOrders.mock.calls as Array<[{ fromDate?: string; toDate?: string }]>;
+      const hasDateRange = calls.some(
+        (call) => call[0]?.fromDate === '2026-06-15' && call[0]?.toDate === '2026-06-20',
+      );
+      expect(hasDateRange).toBe(true);
+    });
+  });
+
   it('shows empty state when no orders', () => {
     mockGetVendorOrders.mockReturnValue({
       data: { orders: [], pagination: { page: 1, limit: 10, total: 0, totalPages: 0 } },

@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
 export const listVendorOrdersQuerySchema = z.object({
+  q: z.string().trim().optional(),
   status: z.enum(['NEW', 'COMPLETED', 'CANCELLED']).optional(),
+  fromDate: z.string().optional(),
+  toDate: z.string().optional(),
   page: z.string().optional()
     .transform((v) => (v ? parseInt(v, 10) : 1))
     .pipe(z.number().int().positive().default(1)),
