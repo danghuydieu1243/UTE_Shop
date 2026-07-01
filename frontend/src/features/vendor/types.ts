@@ -2,16 +2,33 @@
 // Matches API Spec §02_Catalog_Books.md §6–11 (vendor endpoints)
 
 export type VendorBookStatus = 'published' | 'draft' | 'hidden';
+export type VendorBookSort =
+  | 'relevance'
+  | 'updatedAtDesc'
+  | 'publishedAtDesc'
+  | 'titleAsc'
+  | 'titleDesc'
+  | 'priceAsc'
+  | 'priceDesc'
+  | 'soldAsc'
+  | 'soldDesc'
+  | 'statusAsc'
+  | 'statusDesc';
 
 /** Row returned by GET /vendor/books list */
 export interface VendorBookRow {
   id: number;
   title: string;
   author: string | null;
+  publisher?: string | null;
+  categoryId?: number | null;
+  categoryName?: string | null;
   coverImageUrl: string | null;
   price: number;
+  fileFormat?: 'PDF' | 'EPUB';
   status: VendorBookStatus;
   purchaseCount: number;
+  publishedAt?: string | null;
   updatedAt: string;
 }
 
@@ -57,6 +74,7 @@ export interface VendorBooksResult {
 export interface VendorBooksParams {
   q?: string;
   status?: VendorBookStatus | '';
+  sort?: VendorBookSort;
   page?: number;
   limit?: number;
 }

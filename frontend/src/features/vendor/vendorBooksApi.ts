@@ -7,6 +7,8 @@ import type {
   VendorBookStatus,
 } from './types';
 
+const publicBookCacheTags = ['Book', 'Cart', 'Wishlist'] as const;
+
 export const vendorBooksApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
     // GET /vendor/books — danh sách E-book của vendor (mọi status)
@@ -65,6 +67,7 @@ export const vendorBooksApi = baseApi.injectEndpoints({
       invalidatesTags: (_result, _err, { id }) => [
         { type: 'VendorBook', id },
         { type: 'VendorBook', id: 'LIST' },
+        ...publicBookCacheTags,
       ],
     }),
   }),

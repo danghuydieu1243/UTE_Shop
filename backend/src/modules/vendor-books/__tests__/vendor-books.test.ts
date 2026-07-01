@@ -3,11 +3,12 @@ import fs from 'fs';
 import path from 'path';
 import request from 'supertest';
 import { createApp } from '../../../app';
-import { User, Vendor, Category, Book, BookFile } from '../../../db/models';
+import { User, Vendor, Category, Book, BookFile, Cart, CartItem, Wishlist } from '../../../db/models';
 import { signAccessToken } from '../../auth/token.service';
 import * as service from '../vendor-books.service';
 import * as repo from '../vendor-books.repository';
 import { enforceCoverSize } from '../../../shared/upload';
+import * as cartCache from '../../../shared/cache/cartCache';
 
 // ── Setup temp UPLOAD_DIR before anything imports env ────────────────────────
 // env.ts is imported at module load time, so we patch process.env here
@@ -284,6 +285,189 @@ describe('vendor-books service', () => {
     expect(meta.pagination.total).toBeGreaterThan(0);
   });
 
+  it('listVendorBooks: shared q searches title, author, publisher, and isbn; title matches rank first', async () => {
+    const searchCategory = await seedCategory();
+
+    const titleMatch = await service.createBook(
+      vendorUser.id,
+      {
+        title: 'Solar Archive',
+        categoryId: searchCategory.id,
+        price: 61000,
+        authorName: 'Nguyen Van A',
+        publisherName: 'Doc Sach',
+        isbn: '111-AAA',
+        status: 'published',
+      },
+      { covers: [makeFakeCoverFile()], ebookFile: [makeFakeEbookFile()] },
+    );
+
+    const authorMatch = await service.createBook(
+      vendorUser.id,
+      {
+        title: 'Hidden Patterns',
+        categoryId: searchCategory.id,
+        price: 62000,
+        authorName: 'Solar Writer',
+        publisherName: 'Doc Sach',
+        isbn: '222-BBB',
+        status: 'published',
+      },
+      { covers: [makeFakeCoverFile()], ebookFile: [makeFakeEbookFile()] },
+    );
+
+    const publisherMatch = await service.createBook(
+      vendorUser.id,
+      {
+        title: 'Quiet Signals',
+        categoryId: searchCategory.id,
+        price: 63000,
+        authorName: 'Pham B',
+        publisherName: 'Solar Press',
+        isbn: '333-CCC',
+        status: 'published',
+      },
+      { covers: [makeFakeCoverFile()], ebookFile: [makeFakeEbookFile()] },
+    );
+
+    const isbnMatch = await service.createBook(
+      vendorUser.id,
+      {
+        title: 'Numeric Trails',
+        categoryId: searchCategory.id,
+        price: 64000,
+        authorName: 'Le C',
+        publisherName: 'Doc Sach',
+        isbn: 'Solar-7788',
+        status: 'published',
+      },
+      { covers: [makeFakeCoverFile()], ebookFile: [makeFakeEbookFile()] },
+    );
+
+    const { data } = await service.listVendorBooks(vendorUser.id, {
+      page: 1,
+      limit: 20,
+      q: 'Solar',
+    });
+
+    const ids = data.books.map((b: any) => b.id);
+    expect(ids).toEqual(expect.arrayContaining([
+      titleMatch.id,
+      authorMatch.id,
+      publisherMatch.id,
+      isbnMatch.id,
+    ]));
+    expect(ids[0]).toBe(titleMatch.id);
+  });
+
+  it('listVendorBooks: supports categoryId and format filters for narrowing quick search results', async () => {
+    const uniqueSuffix = Date.now();
+    const pdfCategory = await Category.create({ name: 'PDF Cat', slug: `pdf-cat-${uniqueSuffix}`, sortOrder: 1 });
+    const epubCategory = await Category.create({ name: 'EPUB Cat', slug: `epub-cat-${uniqueSuffix}`, sortOrder: 2 });
+
+    const pdfBook = await service.createBook(
+      vendorUser.id,
+      {
+        title: 'Filter Me PDF',
+        categoryId: pdfCategory.id,
+        price: 45000,
+        authorName: 'Loc Nguyen',
+        publisherName: 'Narrow House',
+        status: 'published',
+      },
+      { covers: [makeFakeCoverFile()], ebookFile: [makeFakeEbookFile('application/pdf')] },
+    );
+
+    await service.createBook(
+      vendorUser.id,
+      {
+        title: 'Filter Me EPUB',
+        categoryId: epubCategory.id,
+        price: 46000,
+        authorName: 'Loc Nguyen',
+        publisherName: 'Narrow House',
+        status: 'published',
+      },
+      { covers: [makeFakeCoverFile()], ebookFile: [makeFakeEbookFile('application/epub+zip')] },
+    );
+
+    const { data } = await service.listVendorBooks(vendorUser.id, {
+      page: 1,
+      limit: 20,
+      q: 'Filter Me',
+      categoryId: pdfCategory.id,
+      format: 'PDF',
+    } as any);
+
+    expect(data.books.map((b: any) => b.id)).toEqual([pdfBook.id]);
+    expect(data.books[0]).toMatchObject({
+      fileFormat: 'PDF',
+      categoryId: pdfCategory.id,
+      publisher: 'Narrow House',
+    });
+  });
+
+  it('listVendorBooks: supports title, price, sold, and status sorting for vendor table columns', async () => {
+    const sortCategory = await seedCategory();
+
+    const zebra = await service.createBook(
+      vendorUser.id,
+      {
+        title: 'Zebra Notes',
+        categoryId: sortCategory.id,
+        price: 99000,
+        authorName: 'Sort Author',
+        status: 'draft',
+      },
+      { covers: [makeFakeCoverFile()], ebookFile: [makeFakeEbookFile()] },
+    );
+
+    const alpha = await service.createBook(
+      vendorUser.id,
+      {
+        title: 'Alpha Notes',
+        categoryId: sortCategory.id,
+        price: 45000,
+        authorName: 'Sort Author',
+        status: 'published',
+      },
+      { covers: [makeFakeCoverFile()], ebookFile: [makeFakeEbookFile()] },
+    );
+
+    const hidden = await service.createBook(
+      vendorUser.id,
+      {
+        title: 'Hidden Notes',
+        categoryId: sortCategory.id,
+        price: 70000,
+        authorName: 'Sort Author',
+        status: 'draft',
+      },
+      { covers: [makeFakeCoverFile()], ebookFile: [makeFakeEbookFile()] },
+    );
+    await service.patchStatus(vendorUser.id, hidden.id, { status: 'hidden' });
+
+    await Book.update({ purchaseCount: 15 }, { where: { id: zebra.id } });
+    await Book.update({ purchaseCount: 2 }, { where: { id: alpha.id } });
+    await Book.update({ purchaseCount: 8 }, { where: { id: hidden.id } });
+
+    const titleSorted = await service.listVendorBooks(vendorUser.id, { page: 1, limit: 50, q: 'Notes', sort: 'titleAsc' } as any);
+    expect(titleSorted.data.books.findIndex((b: any) => b.id === alpha.id))
+      .toBeLessThan(titleSorted.data.books.findIndex((b: any) => b.id === zebra.id));
+
+    const priceSorted = await service.listVendorBooks(vendorUser.id, { page: 1, limit: 50, q: 'Notes', sort: 'priceDesc' } as any);
+    expect(priceSorted.data.books.findIndex((b: any) => b.id === zebra.id))
+      .toBeLessThan(priceSorted.data.books.findIndex((b: any) => b.id === alpha.id));
+
+    const soldSorted = await service.listVendorBooks(vendorUser.id, { page: 1, limit: 50, q: 'Notes', sort: 'soldDesc' } as any);
+    expect(soldSorted.data.books.findIndex((b: any) => b.id === zebra.id))
+      .toBeLessThan(soldSorted.data.books.findIndex((b: any) => b.id === hidden.id));
+
+    const statusSorted = await service.listVendorBooks(vendorUser.id, { page: 1, limit: 50, q: 'Notes', sort: 'statusAsc' } as any);
+    expect(statusSorted.data.books.findIndex((b: any) => b.id === alpha.id))
+      .toBeLessThan(statusSorted.data.books.findIndex((b: any) => b.id === hidden.id));
+  });
+
   // ── Test 7: patchStatus sets publishedAt on first publish ────────────────────
   it('patchStatus: published sets publishedAt on first publish', async () => {
     const ebookFile = makeFakeEbookFile();
@@ -311,6 +495,92 @@ describe('vendor-books service', () => {
     await service.deleteBook(vendorUser.id, r.id);
     const book = await Book.findByPk(r.id);
     expect(book!.status).toBe('hidden');
+  });
+
+  it('deleteBook: removes hidden book from user carts and wishlists automatically', async () => {
+    const buyer = await User.create({
+      email: `buyer-${Date.now()}@test.com`,
+      passwordHash: 'hash',
+      role: 'user',
+      fullName: 'Buyer Test',
+      status: 'active',
+    });
+
+    const cart = await Cart.create({ userId: buyer.id });
+    const created = await service.createBook(
+      vendorUser.id,
+      {
+        title: 'Cleanup Me',
+        categoryId: category.id,
+        price: 33000,
+        authorName: 'Cleanup Author',
+        status: 'published',
+      },
+      {
+        covers: [makeFakeCoverFile()],
+        ebookFile: [makeFakeEbookFile()],
+      },
+    );
+
+    await CartItem.create({ cartId: cart.id, bookId: created.id, unitPrice: 33000 });
+    await Wishlist.create({ userId: buyer.id, bookId: created.id });
+
+    expect(await CartItem.count({ where: { bookId: created.id } })).toBe(1);
+    expect(await Wishlist.count({ where: { bookId: created.id } })).toBe(1);
+
+    await service.deleteBook(vendorUser.id, created.id);
+
+    expect((await Book.findByPk(created.id))!.status).toBe('hidden');
+    expect(await CartItem.count({ where: { bookId: created.id } })).toBe(0);
+    expect(await Wishlist.count({ where: { bookId: created.id } })).toBe(0);
+  });
+
+  it('deleteBook: invalidates cart cache for every affected buyer cart', async () => {
+    const buyer = await User.create({
+      email: `buyer-cache-${Date.now()}@test.com`,
+      passwordHash: 'hash',
+      role: 'user',
+      fullName: 'Buyer Cache Test',
+      status: 'active',
+    });
+
+    const otherBuyer = await User.create({
+      email: `buyer-cache-2-${Date.now()}@test.com`,
+      passwordHash: 'hash',
+      role: 'user',
+      fullName: 'Buyer Cache Test 2',
+      status: 'active',
+    });
+
+    const buyerCart = await Cart.create({ userId: buyer.id });
+    const otherCart = await Cart.create({ userId: otherBuyer.id });
+    const delCartSpy = jest.spyOn(cartCache, 'delCart').mockResolvedValue();
+
+    const created = await service.createBook(
+      vendorUser.id,
+      {
+        title: 'Cleanup Buyer Cache',
+        categoryId: category.id,
+        price: 36000,
+        authorName: 'Cleanup Cache Author',
+        status: 'published',
+      },
+      {
+        covers: [makeFakeCoverFile()],
+        ebookFile: [makeFakeEbookFile()],
+      },
+    );
+
+    await CartItem.create({ cartId: buyerCart.id, bookId: created.id, unitPrice: 36000 });
+    await CartItem.create({ cartId: otherCart.id, bookId: created.id, unitPrice: 36000 });
+
+    await service.deleteBook(vendorUser.id, created.id);
+
+    expect(delCartSpy).toHaveBeenCalledWith(Number(buyer.id));
+    expect(delCartSpy).toHaveBeenCalledWith(Number(otherBuyer.id));
+    expect(delCartSpy).toHaveBeenCalledTimes(2);
+
+    delCartSpy.mockRestore();
   });
 
   // ── Test 9: bookFile version increments on PUT with new file ─────────────────

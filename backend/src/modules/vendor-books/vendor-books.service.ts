@@ -1,7 +1,8 @@
 import path from 'path';
-import { Category } from '../../db/models';
+import { Category, Cart, CartItem, Wishlist } from '../../db/models';
 import { AppError } from '../../shared/errors/AppError';
 import { mimeToFormat } from '../../shared/upload';
+import * as cartCache from '../../shared/cache/cartCache';
 import * as repo from './vendor-books.repository';
 import {
   CreateBookInput,
@@ -30,6 +31,27 @@ function storageKeyFromFile(file: Express.Multer.File): string {
 
 function coverUrlFromFile(file: Express.Multer.File): string {
   return `/uploads/covers/${path.basename(file.path)}`;
+}
+
+async function applyHiddenStatus(bookId: number): Promise<void> {
+  const cartItems = await CartItem.findAll({
+    where: { bookId },
+    attributes: ['cartId'],
+  });
+  const cartIds = [...new Set(cartItems.map((item) => Number(item.cartId)))];
+  const affectedUserIds = cartIds.length > 0
+    ? (await Cart.findAll({
+        where: { id: cartIds },
+        attributes: ['userId'],
+      })).map((cart) => Number(cart.userId))
+    : [];
+
+  await repo.updateBook(bookId, { status: 'hidden' });
+  await Promise.all([
+    CartItem.destroy({ where: { bookId } }),
+    Wishlist.destroy({ where: { bookId } }),
+    ...affectedUserIds.map((userId) => cartCache.delCart(userId)),
+  ]);
 }
 
 // ── Create ────────────────────────────────────────────────────────────────────
@@ -154,14 +176,21 @@ export async function listVendorBooks(vendorUserId: number, q: ListVendorBooksQu
     data: {
       books: rows.map((b) => {
         const author = (b as any).author as any;
+        const publisher = (b as any).publisher as any;
+        const category = (b as any).category as any;
         return {
           id: b.id,
           title: b.title,
           author: author?.name ?? null,
+          publisher: publisher?.name ?? null,
+          categoryId: b.categoryId ?? null,
+          categoryName: category?.name ?? null,
           coverImageUrl: b.coverImageUrl ?? null,
           price: Number(b.price),
+          fileFormat: b.fileFormat,
           status: b.status,
           purchaseCount: b.purchaseCount ?? 0,
+          publishedAt: b.publishedAt ?? null,
           updatedAt: b.updated_at,
         };
       }),
@@ -299,6 +328,11 @@ export async function patchStatus(
 
   const updateData: Record<string, any> = { status: input.status };
 
+  if (input.status === 'hidden') {
+    await applyHiddenStatus(bookId);
+    return { id: bookId, status: input.status };
+  }
+
   // Set publishedAt on first publish
   if (input.status === 'published' && !book.publishedAt) {
     updateData.publishedAt = new Date();
@@ -314,5 +348,5 @@ export async function deleteBook(vendorUserId: number, bookId: number): Promise<
   if (!book) throw AppError.from('BOOK_NOT_FOUND', 'Không tìm thấy sách');
   assertOwnership(book.vendorUserId, vendorUserId);
 
-  await repo.updateBook(bookId, { status: 'hidden' });
+  await applyHiddenStatus(bookId);
 }

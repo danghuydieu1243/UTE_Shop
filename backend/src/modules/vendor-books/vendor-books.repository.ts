@@ -1,5 +1,6 @@
-import { Op } from 'sequelize';
+import { Op, literal } from 'sequelize';
 import { Book, Author, Publisher, Category, BookImage, BookFile } from '../../db/models';
+import { sequelize } from '../../shared/db/sequelize';
 import { ListVendorBooksQuery } from './vendor-books.schema';
 
 // ── Slug helpers ──────────────────────────────────────────────────────────────
@@ -137,21 +138,101 @@ export async function listVendorBooks(
   q: ListVendorBooksQuery,
 ): Promise<{ rows: Book[]; count: number }> {
   const where: Record<string, any> = { vendorUserId };
+  const include: any[] = [
+    { model: Author, as: 'author', attributes: ['name'] },
+    { model: Publisher, as: 'publisher', attributes: ['name'] },
+    { model: Category, as: 'category', attributes: ['id', 'name', 'slug'] },
+  ];
 
   if (q.status) {
     where['status'] = q.status;
   }
 
+  if (q.categoryId !== undefined) {
+    where['categoryId'] = q.categoryId;
+  }
+
+  if (q.format) {
+    where['fileFormat'] = q.format;
+  }
+
   if (q.q) {
-    where['title'] = { [Op.like]: `%${q.q}%` };
+    const pattern = `%${q.q.trim()}%`;
+    where[Op.or as any] = [
+      { title: { [Op.like]: pattern } },
+      { isbn: { [Op.like]: pattern } },
+      { '$author.name$': { [Op.like]: pattern } },
+      { '$publisher.name$': { [Op.like]: pattern } },
+    ];
+  }
+
+  const escapedStartsWith = q.q ? sequelize.escape(`${q.q.trim()}%`) : null;
+  const escapedContains = q.q ? sequelize.escape(`%${q.q.trim()}%`) : null;
+
+  let order: any[];
+  switch (q.sort) {
+    case 'titleAsc':
+      order = [['title', 'ASC'], ['updated_at', 'DESC']];
+      break;
+    case 'titleDesc':
+      order = [['title', 'DESC'], ['updated_at', 'DESC']];
+      break;
+    case 'priceAsc':
+      order = [['price', 'ASC'], ['updated_at', 'DESC']];
+      break;
+    case 'priceDesc':
+      order = [['price', 'DESC'], ['updated_at', 'DESC']];
+      break;
+    case 'soldAsc':
+      order = [['purchase_count', 'ASC'], ['updated_at', 'DESC']];
+      break;
+    case 'soldDesc':
+      order = [['purchase_count', 'DESC'], ['updated_at', 'DESC']];
+      break;
+    case 'statusAsc':
+      order = [[literal(`CASE
+        WHEN status = 'published' THEN 0
+        WHEN status = 'draft' THEN 1
+        WHEN status = 'hidden' THEN 2
+        ELSE 3
+      END`), 'ASC'], ['updated_at', 'DESC']];
+      break;
+    case 'statusDesc':
+      order = [[literal(`CASE
+        WHEN status = 'hidden' THEN 0
+        WHEN status = 'draft' THEN 1
+        WHEN status = 'published' THEN 2
+        ELSE 3
+      END`), 'ASC'], ['updated_at', 'DESC']];
+      break;
+    case 'publishedAtDesc':
+      order = [['published_at', 'DESC'], ['updated_at', 'DESC']];
+      break;
+    case 'updatedAtDesc':
+      order = [['updated_at', 'DESC']];
+      break;
+    case 'relevance':
+    default:
+      if (q.q && escapedStartsWith && escapedContains) {
+        order = [[literal(`CASE
+          WHEN title LIKE ${escapedStartsWith} THEN 0
+          WHEN title LIKE ${escapedContains} THEN 1
+          WHEN author.name LIKE ${escapedContains} THEN 2
+          WHEN publisher.name LIKE ${escapedContains} THEN 3
+          WHEN isbn LIKE ${escapedContains} THEN 4
+          ELSE 5
+        END`), 'ASC'], ['updated_at', 'DESC']];
+      } else {
+        order = [['updated_at', 'DESC']];
+      }
   }
 
   const offset = (q.page - 1) * q.limit;
 
   return Book.findAndCountAll({
     where,
-    include: [{ model: Author, as: 'author', attributes: ['name'] }],
-    order: [['updated_at', 'DESC']],
+    include,
+    order,
     limit: q.limit,
     offset,
     distinct: true,

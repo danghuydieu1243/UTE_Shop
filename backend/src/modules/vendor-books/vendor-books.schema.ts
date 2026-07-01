@@ -42,6 +42,21 @@ export const patchStatusSchema = z.object({
 export const listVendorBooksQuerySchema = z.object({
   q: z.string().optional(),
   status: z.enum(['published', 'draft', 'hidden']).optional(),
+  categoryId: z.coerce.number().int().positive().optional(),
+  format: z.enum(['PDF', 'EPUB']).optional(),
+  sort: z.enum([
+    'relevance',
+    'updatedAtDesc',
+    'publishedAtDesc',
+    'titleAsc',
+    'titleDesc',
+    'priceAsc',
+    'priceDesc',
+    'soldAsc',
+    'soldDesc',
+    'statusAsc',
+    'statusDesc',
+  ]).optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(60).default(20),
 });

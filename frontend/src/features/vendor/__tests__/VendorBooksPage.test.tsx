@@ -118,6 +118,24 @@ describe('VendorBooksPage', () => {
     expect(firstLink).toHaveAttribute('href', '/vendor/books/new');
   });
 
+  it('shows not-found empty state when search returns no books', async () => {
+    mockGetVendorBooks.mockImplementation((args?: { q?: string }) => ({
+      data: {
+        books: args?.q === 'khong-co' ? [] : sampleBooks,
+        pagination: { page: 1, limit: 10, total: args?.q === 'khong-co' ? 0 : 3, totalPages: 1 },
+      },
+      isFetching: false,
+    }));
+
+    renderPage();
+    fireEvent.change(screen.getByRole('textbox', { name: /tìm kiếm e-book/i }), { target: { value: 'khong-co' } });
+
+    await waitFor(() => {
+      expect(screen.getByText(/không tìm thấy e-book phù hợp/i)).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/bạn chưa có e-book nào/i)).not.toBeInTheDocument();
+  });
+
   it('bulk bar is hidden initially when nothing is selected', () => {
     renderPage();
     expect(screen.queryByTestId('bulk-bar')).not.toBeInTheDocument();
@@ -184,6 +202,21 @@ describe('VendorBooksPage', () => {
     });
   });
 
+  it('shows success toast after deleting a book successfully', async () => {
+    renderPage();
+    const deleteButtons = screen.getAllByRole('button', { name: /xóa/i });
+    fireEvent.click(deleteButtons[0]);
+    await waitFor(() => screen.getByRole('dialog'));
+
+    const allXoaButtons = screen.getAllByRole('button', { name: /xóa/i });
+    const confirmBtn = allXoaButtons[allXoaButtons.length - 1];
+    fireEvent.click(confirmBtn);
+
+    await waitFor(() => {
+      expect(screen.getByText(/đã xóa e-book thành công/i)).toBeInTheDocument();
+    });
+  });
+
   it('cancelling delete closes dialog without calling mutation', async () => {
     renderPage();
     const deleteButtons = screen.getAllByRole('button', { name: /xóa/i });
@@ -220,6 +253,32 @@ describe('VendorBooksPage', () => {
       const calls = mockGetVendorBooks.mock.calls;
       const hasFilter = calls.some((call) => call[0]?.status === 'published');
       expect(hasFilter).toBe(true);
+    });
+  });
+
+  it('clicking title sort header toggles titleAsc then titleDesc query args', async () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: /sắp xếp theo e-book/i }));
+    await waitFor(() => {
+      const hasSort = mockGetVendorBooks.mock.calls.some((call) => call[0]?.sort === 'titleAsc');
+      expect(hasSort).toBe(true);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /sắp xếp theo e-book/i }));
+    await waitFor(() => {
+      const hasSort = mockGetVendorBooks.mock.calls.some((call) => call[0]?.sort === 'titleDesc');
+      expect(hasSort).toBe(true);
+    });
+  });
+
+  it('clicking sold sort header sends soldDesc query args', async () => {
+    renderPage();
+
+    fireEvent.click(screen.getByRole('button', { name: /sắp xếp theo đã bán/i }));
+    await waitFor(() => {
+      const hasSort = mockGetVendorBooks.mock.calls.some((call) => call[0]?.sort === 'soldDesc');
+      expect(hasSort).toBe(true);
     });
   });
 

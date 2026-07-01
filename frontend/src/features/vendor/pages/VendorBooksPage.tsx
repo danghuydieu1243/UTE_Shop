@@ -7,7 +7,8 @@ import {
   useChangeVendorBookStatusMutation,
 } from '../vendorBooksApi';
 import { formatVND } from '../../../shared/format';
-import type { VendorBookRow, VendorBookStatus } from '../types';
+import { useToast } from '../../../shared/hooks/useToast';
+import type { VendorBookRow, VendorBookStatus, VendorBookSort } from '../types';
 
 // ── Debounce hook ─────────────────────────────────────────────────────────────
 function useDebounce<T>(value: T, delay = 400): T {
@@ -100,22 +101,63 @@ const ConfirmDialog = ({ title, message, onConfirm, onCancel }: ConfirmDialogPro
   </div>
 );
 
+type SortDirection = 'asc' | 'desc' | null;
+
+interface SortHeaderButtonProps {
+  label: string;
+  activeDirection: SortDirection;
+  onClick: () => void;
+}
+
+const SortHeaderButton = ({ label, activeDirection, onClick }: SortHeaderButtonProps) => {
+  const indicator = activeDirection === 'asc' ? '↑' : activeDirection === 'desc' ? '↓' : '↕';
+  const color = activeDirection ? '#16161A' : '#A8A8AE';
+
+  return (
+    <button
+      type="button"
+      aria-label={`Sắp xếp theo ${label}`}
+      onClick={onClick}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '6px',
+        padding: 0,
+        border: 'none',
+        background: 'none',
+        color,
+        cursor: 'pointer',
+        fontSize: '9px',
+        fontWeight: 600,
+        letterSpacing: '1px',
+        textTransform: 'uppercase',
+      }}
+    >
+      <span>{label}</span>
+      <span aria-hidden="true" style={{ fontSize: '11px', lineHeight: 1 }}>{indicator}</span>
+    </button>
+  );
+};
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export const VendorBooksPage = () => {
   const [page, setPage]               = useState(1);
   const [limit, setLimit]             = useState(10);
   const [searchInput, setSearchInput] = useState('');
   const [statusFilter, setStatusFilter] = useState<VendorBookStatus | ''>('');
+  const [sort, setSort]               = useState<VendorBookSort | undefined>(undefined);
   const [selected, setSelected]       = useState<Set<number>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<VendorBookRow | null>(null);
   const [bulkDeletePending, setBulkDeletePending] = useState(false);
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
   const debouncedQ = useDebounce(searchInput, 400);
+  const { show, ToastLayer } = useToast({ position: 'top-right' });
 
   const { data, isFetching } = useGetVendorBooksQuery({
     q: debouncedQ || undefined,
     status: statusFilter || undefined,
+    sort,
     page,
     limit,
   });
@@ -130,14 +172,40 @@ export const VendorBooksPage = () => {
   // Reset page when filter/search changes
   const prevQ      = useRef(debouncedQ);
   const prevStatus = useRef(statusFilter);
+  const prevSort   = useRef(sort);
   useEffect(() => {
-    if (prevQ.current !== debouncedQ || prevStatus.current !== statusFilter) {
+    if (prevQ.current !== debouncedQ || prevStatus.current !== statusFilter || prevSort.current !== sort) {
       setPage(1);
       setSelected(new Set());
       prevQ.current = debouncedQ;
       prevStatus.current = statusFilter;
+      prevSort.current = sort;
     }
-  }, [debouncedQ, statusFilter]);
+  }, [debouncedQ, statusFilter, sort]);
+
+  const hasActiveFilters = debouncedQ.trim().length > 0 || statusFilter !== '';
+
+  const handleSortToggle = useCallback((ascSort: VendorBookSort, descSort: VendorBookSort) => {
+    setSort((prev) => {
+      if (prev === ascSort) return descSort;
+      if (prev === descSort) return ascSort;
+      return ascSort;
+    });
+  }, []);
+
+  const getSortDirection = useCallback((ascSort: VendorBookSort, descSort: VendorBookSort): SortDirection => {
+    if (sort === ascSort) return 'asc';
+    if (sort === descSort) return 'desc';
+    return null;
+  }, [sort]);
+
+  const resetSearchState = useCallback(() => {
+    setSearchInput('');
+    setStatusFilter('');
+    setSort(undefined);
+    setPage(1);
+    setSelected(new Set());
+  }, []);
 
   // ── Select helpers ──
   const toggleOne = useCallback((id: number) => {
@@ -162,7 +230,10 @@ export const VendorBooksPage = () => {
   // ── Delete single ──
   const handleDeleteConfirm = async () => {
     if (!deleteTarget) return;
-    try { await deleteVendorBook({ id: deleteTarget.id }).unwrap(); } catch { /* ignore */ }
+    try {
+      await deleteVendorBook({ id: deleteTarget.id }).unwrap();
+      show('Đã xóa E-book thành công');
+    } catch { /* ignore */ }
     setDeleteTarget(null);
     setSelected((prev) => { const n = new Set(prev); n.delete(deleteTarget.id); return n; });
   };
@@ -348,18 +419,37 @@ export const VendorBooksPage = () => {
               <path d="M4 19.5A2.5 2.5 0 016.5 17H20" />
               <path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z" />
             </svg>
-            <p style={{ fontSize: '14px', color: '#6B6B73', margin: 0 }}>Bạn chưa có E-book nào</p>
-            <Link
-              to="/vendor/books/new"
-              style={{
-                height: '32px', padding: '0 14px', background: '#16161A', color: '#FBFAF8',
-                fontSize: '11px', fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase',
-                border: 'none', borderRadius: '2px', cursor: 'pointer',
-                textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
-              }}
-            >
-              Thêm E-book đầu tiên →
-            </Link>
+            {hasActiveFilters ? (
+              <>
+                <p style={{ fontSize: '14px', color: '#6B6B73', margin: 0 }}>Không tìm thấy E-book phù hợp</p>
+                <button
+                  type="button"
+                  onClick={resetSearchState}
+                  style={{
+                    height: '32px', padding: '0 14px', background: '#16161A', color: '#FBFAF8',
+                    fontSize: '11px', fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase',
+                    border: 'none', borderRadius: '2px', cursor: 'pointer',
+                  }}
+                >
+                  Xóa tìm kiếm
+                </button>
+              </>
+            ) : (
+              <>
+                <p style={{ fontSize: '14px', color: '#6B6B73', margin: 0 }}>Bạn chưa có E-book nào</p>
+                <Link
+                  to="/vendor/books/new"
+                  style={{
+                    height: '32px', padding: '0 14px', background: '#16161A', color: '#FBFAF8',
+                    fontSize: '11px', fontWeight: 600, letterSpacing: '.5px', textTransform: 'uppercase',
+                    border: 'none', borderRadius: '2px', cursor: 'pointer',
+                    textDecoration: 'none', display: 'inline-flex', alignItems: 'center',
+                  }}
+                >
+                  Thêm E-book đầu tiên →
+                </Link>
+              </>
+            )}
           </div>
         ) : (
           <>
@@ -383,18 +473,72 @@ export const VendorBooksPage = () => {
                         }}
                       />
                     </th>
-                    {['#', 'E-book', 'Giá bán', 'Đã bán', 'Trạng thái', 'Thao tác'].map((h) => (
-                      <th
-                        key={h}
-                        style={{
-                          fontSize: '9px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase',
-                          color: '#A8A8AE', padding: '10px 16px', textAlign: 'left',
-                          borderBottom: '1px solid #ECEAE5', whiteSpace: 'nowrap', background: '#FFFFFF',
-                        }}
-                      >
-                        {h}
-                      </th>
-                    ))}
+                    <th
+                      style={{
+                        fontSize: '9px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase',
+                        color: '#A8A8AE', padding: '10px 16px', textAlign: 'left',
+                        borderBottom: '1px solid #ECEAE5', whiteSpace: 'nowrap', background: '#FFFFFF',
+                      }}
+                    >
+                      #
+                    </th>
+                    <th
+                      style={{
+                        padding: '10px 16px', textAlign: 'left',
+                        borderBottom: '1px solid #ECEAE5', whiteSpace: 'nowrap', background: '#FFFFFF',
+                      }}
+                    >
+                      <SortHeaderButton
+                        label="E-book"
+                        activeDirection={getSortDirection('titleAsc', 'titleDesc')}
+                        onClick={() => handleSortToggle('titleAsc', 'titleDesc')}
+                      />
+                    </th>
+                    <th
+                      style={{
+                        padding: '10px 16px', textAlign: 'left',
+                        borderBottom: '1px solid #ECEAE5', whiteSpace: 'nowrap', background: '#FFFFFF',
+                      }}
+                    >
+                      <SortHeaderButton
+                        label="Giá bán"
+                        activeDirection={getSortDirection('priceAsc', 'priceDesc')}
+                        onClick={() => handleSortToggle('priceAsc', 'priceDesc')}
+                      />
+                    </th>
+                    <th
+                      style={{
+                        padding: '10px 16px', textAlign: 'left',
+                        borderBottom: '1px solid #ECEAE5', whiteSpace: 'nowrap', background: '#FFFFFF',
+                      }}
+                    >
+                      <SortHeaderButton
+                        label="Đã bán"
+                        activeDirection={getSortDirection('soldAsc', 'soldDesc')}
+                        onClick={() => handleSortToggle('soldDesc', 'soldAsc')}
+                      />
+                    </th>
+                    <th
+                      style={{
+                        padding: '10px 16px', textAlign: 'left',
+                        borderBottom: '1px solid #ECEAE5', whiteSpace: 'nowrap', background: '#FFFFFF',
+                      }}
+                    >
+                      <SortHeaderButton
+                        label="Trạng thái"
+                        activeDirection={getSortDirection('statusAsc', 'statusDesc')}
+                        onClick={() => handleSortToggle('statusAsc', 'statusDesc')}
+                      />
+                    </th>
+                    <th
+                      style={{
+                        fontSize: '9px', fontWeight: 600, letterSpacing: '1px', textTransform: 'uppercase',
+                        color: '#A8A8AE', padding: '10px 16px', textAlign: 'left',
+                        borderBottom: '1px solid #ECEAE5', whiteSpace: 'nowrap', background: '#FFFFFF',
+                      }}
+                    >
+                      Thao tác
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -621,6 +765,8 @@ export const VendorBooksPage = () => {
           onCancel={() => setBulkDeleteConfirm(false)}
         />
       )}
+
+      <ToastLayer />
     </VendorShell>
   );
 };
