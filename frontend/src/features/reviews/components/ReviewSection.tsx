@@ -1,5 +1,10 @@
-import { useState } from 'react';
-import { useGetBookReviewsQuery, useCreateReviewMutation } from '../reviewsApi';
+import { useState, useEffect } from 'react';
+import {
+  useGetBookReviewsQuery,
+  useGetMyReviewQuery,
+  useCreateReviewMutation,
+  useUpdateReviewMutation,
+} from '../reviewsApi';
 import { useGetMyEbooksQuery } from '../../library/libraryApi';
 import { useAppSelector } from '../../../app/hooks';
 import { useToast } from '../../../shared/hooks/useToast';
@@ -156,21 +161,39 @@ export const ReviewSection = ({
     ? (ebooksData?.ebooks ?? []).some((e) => e.bookId === bookId)
     : false;
 
-  /* ── Write form state ── */
+  /* ── My existing review (gating: chỉ user role) ── */
+  const { data: myReview } = useGetMyReviewQuery({ bookId }, { skip: !isUserRole });
+  const hasReviewed = !!myReview;
+
+  /* ── Write/Edit form state ── */
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
-  const [createReview, { isLoading: submitting }] = useCreateReviewMutation();
+  const [createReview, { isLoading: creating }] = useCreateReviewMutation();
+  const [updateReview, { isLoading: updating }] = useUpdateReviewMutation();
+  const submitting = creating || updating;
+
+  /* ── Prefill form khi đã có đánh giá (edit mode) ── */
+  useEffect(() => {
+    if (myReview) {
+      setRating(myReview.rating);
+      setComment(myReview.comment ?? '');
+    }
+  }, [myReview?.id, myReview?.rating, myReview?.comment]);
 
   const handleSubmit = async () => {
     if (rating === 0) {
       show('Vui lòng chọn số sao');
       return;
     }
+    const trimmed = comment.trim() || undefined;
     try {
-      await createReview({ bookId, rating, comment: comment.trim() || undefined, idOrSlug: bookSlug });
-      show('Đã gửi đánh giá thành công!');
-      setRating(0);
-      setComment('');
+      if (hasReviewed) {
+        await updateReview({ bookId, rating, comment: trimmed, idOrSlug: bookSlug }).unwrap();
+        show('Đã cập nhật đánh giá!');
+      } else {
+        await createReview({ bookId, rating, comment: trimmed, idOrSlug: bookSlug }).unwrap();
+        show('Đã gửi đánh giá thành công!');
+      }
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string };
       const code = e?.code;
@@ -337,7 +360,7 @@ export const ReviewSection = ({
         {user && !isUserRole && null}
 
         {/* User role: check ownership */}
-        {isUserRole && !ownsBook && (
+        {isUserRole && !ownsBook && !hasReviewed && (
           <div className="flex items-center gap-3 rounded-[2px] border border-line bg-surface px-5 py-4 text-[14px] text-ink-2">
             <svg
               width="18"
@@ -358,10 +381,10 @@ export const ReviewSection = ({
           </div>
         )}
 
-        {isUserRole && ownsBook && (
+        {isUserRole && (ownsBook || hasReviewed) && (
           <div>
             <div className="mb-5 text-[11px] font-semibold uppercase tracking-[2px] text-ink-3">
-              Viết đánh giá của bạn
+              {hasReviewed ? 'Chỉnh sửa đánh giá của bạn' : 'Viết đánh giá của bạn'}
             </div>
             <div className="mb-4">
               <div className="mb-2 text-[13px] text-ink-2">Xếp hạng</div>
@@ -383,7 +406,13 @@ export const ReviewSection = ({
               disabled={submitting || rating === 0}
               className="inline-flex h-11 items-center rounded-[2px] bg-ink px-6 text-[12px] font-semibold uppercase tracking-[1.5px] text-paper transition-opacity duration-200 hover:opacity-[.85] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {submitting ? 'Đang gửi...' : 'Gửi đánh giá'}
+              {submitting
+                ? hasReviewed
+                  ? 'Đang cập nhật...'
+                  : 'Đang gửi...'
+                : hasReviewed
+                  ? 'Cập nhật đánh giá'
+                  : 'Gửi đánh giá'}
             </button>
           </div>
         )}

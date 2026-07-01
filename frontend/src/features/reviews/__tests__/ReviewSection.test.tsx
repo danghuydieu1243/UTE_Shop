@@ -10,11 +10,20 @@ import authReducer from '../../../shared/auth/authSlice';
 /* ── Mock reviewsApi ── */
 vi.mock('../reviewsApi', () => ({
   useGetBookReviewsQuery: vi.fn(),
+  useGetMyReviewQuery: vi.fn(),
   useCreateReviewMutation: vi.fn(),
+  useUpdateReviewMutation: vi.fn(),
 }));
-import { useGetBookReviewsQuery, useCreateReviewMutation } from '../reviewsApi';
+import {
+  useGetBookReviewsQuery,
+  useGetMyReviewQuery,
+  useCreateReviewMutation,
+  useUpdateReviewMutation,
+} from '../reviewsApi';
 const mockUseGetBookReviewsQuery = useGetBookReviewsQuery as ReturnType<typeof vi.fn>;
+const mockUseGetMyReviewQuery = useGetMyReviewQuery as ReturnType<typeof vi.fn>;
 const mockUseCreateReviewMutation = useCreateReviewMutation as ReturnType<typeof vi.fn>;
+const mockUseUpdateReviewMutation = useUpdateReviewMutation as ReturnType<typeof vi.fn>;
 
 /* ── Mock libraryApi ── */
 vi.mock('../../library/libraryApi', () => ({
@@ -96,7 +105,15 @@ const setupDefaultMocks = () => {
     isLoading: false,
     isError: false,
   });
-  mockUseCreateReviewMutation.mockReturnValue([vi.fn(), { isLoading: false }]);
+  mockUseGetMyReviewQuery.mockReturnValue({ data: null, isLoading: false });
+  mockUseCreateReviewMutation.mockReturnValue([
+    vi.fn(() => ({ unwrap: () => Promise.resolve({}) })),
+    { isLoading: false },
+  ]);
+  mockUseUpdateReviewMutation.mockReturnValue([
+    vi.fn(() => ({ unwrap: () => Promise.resolve({}) })),
+    { isLoading: false },
+  ]);
   mockUseGetMyEbooksQuery.mockReturnValue({
     data: { ebooks: [], pagination: { page: 1, limit: 200, total: 0, totalPages: 0 } },
     isLoading: false,
@@ -208,7 +225,9 @@ describe('ReviewSection', () => {
   /* ── Test 5: submitting form calls createReview ── */
   describe('form submission', () => {
     it('calls createReview with {bookId, rating, comment} on submit', async () => {
-      const mockCreateReview = vi.fn().mockResolvedValue({ data: { id: 99, rating: 5, comment: 'test', userName: 'User', createdAt: '', vendorReply: null, vendorRepliedAt: null } });
+      const mockCreateReview = vi.fn(() => ({
+        unwrap: () => Promise.resolve({ id: 99, userId: 1, rating: 5, comment: 'test', userName: 'User', createdAt: '', vendorReply: null, vendorRepliedAt: null }),
+      }));
       setupDefaultMocks();
       mockUseCreateReviewMutation.mockReturnValue([mockCreateReview, { isLoading: false }]);
       mockUseGetMyEbooksQuery.mockReturnValue({
@@ -243,6 +262,61 @@ describe('ReviewSection', () => {
           idOrSlug: 'tuoi-tre-dang-gia-bao-nhieu',
         });
       });
+    });
+  });
+
+  /* ── Test 5b: edit mode when user already reviewed ── */
+  describe('edit mode — user already reviewed', () => {
+    const ownedEbooks = {
+      data: {
+        ebooks: [
+          { bookId: 29, slug: 'test', title: 'Test', author: null, coverImageUrl: null, fileFormat: 'PDF', fileSizeBytes: 0, grantedAt: '', orderCode: 'ORD-001' },
+        ],
+        pagination: { page: 1, limit: 200, total: 1, totalPages: 1 },
+      },
+      isLoading: false,
+    };
+
+    it('prefills form + shows "Cập nhật đánh giá" button when myReview exists', () => {
+      setupDefaultMocks();
+      mockUseGetMyEbooksQuery.mockReturnValue(ownedEbooks);
+      mockUseGetMyReviewQuery.mockReturnValue({
+        data: { id: 7, userId: 1, rating: 3, comment: 'Đánh giá cũ', userName: 'Test User', createdAt: '', vendorReply: null, vendorRepliedAt: null },
+        isLoading: false,
+      });
+      renderSection(defaultProps, { id: 1, email: 'user@test.com', role: 'user', fullName: 'Test User' });
+
+      expect(screen.getByRole('button', { name: /cập nhật đánh giá/i })).toBeInTheDocument();
+      expect(screen.getByText(/chỉnh sửa đánh giá của bạn/i)).toBeInTheDocument();
+      // Prefilled comment
+      expect((screen.getByRole('textbox') as HTMLTextAreaElement).value).toBe('Đánh giá cũ');
+    });
+
+    it('calls updateReview (not createReview) on submit when already reviewed', async () => {
+      const mockUpdate = vi.fn(() => ({ unwrap: () => Promise.resolve({}) }));
+      const mockCreate = vi.fn(() => ({ unwrap: () => Promise.resolve({}) }));
+      setupDefaultMocks();
+      mockUseCreateReviewMutation.mockReturnValue([mockCreate, { isLoading: false }]);
+      mockUseUpdateReviewMutation.mockReturnValue([mockUpdate, { isLoading: false }]);
+      mockUseGetMyEbooksQuery.mockReturnValue(ownedEbooks);
+      mockUseGetMyReviewQuery.mockReturnValue({
+        data: { id: 7, userId: 1, rating: 3, comment: 'cũ', userName: 'Test User', createdAt: '', vendorReply: null, vendorRepliedAt: null },
+        isLoading: false,
+      });
+      renderSection(defaultProps, { id: 1, email: 'user@test.com', role: 'user', fullName: 'Test User' });
+
+      const submitBtn = screen.getByRole('button', { name: /cập nhật đánh giá/i });
+      fireEvent.click(submitBtn);
+
+      await waitFor(() => {
+        expect(mockUpdate).toHaveBeenCalledWith({
+          bookId: 29,
+          rating: 3,
+          comment: 'cũ',
+          idOrSlug: 'tuoi-tre-dang-gia-bao-nhieu',
+        });
+      });
+      expect(mockCreate).not.toHaveBeenCalled();
     });
   });
 

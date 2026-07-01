@@ -17,6 +17,19 @@ export const createReviewBodySchema = z.object({
 
 export type CreateReviewBody = z.infer<typeof createReviewBodySchema>;
 
+// ── Update Review ─────────────────────────────────────────────────────────────
+
+export const updateReviewBodySchema = z.object({
+  rating: z
+    .number({ invalid_type_error: 'rating phải là số nguyên' })
+    .int('rating phải là số nguyên')
+    .min(1, 'rating tối thiểu là 1')
+    .max(5, 'rating tối đa là 5'),
+  comment: z.string().max(2000).optional(),
+});
+
+export type UpdateReviewBody = z.infer<typeof updateReviewBodySchema>;
+
 // ── Vendor Reply ──────────────────────────────────────────────────────────────
 
 export const replyBodySchema = z.object({
@@ -29,6 +42,7 @@ export type ReplyBody = z.infer<typeof replyBodySchema>;
 
 export interface ReviewDTO {
   id: number;
+  userId: number;
   rating: number;
   comment: string | null;
   userName: string;

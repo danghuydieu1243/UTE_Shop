@@ -2,6 +2,7 @@
 
 export interface ReviewDTO {
   id: number;
+  userId: number;
   rating: number;
   comment: string | null;
   userName: string;
@@ -31,5 +32,13 @@ export interface CreateReviewBody {
   rating: number;
   comment?: string;
   /** Used only for RTK Query cache invalidation — NOT sent in POST body */
+  idOrSlug: string | number;
+}
+
+export interface UpdateReviewBody {
+  bookId: number;
+  rating: number;
+  comment?: string;
+  /** Used only for RTK Query cache invalidation — NOT sent in PATCH body */
   idOrSlug: string | number;
 }

@@ -38,12 +38,31 @@ export async function findCompletedOrderContainingBook(
   });
 }
 
+// ── Find the requesting user's own review for a book (with user for DTO) ──────
+
+export async function findUserReviewForBook(
+  userId: number,
+  bookId: number,
+): Promise<Review | null> {
+  return Review.findOne({
+    where: { userId, bookId },
+    include: [
+      {
+        model: User,
+        as: 'user',
+        attributes: ['id', 'fullName'],
+      },
+    ],
+  });
+}
+
 // ── Map Review row → DTO ─────────────────────────────────────────────────────
 
 export function mapReviewDTO(row: Review): ReviewDTO {
   const user = (row as any).user as any;
   return {
     id: Number(row.id),
+    userId: Number(row.userId),
     rating: row.rating,
     comment: row.comment ?? null,
     userName: user?.fullName ?? '',

@@ -7,6 +7,8 @@ import * as c from './reviews.controller';
 export const meReviewsRouter = Router();
 
 meReviewsRouter.post('/', auth, requireRole('user'), c.createReview);
+meReviewsRouter.get('/:bookId', auth, requireRole('user'), c.getMyReview);
+meReviewsRouter.patch('/:bookId', auth, requireRole('user'), c.updateReview);
 
 // ── /api/v1/books/:idOrSlug/reviews ──────────────────────────────────────────
 export const bookReviewsRouter = Router({ mergeParams: true });

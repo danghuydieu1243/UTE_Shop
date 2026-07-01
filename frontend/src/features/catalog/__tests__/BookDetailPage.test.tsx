@@ -18,11 +18,20 @@ const mockUseGetBookDetailQuery = useGetBookDetailQuery as ReturnType<typeof vi.
 /* ── Mock reviewsApi (ReviewSection dependency) ── */
 vi.mock('../../reviews/reviewsApi', () => ({
   useGetBookReviewsQuery: vi.fn(),
+  useGetMyReviewQuery: vi.fn(),
   useCreateReviewMutation: vi.fn(),
+  useUpdateReviewMutation: vi.fn(),
 }));
-import { useGetBookReviewsQuery, useCreateReviewMutation } from '../../reviews/reviewsApi';
+import {
+  useGetBookReviewsQuery,
+  useGetMyReviewQuery,
+  useCreateReviewMutation,
+  useUpdateReviewMutation,
+} from '../../reviews/reviewsApi';
 const mockUseGetBookReviewsQuery = useGetBookReviewsQuery as ReturnType<typeof vi.fn>;
+const mockUseGetMyReviewQuery = useGetMyReviewQuery as ReturnType<typeof vi.fn>;
 const mockUseCreateReviewMutation = useCreateReviewMutation as ReturnType<typeof vi.fn>;
+const mockUseUpdateReviewMutation = useUpdateReviewMutation as ReturnType<typeof vi.fn>;
 
 /* ── Mock libraryApi (ReviewSection ownership gate + useOwnedBookIds) ── */
 vi.mock('../../library/libraryApi', () => ({
@@ -123,7 +132,9 @@ const setupReviewMocks = () => {
     isLoading: false,
     isError: false,
   });
+  mockUseGetMyReviewQuery.mockReturnValue({ data: null, isLoading: false });
   mockUseCreateReviewMutation.mockReturnValue([vi.fn(), { isLoading: false }]);
+  mockUseUpdateReviewMutation.mockReturnValue([vi.fn(), { isLoading: false }]);
   (useGetMyEbooksQuery as ReturnType<typeof vi.fn>).mockReturnValue({
     data: { ebooks: [], pagination: { page: 1, limit: 200, total: 0, totalPages: 0 } },
     isLoading: false,

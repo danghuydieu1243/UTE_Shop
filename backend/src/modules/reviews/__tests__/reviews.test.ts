@@ -235,6 +235,94 @@ describe('Reviews API', () => {
     });
   });
 
+  // ── GET /api/v1/me/reviews/:bookId — my own review ──────────────────────────
+
+  describe('GET /api/v1/me/reviews/:bookId', () => {
+    it('trả về null khi user chưa đánh giá sách', async () => {
+      const u = await seedUser('user', 'rv-my-null');
+      const book = await seedBook(vendorUser.id);
+      await seedCompletedOrder(u.id, book.id);
+
+      const res = await request(app)
+        .get(`/api/v1/me/reviews/${book.id}`)
+        .set('Authorization', `Bearer ${makeToken(u.id, 'user')}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.data).toBeNull();
+    });
+
+    it('trả về đánh giá của chính user (kèm userId) sau khi đã đánh giá', async () => {
+      const u = await seedUser('user', 'rv-my-own');
+      const book = await seedBook(vendorUser.id);
+      await seedCompletedOrder(u.id, book.id);
+      const token = makeToken(u.id, 'user');
+
+      await request(app)
+        .post('/api/v1/me/reviews')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ bookId: book.id, rating: 4, comment: 'Ổn' });
+
+      const res = await request(app)
+        .get(`/api/v1/me/reviews/${book.id}`)
+        .set('Authorization', `Bearer ${token}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.data).not.toBeNull();
+      expect(res.body.data.rating).toBe(4);
+      expect(res.body.data.comment).toBe('Ổn');
+      expect(res.body.data.userId).toBe(Number(u.id));
+    });
+  });
+
+  // ── PATCH /api/v1/me/reviews/:bookId — edit own review ───────────────────────
+
+  describe('PATCH /api/v1/me/reviews/:bookId', () => {
+    it('sửa đánh giá → 200 + rating/comment cập nhật + rating_avg recompute + KHÔNG cộng điểm lại', async () => {
+      const u = await seedUser('user', 'rv-edit');
+      const book = await seedBook(vendorUser.id);
+      await seedCompletedOrder(u.id, book.id);
+      const token = makeToken(u.id, 'user');
+
+      await request(app)
+        .post('/api/v1/me/reviews')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ bookId: book.id, rating: 5, comment: 'Ban đầu' });
+
+      const res = await request(app)
+        .patch(`/api/v1/me/reviews/${book.id}`)
+        .set('Authorization', `Bearer ${token}`)
+        .send({ rating: 2, comment: 'Sửa lại' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.data.rating).toBe(2);
+      expect(res.body.data.comment).toBe('Sửa lại');
+
+      // Book rating recomputed (chỉ 1 review) → avg = 2
+      const updatedBook = await Book.findByPk(book.id);
+      expect(Number(updatedBook!.ratingCount)).toBe(1);
+      expect(Number(updatedBook!.ratingAvg)).toBe(2);
+
+      // Điểm loyalty vẫn là 50 (không cộng lại khi sửa)
+      const account = await LoyaltyAccount.findOne({ where: { userId: u.id } });
+      expect(Number(account!.balancePoints)).toBe(50);
+    });
+
+    it('sửa khi chưa từng đánh giá → 403 REVIEW_NOT_ALLOWED', async () => {
+      const u = await seedUser('user', 'rv-edit-none');
+      const book = await seedBook(vendorUser.id);
+      await seedCompletedOrder(u.id, book.id);
+
+      const res = await request(app)
+        .patch(`/api/v1/me/reviews/${book.id}`)
+        .set('Authorization', `Bearer ${makeToken(u.id, 'user')}`)
+        .send({ rating: 3 });
+
+      expect(res.status).toBe(403);
+      expect(res.body.error.code).toBe('REVIEW_NOT_ALLOWED');
+    });
+  });
+
   // ── 6. GET /api/v1/books/:idOrSlug/reviews — public ──────────────────────
 
   describe('GET /api/v1/books/:idOrSlug/reviews', () => {

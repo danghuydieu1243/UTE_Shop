@@ -3,6 +3,7 @@ import { ok, created } from '../../shared/http/response';
 import { AppError } from '../../shared/errors/AppError';
 import {
   createReviewBodySchema,
+  updateReviewBodySchema,
   replyBodySchema,
 } from './reviews.schema';
 import * as reviewsService from './reviews.service';
@@ -17,6 +18,34 @@ export const createReview = asyncHandler(async (req, res) => {
   const userId = req.user!.id;
   const review = await reviewsService.createReview(userId, result.data);
   created(res, review);
+});
+
+// ── GET /api/v1/me/reviews/:bookId ───────────────────────────────────────────
+
+export const getMyReview = asyncHandler(async (req, res) => {
+  const bookId = parseInt(req.params.bookId, 10);
+  if (!bookId || isNaN(bookId)) {
+    throw AppError.from('VALIDATION', 'bookId không hợp lệ');
+  }
+  const userId = req.user!.id;
+  const review = await reviewsService.getMyReview(userId, bookId);
+  ok(res, review);
+});
+
+// ── PATCH /api/v1/me/reviews/:bookId ─────────────────────────────────────────
+
+export const updateReview = asyncHandler(async (req, res) => {
+  const result = updateReviewBodySchema.safeParse(req.body);
+  if (!result.success) {
+    throw AppError.from('VALIDATION', 'Dữ liệu không hợp lệ', result.error.issues);
+  }
+  const bookId = parseInt(req.params.bookId, 10);
+  if (!bookId || isNaN(bookId)) {
+    throw AppError.from('VALIDATION', 'bookId không hợp lệ');
+  }
+  const userId = req.user!.id;
+  const review = await reviewsService.updateReview(userId, bookId, result.data);
+  ok(res, review);
 });
 
 // ── GET /api/v1/books/:idOrSlug/reviews ─────────────────────────────────────

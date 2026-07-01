@@ -8,7 +8,7 @@ import {
 } from '../../db/models';
 import { AppError } from '../../shared/errors/AppError';
 import * as repo from './reviews.repository';
-import { CreateReviewBody, ReviewDTO, PaginationMeta } from './reviews.schema';
+import { CreateReviewBody, UpdateReviewBody, ReviewDTO, PaginationMeta } from './reviews.schema';
 
 const REVIEW_EARN_POINTS = 50;
 
@@ -78,6 +78,7 @@ export async function createReview(
 
   return {
     id: Number(review.id),
+    userId,
     rating: review.rating,
     comment: review.comment ?? null,
     userName,
@@ -85,6 +86,41 @@ export async function createReview(
     vendorReply: null,
     vendorRepliedAt: null,
   };
+}
+
+// ── getMyReview ───────────────────────────────────────────────────────────────
+// Trả về đánh giá của chính user cho 1 sách (hoặc null nếu chưa đánh giá)
+
+export async function getMyReview(
+  userId: number,
+  bookId: number,
+): Promise<ReviewDTO | null> {
+  const review = await repo.findUserReviewForBook(userId, bookId);
+  return review ? repo.mapReviewDTO(review) : null;
+}
+
+// ── updateReview ──────────────────────────────────────────────────────────────
+// Sửa đánh giá đã có của chính user (không cộng điểm loyalty lại)
+
+export async function updateReview(
+  userId: number,
+  bookId: number,
+  body: UpdateReviewBody,
+): Promise<ReviewDTO> {
+  const review = await repo.findUserReviewForBook(userId, bookId);
+  if (!review) {
+    throw AppError.from('REVIEW_NOT_ALLOWED', 'Bạn chưa đánh giá sách này');
+  }
+
+  await sequelize.transaction(async (t) => {
+    await review.update(
+      { rating: body.rating, comment: body.comment ?? null },
+      { transaction: t },
+    );
+    await repo.recomputeBookRating(bookId, t);
+  });
+
+  return repo.mapReviewDTO(review);
 }
 
 // ── listByBook ────────────────────────────────────────────────────────────────
@@ -128,6 +164,7 @@ export async function vendorReply(
 
   return {
     id: Number(review.id),
+    userId: Number(review.userId),
     rating: review.rating,
     comment: review.comment ?? null,
     userName: '',
