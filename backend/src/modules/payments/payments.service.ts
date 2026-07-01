@@ -4,7 +4,7 @@
 
 import {
   sequelize,
-  Payment, Order, OrderItem, Book, Entitlement, Coupon,
+  Payment, Order, OrderItem, Book, Entitlement, Coupon, Wishlist,
 } from '../../db/models';
 import { AppError } from '../../shared/errors/AppError';
 import { mapOrderDetailDTO } from '../orders/orders.repository';
@@ -120,6 +120,15 @@ export async function completePayment(
       // Tăng purchaseCount (chỉ tăng lần đầu — idempotent qua entitlement.findOrCreate)
       await Book.increment('purchaseCount', {
         where: { id: Number(item.bookId) },
+        transaction: t,
+      });
+    }
+
+    // 10a: Gỡ các sách vừa mua khỏi wishlist của user (idempotent — không còn thì thôi)
+    const purchasedBookIds = items.map((item) => Number(item.bookId));
+    if (purchasedBookIds.length > 0) {
+      await Wishlist.destroy({
+        where: { userId: opts.userId, bookId: purchasedBookIds },
         transaction: t,
       });
     }

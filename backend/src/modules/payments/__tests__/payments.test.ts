@@ -10,7 +10,7 @@ import { createApp } from '../../../app';
 import {
   User, Vendor, Book, BookFile,
   Order, OrderItem, Payment, Entitlement, Author,
-  Coupon, CouponRedemption, Cart, CartItem, Notification,
+  Coupon, CouponRedemption, Cart, CartItem, Notification, Wishlist,
 } from '../../../db/models';
 import { signAccessToken } from '../../auth/token.service';
 import { env } from '../../../config/env';
@@ -343,6 +343,91 @@ describe('GET /api/v1/me/ebooks', () => {
     const ebook = res.body.data.find((e: any) => e.bookId === Number(book.id));
     expect(ebook).toBeDefined();
     expect(ebook.author).toBe('Nguyễn Văn A');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// GET /me/ebooks/ids — danh sách bookId đã sở hữu (đánh dấu "đã mua" ở FE)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('GET /api/v1/me/ebooks/ids', () => {
+  it('E-ids-1: trả mảng bookId đã sở hữu', async () => {
+    const user = await seedUser('user', `ids1-${Date.now()}`);
+    const token = makeToken(user.id);
+    const book = await seedBook(vendorUser.id);
+
+    const order = await Order.create({
+      userId: user.id,
+      code: `ATH-IDS1-${Date.now()}`,
+      status: 'COMPLETED',
+      subtotal: 79000,
+      total: 79000,
+      currency: 'VND',
+      completedAt: new Date(),
+    });
+    await Entitlement.create({
+      userId: user.id,
+      bookId: book.id,
+      orderId: Number(order.id),
+      grantedAt: new Date(),
+    });
+
+    const res = await request(app)
+      .get('/api/v1/me/ebooks/ids')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.data.bookIds)).toBe(true);
+    expect(res.body.data.bookIds).toContain(Number(book.id));
+    // Toàn bộ phần tử là number (khớp shape FE)
+    expect(res.body.data.bookIds.every((id: unknown) => typeof id === 'number')).toBe(true);
+  });
+
+  it('E-ids-2: chưa sở hữu gì → mảng rỗng', async () => {
+    const user = await seedUser('user', `ids2-${Date.now()}`);
+    const token = makeToken(user.id);
+
+    const res = await request(app)
+      .get('/api/v1/me/ebooks/ids')
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.bookIds).toEqual([]);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Wishlist tự gỡ khi thanh toán hoàn tất
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('completePayment — gỡ sách khỏi wishlist', () => {
+  it('WL-pay1: sách đang trong wishlist bị gỡ sau khi mua thành công', async () => {
+    const buyer = await seedUser('user', `wlpay1-${Date.now()}`);
+    const token = makeToken(buyer.id);
+    const book = await seedBook(vendorUser.id);
+
+    // User thêm sách vào wishlist trước khi mua
+    await Wishlist.create({ userId: buyer.id, bookId: Number(book.id) });
+
+    const { payment } = await createPendingOrder(buyer.id, vendorUser.id, book.id);
+
+    const res = await request(app)
+      .post(`/api/v1/payments/${payment.id}/simulate`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+
+    // Wishlist không còn sách này
+    const wl = await Wishlist.findOne({ where: { userId: buyer.id, bookId: Number(book.id) } });
+    expect(wl).toBeNull();
+  });
+
+  it('WL-pay2: không có trong wishlist → completePayment vẫn ok (idempotent)', async () => {
+    const buyer = await seedUser('user', `wlpay2-${Date.now()}`);
+    const book = await seedBook(vendorUser.id);
+    const { payment } = await createPendingOrder(buyer.id, vendorUser.id, book.id);
+
+    await expect(completePayment(payment.id, { userId: buyer.id })).resolves.toBeDefined();
   });
 });
 

@@ -45,6 +45,8 @@ interface BookCardProps {
   highlightQuery?: string;
   /** Nếu true, heart đang ở trạng thái "đã thêm" (tim đặc) */
   isWishlisted?: boolean;
+  /** Nếu true, user đã sở hữu sách → thay nút "Thêm vào giỏ" bằng "Đọc ngay" (→ thư viện) */
+  owned?: boolean;
 }
 
 /**
@@ -58,7 +60,7 @@ interface BookCardProps {
  * - guest (null): click → navigate /login
  * - vendor/admin: ẩn heart (không hiện)
  */
-export const BookCard = ({ book, className = '', rank, onAddToCart, highlightQuery, isWishlisted = false }: BookCardProps) => {
+export const BookCard = ({ book, className = '', rank, onAddToCart, highlightQuery, isWishlisted = false, owned = false }: BookCardProps) => {
   const navigate = useNavigate();
   const user = useAppSelector((s) => s.auth.user);
   const [addToWishlist] = useAddToWishlistMutation();
@@ -108,10 +110,12 @@ export const BookCard = ({ book, className = '', rank, onAddToCart, highlightQue
     if (isWishlisted) {
       removeFromWishlist(book.id)
         .unwrap()
+        .then(() => show('Đã bỏ khỏi danh sách yêu thích'))
         .catch(() => show('Không thể bỏ yêu thích. Vui lòng thử lại.'));
     } else {
       addToWishlist({ bookId: book.id })
         .unwrap()
+        .then(() => show('Đã thêm vào danh sách yêu thích'))
         .catch(() => show('Không thể thêm vào Wishlist. Vui lòng thử lại.'));
     }
   };
@@ -227,18 +231,31 @@ export const BookCard = ({ book, className = '', rank, onAddToCart, highlightQue
         {formatFileSize(fileFormat, fileSizeBytes)}
       </div>
 
-      {/* "Thêm vào giỏ" — always visible, sibling to cover (not inside <a>).
-          Cart wiring comes in Phase 3. */}
-      <button
-        type="button"
-        className="btn-cart mt-3 w-full border border-ink py-2 text-[11px] font-semibold uppercase tracking-[1px] text-ink transition-colors duration-150 hover:bg-ink hover:text-bg"
-        onClick={(e) => {
-          e.stopPropagation();
-          onAddToCart?.(book);
-        }}
-      >
-        Thêm vào giỏ
-      </button>
+      {/* Nút hành động — sibling to cover (not inside <a>).
+          Đã sở hữu → "Đọc ngay" (điều hướng thư viện); ngược lại → "Thêm vào giỏ". */}
+      {owned ? (
+        <button
+          type="button"
+          className="btn-cart mt-3 w-full border border-ink bg-ink py-2 text-[11px] font-semibold uppercase tracking-[1px] text-bg transition-colors duration-150 hover:bg-transparent hover:text-ink"
+          onClick={(e) => {
+            e.stopPropagation();
+            navigate('/user/ebooks');
+          }}
+        >
+          Đọc ngay
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="btn-cart mt-3 w-full border border-ink py-2 text-[11px] font-semibold uppercase tracking-[1px] text-ink transition-colors duration-150 hover:bg-ink hover:text-bg"
+          onClick={(e) => {
+            e.stopPropagation();
+            onAddToCart?.(book);
+          }}
+        >
+          Thêm vào giỏ
+        </button>
+      )}
     </article>
   );
 };

@@ -7,6 +7,7 @@ import {
   useGetFiltersQuery,
 } from '../catalogApi';
 import { useAddToCartMutation } from '../../cart/cartApi';
+import { useOwnedBookIds } from '../../library/useOwnedBookIds';
 import { useAppSelector } from '../../../app/hooks';
 import type { BookCard as BookCardDTO, SortOption } from '../types';
 import { formatVND } from '../../../shared/format';
@@ -160,6 +161,9 @@ export const CatalogPage = () => {
   const user = useAppSelector((s) => s.auth.user);
   const { show, ToastLayer } = useToast();
   const [addToCart] = useAddToCartMutation();
+
+  /* ── Sách đã mua: đổi nút "Thêm vào giỏ" → "Đọc ngay" ── */
+  const ownedIds = useOwnedBookIds();
 
   /* ── Xử lý thêm vào giỏ ── */
   const handleAddToCart = async (book: BookCardDTO) => {
@@ -818,6 +822,7 @@ export const CatalogPage = () => {
                     }
                     highlightQuery={q || undefined}
                     onAddToCart={handleAddToCart}
+                    owned={ownedIds.has(book.id)}
                   />
                 ))}
               </div>

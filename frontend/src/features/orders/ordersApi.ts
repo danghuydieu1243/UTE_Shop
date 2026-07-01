@@ -33,10 +33,13 @@ export const ordersApi = baseApi.injectEndpoints({
     }),
 
     // POST /payments/:id/simulate — giả lập thanh toán thành công
-    // Thành công → đơn COMPLETED + cấp entitlement → invalidate cả Ebook để /user/ebooks refetch
+    // Thành công → đơn COMPLETED + cấp entitlement → invalidate:
+    // - Ebook: /user/ebooks refetch
+    // - OwnedBooks: catalog đánh dấu lại "đã mua"
+    // - Wishlist: BE tự gỡ sách vừa mua khỏi wishlist
     simulatePayment: build.mutation<OrderDetail, number>({
       query: (id) => ({ url: `/payments/${id}/simulate`, method: 'POST' }),
-      invalidatesTags: ['Order', 'Ebook'],
+      invalidatesTags: ['Order', 'Ebook', 'OwnedBooks', 'Wishlist'],
     }),
 
     // GET /orders?status&page&limit → OrdersResult

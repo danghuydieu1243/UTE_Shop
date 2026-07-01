@@ -131,6 +131,20 @@ export async function listEbooks(
   };
 }
 
+// ── listEbookIds ──────────────────────────────────────────────────────────────
+
+/**
+ * Trả về mảng bookId mà userId đã sở hữu (dùng cho FE đánh dấu "đã mua").
+ * Nhẹ — chỉ query cột bookId, không join Book.
+ */
+export async function listEbookIds(userId: number): Promise<number[]> {
+  const rows = await Entitlement.findAll({
+    where: { userId },
+    attributes: ['bookId'],
+  });
+  return rows.map((e) => Number(e.bookId));
+}
+
 // ── issueDownloadLink ─────────────────────────────────────────────────────────
 
 /**

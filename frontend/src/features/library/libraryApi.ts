@@ -30,6 +30,14 @@ const libraryApi = baseApi.injectEndpoints({
           : [{ type: 'Ebook' as const, id: 'LIST' }],
     }),
 
+    // GET /me/ebooks/ids — mảng bookId user đã sở hữu (đánh dấu "đã mua" ở catalog)
+    getOwnedBookIds: build.query<number[], void>({
+      query: () => ({ url: '/me/ebooks/ids', method: 'GET' }),
+      // backend trả { bookIds: number[] } (đã unwrap envelope bởi baseApi)
+      transformResponse: (resp: { bookIds: number[] } | undefined) => resp?.bookIds ?? [],
+      providesTags: [{ type: 'OwnedBooks' as const, id: 'LIST' }],
+    }),
+
     // POST /me/ebooks/:bookId/download — lấy signed URL tải file
     requestDownload: build.mutation<DownloadLink, number>({
       query: (bookId) => ({
@@ -41,4 +49,4 @@ const libraryApi = baseApi.injectEndpoints({
   }),
 });
 
-export const { useGetMyEbooksQuery, useRequestDownloadMutation } = libraryApi;
+export const { useGetMyEbooksQuery, useGetOwnedBookIdsQuery, useRequestDownloadMutation } = libraryApi;

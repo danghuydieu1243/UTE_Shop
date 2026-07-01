@@ -24,10 +24,11 @@ import { useGetBookReviewsQuery, useCreateReviewMutation } from '../../reviews/r
 const mockUseGetBookReviewsQuery = useGetBookReviewsQuery as ReturnType<typeof vi.fn>;
 const mockUseCreateReviewMutation = useCreateReviewMutation as ReturnType<typeof vi.fn>;
 
-/* ── Mock libraryApi (ReviewSection ownership gate) ── */
+/* ── Mock libraryApi (ReviewSection ownership gate + useOwnedBookIds) ── */
 vi.mock('../../library/libraryApi', () => ({
   useGetMyEbooksQuery: vi.fn(),
   useGetWishlistQuery: vi.fn(),
+  useGetOwnedBookIdsQuery: vi.fn(() => ({ data: [] })),
 }));
 import { useGetMyEbooksQuery } from '../../library/libraryApi';
 

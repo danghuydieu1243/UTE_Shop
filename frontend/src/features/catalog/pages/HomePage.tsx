@@ -3,6 +3,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { SiteHeader, SiteFooter, BookCard } from '../../../shared/ui';
 import { useGetHomeQuery } from '../catalogApi';
 import { useAddToCartMutation } from '../../cart/cartApi';
+import { useGetWishlistQuery } from '../../wishlist/wishlistApi';
+import { useOwnedBookIds } from '../../library/useOwnedBookIds';
 import { useAppSelector } from '../../../app/hooks';
 import type { HomeCategory, BookCard as BookCardDTO } from '../types';
 import { useToast } from '../../../shared/hooks/useToast';
@@ -125,6 +127,16 @@ export const HomePage = () => {
   const user = useAppSelector((s) => s.auth.user);
   const { show, ToastLayer } = useToast();
   const [addToCart] = useAddToCartMutation();
+
+  /* ── Wishlist: chỉ fetch khi đã đăng nhập với role 'user' để biết sách nào đã yêu thích ── */
+  const { data: wishlistData } = useGetWishlistQuery(
+    { page: 1, limit: 100 },
+    { skip: user?.role !== 'user' },
+  );
+  const wishlistedIds = new Set((wishlistData?.items ?? []).map((it) => it.book.id));
+
+  /* ── Sách đã mua: đánh dấu để đổi nút "Thêm vào giỏ" → "Đọc ngay" ── */
+  const ownedIds = useOwnedBookIds();
 
   /* ── Xử lý thêm vào giỏ ── */
   const handleAddToCart = async (book: BookCardDTO) => {
@@ -329,6 +341,8 @@ export const HomePage = () => {
                   book={book}
                   className={`reveal d${i + 1}`}
                   onAddToCart={handleAddToCart}
+                  isWishlisted={wishlistedIds.has(book.id)}
+                  owned={ownedIds.has(book.id)}
                 />
               ))}
             </div>
@@ -384,6 +398,8 @@ export const HomePage = () => {
                   rank={clampedBsPage * bsPageSize + i + 1}
                   className={`reveal d${i + 1}`}
                   onAddToCart={handleAddToCart}
+                  isWishlisted={wishlistedIds.has(book.id)}
+                  owned={ownedIds.has(book.id)}
                 />
               ))}
             </div>
@@ -418,6 +434,8 @@ export const HomePage = () => {
                   book={book}
                   className={`reveal d${i + 1}`}
                   onAddToCart={handleAddToCart}
+                  isWishlisted={wishlistedIds.has(book.id)}
+                  owned={ownedIds.has(book.id)}
                 />
               ))}
             </div>

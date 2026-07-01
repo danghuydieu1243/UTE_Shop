@@ -4,6 +4,7 @@ import { SiteHeader, SiteFooter, BookCard, COVER_PLACEHOLDER } from '../../../sh
 import { useGetBookDetailQuery } from '../catalogApi';
 import { useAddToCartMutation } from '../../cart/cartApi';
 import { useAddToWishlistMutation, useRemoveFromWishlistMutation, useGetWishlistQuery } from '../../wishlist/wishlistApi';
+import { useOwnedBookIds } from '../../library/useOwnedBookIds';
 import { ReviewSection } from '../../reviews/components/ReviewSection';
 import type { BookCard as BookCardDTO } from '../types';
 import { formatVND, formatFileSize, formatCount } from '../../../shared/format';
@@ -90,9 +91,10 @@ interface CarouselProps {
   viewAllUrl: string;
   viewAllLabel: string;
   onAddToCart?: (book: BookCardDTO) => void;
+  ownedIds?: Set<number>;
 }
 
-const RelatedCarousel = ({ title, books, viewAllUrl, viewAllLabel, onAddToCart }: CarouselProps) => {
+const RelatedCarousel = ({ title, books, viewAllUrl, viewAllLabel, onAddToCart, ownedIds }: CarouselProps) => {
   const [offset, setOffset] = useState(0);
   const pageSize = 5;
 
@@ -145,7 +147,7 @@ const RelatedCarousel = ({ title, books, viewAllUrl, viewAllLabel, onAddToCart }
 
         <div className="grid grid-cols-5 gap-x-6">
           {visibleBooks.map((book) => (
-            <BookCard key={book.id} book={book} onAddToCart={onAddToCart} />
+            <BookCard key={book.id} book={book} onAddToCart={onAddToCart} owned={ownedIds?.has(book.id) ?? false} />
           ))}
         </div>
       </div>
@@ -172,6 +174,9 @@ export const BookDetailPage = () => {
     { page: 1, limit: 100 },
     { skip: !isUserRole },
   );
+
+  // Sách đã mua: đổi CTA sang "Đọc ngay" + ẩn mua/giỏ/wishlist
+  const ownedIds = useOwnedBookIds();
 
   const { data: book, isLoading, isError, error } = useGetBookDetailQuery(
     { idOrSlug },
@@ -286,6 +291,9 @@ export const BookDetailPage = () => {
   const isWishlisted = book
     ? (wishlistData?.items ?? []).some((it) => it.book.id === book.id)
     : false;
+
+  // Đã sở hữu sách này?
+  const isOwned = ownedIds.has(book.id);
 
   const handleWishlist = async () => {
     if (!user) {
@@ -598,31 +606,44 @@ export const BookDetailPage = () => {
 
             {/* Action buttons */}
             <div className="flex max-w-[420px] flex-col gap-2">
-              <button
-                type="button"
-                onClick={handleBuyNow}
-                className="inline-flex h-12 items-center justify-center rounded-[2px] bg-ink text-[12px] font-semibold uppercase tracking-[1.5px] text-paper transition-opacity duration-200 hover:opacity-[.85]"
-              >
-                Mua ngay
-              </button>
-              <button
-                type="button"
-                onClick={handleAddToCart}
-                className="inline-flex h-12 items-center justify-center rounded-[2px] border border-ink text-[12px] font-semibold uppercase tracking-[1.5px] text-ink transition-[background,color] duration-200 hover:bg-ink hover:text-paper"
-              >
-                Thêm vào giỏ
-              </button>
-              {(!user || user.role === 'user') && (
+              {isOwned ? (
+                // Đã sở hữu → chỉ hiển thị "Đọc ngay" (vào thư viện); ẩn mua/giỏ/wishlist
                 <button
                   type="button"
-                  onClick={handleWishlist}
-                  className="inline-flex items-center gap-2 self-start bg-transparent border-none py-2 text-[13px] text-ink-2 transition-colors duration-200 hover:text-ink"
+                  onClick={() => navigate('/user/ebooks')}
+                  className="inline-flex h-12 items-center justify-center rounded-[2px] bg-ink text-[12px] font-semibold uppercase tracking-[1.5px] text-paper transition-opacity duration-200 hover:opacity-[.85]"
                 >
-                  <svg width="15" height="15" stroke="currentColor" strokeWidth="1.6" viewBox="0 0 24 24" fill={isWishlisted ? 'currentColor' : 'none'} aria-hidden="true">
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                  {isWishlisted ? 'Đã lưu vào Wishlist' : 'Lưu vào Wishlist'}
+                  Đọc ngay
                 </button>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={handleBuyNow}
+                    className="inline-flex h-12 items-center justify-center rounded-[2px] bg-ink text-[12px] font-semibold uppercase tracking-[1.5px] text-paper transition-opacity duration-200 hover:opacity-[.85]"
+                  >
+                    Mua ngay
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleAddToCart}
+                    className="inline-flex h-12 items-center justify-center rounded-[2px] border border-ink text-[12px] font-semibold uppercase tracking-[1.5px] text-ink transition-[background,color] duration-200 hover:bg-ink hover:text-paper"
+                  >
+                    Thêm vào giỏ
+                  </button>
+                  {(!user || user.role === 'user') && (
+                    <button
+                      type="button"
+                      onClick={handleWishlist}
+                      className="inline-flex items-center gap-2 self-start bg-transparent border-none py-2 text-[13px] text-ink-2 transition-colors duration-200 hover:text-ink"
+                    >
+                      <svg width="15" height="15" stroke="currentColor" strokeWidth="1.6" viewBox="0 0 24 24" fill={isWishlisted ? 'currentColor' : 'none'} aria-hidden="true">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 1 0-7.78 7.78L12 21.23l8.84-8.84a5.5 5.5 0 0 0 0-7.78z" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      {isWishlisted ? 'Đã lưu vào Wishlist' : 'Lưu vào Wishlist'}
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -730,6 +751,7 @@ export const BookDetailPage = () => {
           viewAllUrl={`/books?author=${authorSlug}`}
           viewAllLabel="Xem tất cả"
           onAddToCart={handleAddToCart}
+          ownedIds={ownedIds}
         />
       )}
 
@@ -741,6 +763,7 @@ export const BookDetailPage = () => {
           viewAllUrl={`/books?category=${categorySlug}`}
           viewAllLabel="Xem thêm"
           onAddToCart={handleAddToCart}
+          ownedIds={ownedIds}
         />
       )}
 

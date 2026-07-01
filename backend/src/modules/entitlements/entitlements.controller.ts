@@ -6,7 +6,7 @@ import fs from 'fs';
 import { Request, Response } from 'express';
 import { ok } from '../../shared/http/response';
 import { AppError } from '../../shared/errors/AppError';
-import { listEbooks, issueDownloadLink, resolveDownloadFile } from './entitlements.service';
+import { listEbooks, listEbookIds, issueDownloadLink, resolveDownloadFile } from './entitlements.service';
 
 // ── GET /me/ebooks ────────────────────────────────────────────────────────────
 
@@ -17,6 +17,13 @@ export async function getMyEbooks(req: Request, res: Response): Promise<void> {
 
   const result = await listEbooks(req.user!.id, { q, page, limit });
   ok(res, result.data, result.meta);
+}
+
+// ── GET /me/ebooks/ids ────────────────────────────────────────────────────────
+
+export async function getMyEbookIds(req: Request, res: Response): Promise<void> {
+  const bookIds = await listEbookIds(req.user!.id);
+  ok(res, { bookIds });
 }
 
 // ── POST /me/ebooks/:bookId/download ─────────────────────────────────────────

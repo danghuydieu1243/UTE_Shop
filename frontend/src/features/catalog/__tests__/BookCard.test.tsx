@@ -150,6 +150,40 @@ describe('BookCard', () => {
     expect(onAddToCart).toHaveBeenCalledWith(baseBook);
   });
 
+  describe('owned', () => {
+    it('renders "Đọc ngay" instead of "Thêm vào giỏ" when owned', () => {
+      renderCard({}, undefined);
+      // sanity: default has "Thêm vào giỏ"
+      render(
+        <MemoryRouter>
+          <BookCard book={baseBook} owned />
+        </MemoryRouter>,
+      );
+      expect(screen.getByRole('button', { name: /Đọc ngay/i })).toBeInTheDocument();
+    });
+
+    it('does NOT render "Thêm vào giỏ" when owned', () => {
+      render(
+        <MemoryRouter>
+          <BookCard book={baseBook} owned />
+        </MemoryRouter>,
+      );
+      expect(screen.queryByRole('button', { name: /Thêm vào giỏ/i })).not.toBeInTheDocument();
+    });
+
+    it('navigates to /user/ebooks when "Đọc ngay" clicked (does not call onAddToCart)', () => {
+      const onAddToCart = vi.fn();
+      render(
+        <MemoryRouter>
+          <BookCard book={baseBook} owned onAddToCart={onAddToCart} />
+        </MemoryRouter>,
+      );
+      fireEvent.click(screen.getByRole('button', { name: /Đọc ngay/i }));
+      expect(mockNavigate).toHaveBeenCalledWith('/user/ebooks');
+      expect(onAddToCart).not.toHaveBeenCalled();
+    });
+  });
+
   describe('Highlight', () => {
     it('highlights a query that appears once in title', () => {
       render(
