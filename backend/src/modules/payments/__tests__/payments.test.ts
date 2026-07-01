@@ -233,6 +233,47 @@ describe('POST /api/v1/payments/:id/simulate', () => {
     expect(res.body.error.code).toBe('PAYMENT_NOT_FOUND');
   });
 
+  // ── Test 5b: Hai đơn cùng một cuốn sách, thanh toán cả hai ────────────────
+
+  it('5b. hai order NEW cùng 1 sách → order 2 khi thanh toán bị từ chối ALREADY_OWNED; vendor chỉ được cộng 1 lần, purchaseCount=1', async () => {
+    const { WalletTransaction } = await import('../../../db/models');
+    const user = await seedUser('user', `sim5b-${Date.now()}`);
+    const token = makeToken(user.id);
+    const book = await seedBook(vendorUser.id, { price: 79000 });
+
+    // Hai đơn NEW riêng biệt cho cùng cuốn sách (chưa thanh toán ngay)
+    const { order: order1, payment: payment1 } = await createPendingOrder(user.id, vendorUser.id, book.id);
+    const { order: order2, payment: payment2 } = await createPendingOrder(user.id, vendorUser.id, book.id);
+
+    // Thanh toán đơn 1 → OK
+    const res1 = await request(app)
+      .post(`/api/v1/payments/${payment1.id}/simulate`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res1.status).toBe(200);
+    expect(res1.body.data.status).toBe('COMPLETED');
+
+    // Thanh toán đơn 2 (cùng sách đã sở hữu) → phải bị từ chối
+    const res2 = await request(app)
+      .post(`/api/v1/payments/${payment2.id}/simulate`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res2.status).toBe(409);
+    expect(res2.body.error.code).toBe('ALREADY_OWNED');
+
+    // purchaseCount chỉ tăng 1 lần
+    const updatedBook = await Book.findByPk(book.id);
+    expect(Number(updatedBook!.purchaseCount)).toBe(1);
+
+    // Vendor chỉ được cộng tiền 1 lần cho 2 đơn này
+    const credits = await WalletTransaction.findAll({
+      where: { vendorUserId: vendorUser.id, orderId: [Number(order1.id), Number(order2.id)] },
+    });
+    expect(credits).toHaveLength(1);
+
+    // Đơn 2 không được chuyển COMPLETED
+    const reloadOrder2 = await Order.findByPk(order2.id);
+    expect(reloadOrder2!.status).not.toBe('COMPLETED');
+  });
+
   // ── Test 5: Payment FAILED ────────────────────────────────────────────────
 
   it('5. simulate payment FAILED → 409 PAYMENT_ALREADY_FAILED', async () => {
@@ -249,6 +290,28 @@ describe('POST /api/v1/payments/:id/simulate', () => {
 
     expect(res.status).toBe(409);
     expect(res.body.error.code).toBe('PAYMENT_ALREADY_FAILED');
+  });
+
+  it('5c. vendor ẩn sách sau khi tạo đơn nhưng trước khi thanh toán → 409 BOOK_NOT_PUBLISHED', async () => {
+    const user = await seedUser('user', `sim5c-${Date.now()}`);
+    const token = makeToken(user.id);
+    const book = await seedBook(vendorUser.id);
+
+    const { order, payment } = await createPendingOrder(user.id, vendorUser.id, book.id);
+    await book.update({ status: 'hidden' });
+
+    const res = await request(app)
+      .post(`/api/v1/payments/${payment.id}/simulate`)
+      .set('Authorization', `Bearer ${token}`);
+
+    expect(res.status).toBe(409);
+    expect(res.body.error.code).toBe('BOOK_NOT_PUBLISHED');
+
+    const paymentAfter = await Payment.findByPk(payment.id);
+    const orderAfter = await Order.findByPk(order.id);
+    expect(paymentAfter!.status).toBe('PENDING');
+    expect(orderAfter!.status).toBe('NEW');
+    expect(await Entitlement.count({ where: { userId: user.id, bookId: book.id } })).toBe(0);
   });
 });
 

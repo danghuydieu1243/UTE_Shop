@@ -184,6 +184,82 @@ describe('Orders API', () => {
       expect(d.subtotal).toBe(40000);
     });
 
+    it('3c. checkout loại sách đang nằm trong đơn NEW khác của cùng user', async () => {
+      const userDup = await seedUser('user', `dup-${Date.now()}`);
+      const tokenDup = makeToken(userDup.id, 'user');
+      const bookPending = await seedBook(vendorUser.id, { price: 70000 });
+      const bookFresh = await seedBook(vendorUser.id, { price: 30000 });
+
+      // Đơn NEW đang chờ thanh toán cho bookPending
+      const pendingOrder = await Order.create({
+        userId: userDup.id,
+        code: `ATH-PEND-${Date.now()}`,
+        status: 'NEW',
+        subtotal: 70000,
+        total: 70000,
+        currency: 'VND',
+      });
+      await OrderItem.create({
+        orderId: Number(pendingOrder.id),
+        bookId: bookPending.id,
+        vendorUserId: vendorUser.id,
+        titleSnapshot: 'Sách Test Orders',
+        unitPrice: 70000,
+      });
+
+      // Giỏ có cả bookPending (đang chờ TT) lẫn bookFresh
+      const cart = await Cart.findOrCreate({ where: { userId: userDup.id }, defaults: { userId: userDup.id } });
+      await CartItem.create({ cartId: cart[0].id, bookId: bookPending.id, unitPrice: 70000 });
+      await CartItem.create({ cartId: cart[0].id, bookId: bookFresh.id, unitPrice: 30000 });
+
+      const res = await request(app)
+        .post('/api/v1/orders')
+        .set('Authorization', `Bearer ${tokenDup}`)
+        .send({});
+
+      expect(res.status).toBe(201);
+      const d = res.body.data;
+      // Chỉ còn bookFresh; bookPending bị loại vì đã có trong đơn NEW khác
+      expect(d.items).toHaveLength(1);
+      expect(d.items[0].bookId).toBe(bookFresh.id);
+      expect(d.subtotal).toBe(30000);
+    });
+
+    it('3d. checkout khi giỏ chỉ có sách đang chờ thanh toán ở đơn NEW khác → 409 ORDER_PENDING_DUPLICATE', async () => {
+      const userDup2 = await seedUser('user', `dup2-${Date.now()}`);
+      const tokenDup2 = makeToken(userDup2.id, 'user');
+      const bookPending2 = await seedBook(vendorUser.id, { price: 55000 });
+
+      // Đơn NEW đang chờ thanh toán cho bookPending2
+      const pendingOrder2 = await Order.create({
+        userId: userDup2.id,
+        code: `ATH-PEND2-${Date.now()}`,
+        status: 'NEW',
+        subtotal: 55000,
+        total: 55000,
+        currency: 'VND',
+      });
+      await OrderItem.create({
+        orderId: Number(pendingOrder2.id),
+        bookId: bookPending2.id,
+        vendorUserId: vendorUser.id,
+        titleSnapshot: 'Sách Test Orders',
+        unitPrice: 55000,
+      });
+
+      // Giỏ CHỈ có bookPending2
+      const cart = await Cart.findOrCreate({ where: { userId: userDup2.id }, defaults: { userId: userDup2.id } });
+      await CartItem.create({ cartId: cart[0].id, bookId: bookPending2.id, unitPrice: 55000 });
+
+      const res = await request(app)
+        .post('/api/v1/orders')
+        .set('Authorization', `Bearer ${tokenDup2}`)
+        .send({});
+
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('ORDER_PENDING_DUPLICATE');
+    });
+
     it('3b. checkout khi tất cả sách đã sở hữu → CART_EMPTY', async () => {
       const userAllOwned = await seedUser('user', `allown-${Date.now()}`);
       const tokenAllOwned = makeToken(userAllOwned.id, 'user');

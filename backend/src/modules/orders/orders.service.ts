@@ -63,16 +63,44 @@ export async function createOrder(userId: number, input: CreateOrderBody = {}): 
     });
     const ownedBookIds = new Set(ownedEntitlements.map((e) => Number(e.bookId)));
 
-    // Lọc bỏ sách đã sở hữu hoặc không còn published
+    // 3b. Lấy các bookId đang nằm trong đơn NEW khác của user (chưa thanh toán).
+    // Chặn đặt trùng một cuốn sách ở nhiều đơn có thể thanh toán đồng thời →
+    // tránh trả tiền/cộng ví vendor 2 lần cho cùng một e-book.
+    const pendingOrderItems = await OrderItem.findAll({
+      attributes: ['bookId'],
+      where: { bookId: bookIds },
+      include: [
+        {
+          model: Order,
+          as: 'order',
+          attributes: [],
+          where: { userId, status: 'NEW' },
+          required: true,
+        },
+      ],
+      transaction: t,
+    });
+    const pendingBookIds = new Set(pendingOrderItems.map((oi) => Number(oi.bookId)));
+
+    // Lọc bỏ sách đã sở hữu, đang chờ thanh toán ở đơn khác, hoặc không còn published
     const eligibleItems = cartItems.filter((ci) => {
       const book = (ci as any).book as Book;
       if (!book) return false;
       if (book.status !== 'published') return false;
       if (ownedBookIds.has(Number(book.id))) return false;
+      if (pendingBookIds.has(Number(book.id))) return false;
       return true;
     });
 
     if (eligibleItems.length === 0) {
+      // Phân biệt lý do rỗng: nếu bị loại vì đang có đơn NEW chưa thanh toán cho
+      // chính (các) sách trong giỏ → báo rõ để user thanh toán/hủy đơn cũ.
+      if (pendingBookIds.size > 0) {
+        throw AppError.from(
+          'ORDER_PENDING_DUPLICATE',
+          'Bạn đang có đơn chưa thanh toán cho sách này. Vui lòng thanh toán hoặc hủy đơn cũ trước khi đặt lại.',
+        );
+      }
       throw AppError.from('CART_EMPTY', 'Không còn sách hợp lệ trong giỏ để đặt đơn');
     }
 

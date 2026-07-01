@@ -85,26 +85,58 @@ export async function completePayment(
       throw AppError.from('PAYMENT_EXPIRED', 'Giao dịch thanh toán đã hết hạn');
     }
 
-    // 7. Sinh providerTxnId giả
+    // 7. Xác định sách trong đơn mà user CHƯA sở hữu.
+    // Nếu user đã mua cuốn sách này qua một đơn khác (kịch bản đặt trùng nhiều
+    // đơn cho cùng 1 e-book), ta KHÔNG được trừ tiền / cộng ví vendor thêm lần nữa.
+    const items = (order as any).items as OrderItem[];
+    const ownedRows = await Entitlement.findAll({
+      where: { userId: opts.userId, bookId: items.map((i) => Number(i.bookId)) },
+      attributes: ['bookId'],
+      transaction: t,
+    });
+    const alreadyOwnedBookIds = new Set(ownedRows.map((e) => Number(e.bookId)));
+    const newItems = items.filter((i) => !alreadyOwnedBookIds.has(Number(i.bookId)));
+
+    // Toàn bộ sách trong đơn đã sở hữu → từ chối thanh toán (rollback, không tính tiền)
+    if (newItems.length === 0) {
+      throw AppError.from('ALREADY_OWNED', 'Bạn đã sở hữu tất cả sách trong đơn này');
+    }
+
+    // Re-validate trạng thái sách ngay trước khi thanh toán.
+    // Nếu vendor đã ẩn/xóa mềm sách sau lúc tạo order nhưng trước lúc trả tiền,
+    // giao dịch phải bị chặn để không cấp entitlement cho sách không còn bán.
+    const payableBookIds = newItems.map((item) => Number(item.bookId));
+    const payableBooks = await Book.findAll({
+      where: { id: payableBookIds },
+      attributes: ['id', 'status'],
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+    const payableBookMap = new Map(payableBooks.map((book) => [Number(book.id), book.status]));
+    const unavailableBookId = payableBookIds.find((bookId) => payableBookMap.get(bookId) !== 'published');
+    if (unavailableBookId !== undefined) {
+      throw AppError.from('BOOK_NOT_PUBLISHED', 'Sách không còn khả dụng để thanh toán');
+    }
+
+    // 8. Sinh providerTxnId giả
     const providerTxnId =
       'SIMULATED-' + Date.now() + '-' + Math.random().toString(36).slice(2);
     const now = new Date();
 
-    // 8. Cập nhật payment → PAID
+    // 9. Cập nhật payment → PAID
     await payment.update(
       { status: 'PAID', paidAt: now, providerTxnId },
       { transaction: t },
     );
 
-    // 9. Cập nhật order → COMPLETED
+    // 10. Cập nhật order → COMPLETED
     await order.update(
       { status: 'COMPLETED', completedAt: now },
       { transaction: t },
     );
 
-    // 10. Cấp entitlement + tăng purchaseCount cho mỗi book trong đơn
-    const items = (order as any).items as OrderItem[];
-    for (const item of items) {
+    // 11. Cấp entitlement + tăng purchaseCount CHỈ cho sách chưa sở hữu
+    for (const item of newItems) {
       // findOrCreate để đảm bảo idempotent (UNIQUE constraint userId+bookId)
       await Entitlement.findOrCreate({
         where: { userId: opts.userId, bookId: Number(item.bookId) },
@@ -117,7 +149,6 @@ export async function completePayment(
         transaction: t,
       });
 
-      // Tăng purchaseCount (chỉ tăng lần đầu — idempotent qua entitlement.findOrCreate)
       await Book.increment('purchaseCount', {
         where: { id: Number(item.bookId) },
         transaction: t,
@@ -125,7 +156,7 @@ export async function completePayment(
     }
 
     // 10a: Gỡ các sách vừa mua khỏi wishlist của user (idempotent — không còn thì thôi)
-    const purchasedBookIds = items.map((item) => Number(item.bookId));
+    const purchasedBookIds = newItems.map((item) => Number(item.bookId));
     if (purchasedBookIds.length > 0) {
       await Wishlist.destroy({
         where: { userId: opts.userId, bookId: purchasedBookIds },
@@ -134,7 +165,7 @@ export async function completePayment(
     }
 
     // 6a: thông báo ebook sẵn sàng tải (idempotent — nhánh này chỉ chạy lần đầu PAID)
-    const itemCount = items.length;
+    const itemCount = newItems.length;
     await notificationsService.createNotification(
       {
         userId: opts.userId,
@@ -151,9 +182,10 @@ export async function completePayment(
       await Coupon.increment('usedCount', { by: 1, where: { id: Number(order.couponId) }, transaction: t });
     }
 
-    // 6c: cộng ví Vendor (mỗi vendor 1 lần, gross) — idempotent vì nhánh này chỉ chạy lần đầu PAID
+    // 6c: cộng ví Vendor (mỗi vendor 1 lần, gross) — CHỈ tính sách chưa sở hữu để
+    // không cộng trùng khi user đặt cùng 1 cuốn ở nhiều đơn.
     const byVendor = new Map<number, number>();
-    for (const item of items) {
+    for (const item of newItems) {
       const v = Number(item.vendorUserId);
       byVendor.set(v, (byVendor.get(v) ?? 0) + Number(item.unitPrice));
     }
