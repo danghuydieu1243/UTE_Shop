@@ -84,7 +84,7 @@ it('AA1: totalUsers = role user count, totalVendors = active vendor count', asyn
 
   // Lấy baseline trước khi tạo
   const resBefore = await request(app)
-    .get('/api/v1/admin/analytics/dashboard?period=30d')
+    .get('/api/v1/admin/stats/dashboard?period=30d')
     .set('Authorization', `Bearer ${admin.token}`);
   expect(resBefore.status).toBe(200);
   const before = resBefore.body.data.kpis;
@@ -96,7 +96,7 @@ it('AA1: totalUsers = role user count, totalVendors = active vendor count', asyn
   void vendor;
 
   const resAfter = await request(app)
-    .get('/api/v1/admin/analytics/dashboard?period=30d')
+    .get('/api/v1/admin/stats/dashboard?period=30d')
     .set('Authorization', `Bearer ${admin.token}`);
   expect(resAfter.status).toBe(200);
   const after = resAfter.body.data.kpis;
@@ -114,7 +114,7 @@ it('AA2: revenue (admin) = Σ total đơn COMPLETED trong kỳ; đơn NEW không
   const now = new Date();
 
   const resBefore = await request(app)
-    .get('/api/v1/admin/analytics/dashboard?period=30d')
+    .get('/api/v1/admin/stats/dashboard?period=30d')
     .set('Authorization', `Bearer ${admin.token}`);
   const revBefore = resBefore.body.data.kpis.revenue as number;
 
@@ -126,7 +126,7 @@ it('AA2: revenue (admin) = Σ total đơn COMPLETED trong kỳ; đơn NEW không
   ]);
 
   const resAfter = await request(app)
-    .get('/api/v1/admin/analytics/dashboard?period=30d')
+    .get('/api/v1/admin/stats/dashboard?period=30d')
     .set('Authorization', `Bearer ${admin.token}`);
   expect(resAfter.status).toBe(200);
   expect(resAfter.body.data.kpis.revenue).toBe(revBefore + 120000);
@@ -145,7 +145,7 @@ it('AA3: revenueSeries mảng fill-0, tổng = revenue', async () => {
   ]);
 
   const res = await request(app)
-    .get('/api/v1/admin/analytics/dashboard?period=7d')
+    .get('/api/v1/admin/stats/dashboard?period=7d')
     .set('Authorization', `Bearer ${admin.token}`);
   expect(res.status).toBe(200);
 
@@ -164,7 +164,7 @@ it('AA4: newUsersSeries 7 phần tử, đúng format, tổng count tăng sau khi
   const admin = await makeUser('admin');
 
   const resBefore = await request(app)
-    .get('/api/v1/admin/analytics/dashboard?period=30d')
+    .get('/api/v1/admin/stats/dashboard?period=30d')
     .set('Authorization', `Bearer ${admin.token}`);
   const seriesBefore = resBefore.body.data.newUsersSeries as { date: string; count: number }[];
   const totalCountBefore = seriesBefore.reduce((s, r) => s + r.count, 0);
@@ -174,7 +174,7 @@ it('AA4: newUsersSeries 7 phần tử, đúng format, tổng count tăng sau khi
   await makeUser('user');
 
   const res = await request(app)
-    .get('/api/v1/admin/analytics/dashboard?period=30d')
+    .get('/api/v1/admin/stats/dashboard?period=30d')
     .set('Authorization', `Bearer ${admin.token}`);
   expect(res.status).toBe(200);
 
@@ -201,7 +201,7 @@ it('AA5: topBooks (admin) xếp theo revenue desc; có vendorShop, fileFormat', 
   ]);
 
   const res = await request(app)
-    .get('/api/v1/admin/analytics/dashboard?period=7d')
+    .get('/api/v1/admin/stats/dashboard?period=7d')
     .set('Authorization', `Bearer ${admin.token}`);
   expect(res.status).toBe(200);
 
@@ -246,7 +246,7 @@ it('AA6: manager → revenue=null, revenueSeries=null, topBooks[].revenue=null, 
   ]);
 
   const res = await request(app)
-    .get('/api/v1/admin/analytics/dashboard?period=7d')
+    .get('/api/v1/admin/stats/dashboard?period=7d')
     .set('Authorization', `Bearer ${manager.token}`);
   expect(res.status).toBe(200);
 
@@ -276,17 +276,17 @@ it('AA7: role user → 403; admin → 200; manager → 200', async () => {
   const manager = await makeUser('manager');
 
   const resUser = await request(app)
-    .get('/api/v1/admin/analytics/dashboard')
+    .get('/api/v1/admin/stats/dashboard')
     .set('Authorization', `Bearer ${user.token}`);
   expect(resUser.status).toBe(403);
 
   const resAdmin = await request(app)
-    .get('/api/v1/admin/analytics/dashboard')
+    .get('/api/v1/admin/stats/dashboard')
     .set('Authorization', `Bearer ${admin.token}`);
   expect(resAdmin.status).toBe(200);
 
   const resManager = await request(app)
-    .get('/api/v1/admin/analytics/dashboard')
+    .get('/api/v1/admin/stats/dashboard')
     .set('Authorization', `Bearer ${manager.token}`);
   expect(resManager.status).toBe(200);
 });

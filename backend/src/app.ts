@@ -61,8 +61,10 @@ export const createApp = () => {
   app.use('/api/v1/vendor/bank-accounts', bankAccountsRouter);
   app.use('/api/v1/vendor/wallet', walletRouter);
   app.use('/api/v1/vendor/withdrawals', withdrawalsRouter);
-  app.use('/api/v1/vendor/analytics', vendorAnalyticsRouter);
-  app.use('/api/v1/admin/analytics', adminAnalyticsRouter);
+  // Path đổi từ "/analytics" -> "/stats" vì nhiều trình chặn quảng cáo (uBlock, Edge Tracking
+  // Prevention...) tự động chặn request có "/analytics/" trong URL (net::ERR_BLOCKED_BY_CLIENT).
+  app.use('/api/v1/vendor/stats', vendorAnalyticsRouter);
+  app.use('/api/v1/admin/stats', adminAnalyticsRouter);
   app.use('/api/v1/admin', adminRouter);
 
   app.use(notFound);

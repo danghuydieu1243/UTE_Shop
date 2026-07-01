@@ -79,7 +79,7 @@ it('VA1: revenue = Σ unitPrice vendor items trong COMPLETED; vendor khác KHÔN
   ]);
 
   const res = await request(app)
-    .get('/api/v1/vendor/analytics/dashboard?period=7d')
+    .get('/api/v1/vendor/stats/dashboard?period=7d')
     .set('Authorization', `Bearer ${vendor.token}`);
 
   expect(res.status).toBe(200);
@@ -102,7 +102,7 @@ it('VA2: đơn NEW/CANCELLED KHÔNG tính revenue', async () => {
   ]);
 
   const res = await request(app)
-    .get('/api/v1/vendor/analytics/dashboard?period=30d')
+    .get('/api/v1/vendor/stats/dashboard?period=30d')
     .set('Authorization', `Bearer ${vendor.token}`);
 
   expect(res.status).toBe(200);
@@ -126,7 +126,7 @@ it('VA3: completedAt ngoài kỳ (7d) KHÔNG tính revenue', async () => {
   ]);
 
   const res = await request(app)
-    .get('/api/v1/vendor/analytics/dashboard?period=7d')
+    .get('/api/v1/vendor/stats/dashboard?period=7d')
     .set('Authorization', `Bearer ${vendor.token}`);
 
   expect(res.status).toBe(200);
@@ -142,7 +142,7 @@ it('VA4: productsOnSale chỉ đếm book published của vendor', async () => {
   await makeBook(vendor.id, 'draft');
 
   const res = await request(app)
-    .get('/api/v1/vendor/analytics/dashboard?period=30d')
+    .get('/api/v1/vendor/stats/dashboard?period=30d')
     .set('Authorization', `Bearer ${vendor.token}`);
 
   expect(res.status).toBe(200);
@@ -168,7 +168,7 @@ it('VA5: avgRating = trung bình reviews trên sách vendor', async () => {
   await Review.create({ userId: buyer2.id, bookId: book.id, orderId: Number(o2.id), rating: 5 } as any);
 
   const res = await request(app)
-    .get('/api/v1/vendor/analytics/dashboard?period=30d')
+    .get('/api/v1/vendor/stats/dashboard?period=30d')
     .set('Authorization', `Bearer ${vendor.token}`);
 
   expect(res.status).toBe(200);
@@ -188,7 +188,7 @@ it('VA6: revenueSeries mảng {date,value}, zero-fill, tổng = revenue', async 
   ]);
 
   const res = await request(app)
-    .get('/api/v1/vendor/analytics/dashboard?period=7d')
+    .get('/api/v1/vendor/stats/dashboard?period=7d')
     .set('Authorization', `Bearer ${vendor.token}`);
 
   expect(res.status).toBe(200);
@@ -228,7 +228,7 @@ it('VA7: topBooks xếp theo sold desc, tối đa 5', async () => {
   ]);
 
   const res = await request(app)
-    .get('/api/v1/vendor/analytics/dashboard?period=7d')
+    .get('/api/v1/vendor/stats/dashboard?period=7d')
     .set('Authorization', `Bearer ${vendor.token}`);
 
   expect(res.status).toBe(200);
@@ -254,7 +254,7 @@ it('VA8: recentOrders chỉ đơn NEW có item vendor', async () => {
   ]);
 
   const res = await request(app)
-    .get('/api/v1/vendor/analytics/dashboard?period=30d')
+    .get('/api/v1/vendor/stats/dashboard?period=30d')
     .set('Authorization', `Bearer ${vendor.token}`);
 
   expect(res.status).toBe(200);
@@ -273,7 +273,7 @@ it('VA8: recentOrders chỉ đơn NEW có item vendor', async () => {
 it('VA9: role user → 403', async () => {
   const user = await makeUser();
   const res = await request(app)
-    .get('/api/v1/vendor/analytics/dashboard')
+    .get('/api/v1/vendor/stats/dashboard')
     .set('Authorization', `Bearer ${user.token}`);
   expect(res.status).toBe(403);
 });

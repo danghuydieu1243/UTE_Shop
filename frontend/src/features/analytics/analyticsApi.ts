@@ -9,12 +9,12 @@ export const transformAdminDashboard = (resp: AdminDashboard): AdminDashboard =>
 export const analyticsApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
     getVendorDashboard: build.query<VendorDashboard, string>({
-      query: (period) => ({ url: '/vendor/analytics/dashboard', method: 'GET', params: { period } }),
+      query: (period) => ({ url: '/vendor/stats/dashboard', method: 'GET', params: { period } }),
       transformResponse: transformVendorDashboard,
       providesTags: [{ type: 'Analytics', id: 'VENDOR' }],
     }),
     getAdminDashboard: build.query<AdminDashboard, string>({
-      query: (period) => ({ url: '/admin/analytics/dashboard', method: 'GET', params: { period } }),
+      query: (period) => ({ url: '/admin/stats/dashboard', method: 'GET', params: { period } }),
       transformResponse: transformAdminDashboard,
       providesTags: [{ type: 'Analytics', id: 'ADMIN' }],
     }),
