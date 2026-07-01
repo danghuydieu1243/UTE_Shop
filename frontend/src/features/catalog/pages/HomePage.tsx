@@ -52,7 +52,7 @@ const HERO_SLIDES = [
     ),
     desc: 'Những cuốn sách được hàng nghìn độc giả Việt Nam đánh giá cao nhất tháng này.',
     primaryLabel: 'Xem bảng xếp hạng',
-    primaryTo: '/books?sort=bestseller',
+    primaryTo: '/books?sort=bestselling',
     ghostLabel: 'Tất cả sách',
     ghostTo: '/books',
   },
@@ -186,15 +186,9 @@ export const HomePage = () => {
     resetHeroTimer();
   };
 
-  /* ── Bestseller page state ── */
-  const [bsPage, setBsPage] = useState(0);
+  /* ── Bestseller (top 5) ── */
   const bestsellers = data?.bestsellers ?? [];
-  const bsPageSize = 5;
-  const bsMaxPage = Math.max(0, Math.ceil(bestsellers.length / bsPageSize) - 1);
-  const clampedBsPage = Math.min(bsPage, bsMaxPage);
-  const bsSlice = bestsellers.slice(clampedBsPage * bsPageSize, (clampedBsPage + 1) * bsPageSize);
-
-  useEffect(() => { setBsPage(0); }, [data]);
+  const bsSlice = bestsellers.slice(0, 5);
 
   /* ── Scroll reveal ── */
   useEffect(() => {
@@ -357,32 +351,12 @@ export const HomePage = () => {
             <span className="text-[13px] font-medium uppercase tracking-[2px] text-ink">
               Sách bán chạy
             </span>
-            <div className="flex items-center gap-4">
-              <Link
-                to="/books?sort=bestseller"
-                className="text-[12px] tracking-[0.5px] text-ink-2 transition-colors duration-[200ms] hover:text-ink"
-              >
-                Bảng xếp hạng →
-              </Link>
-              <button
-                type="button"
-                aria-label="Trang trước"
-                disabled={bsPage === 0}
-                onClick={() => setBsPage((p) => p - 1)}
-                className="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-line text-ink-2 transition-[border-color,color] duration-[200ms] hover:border-ink hover:text-ink disabled:pointer-events-none disabled:opacity-35"
-              >
-                <IconLeft />
-              </button>
-              <button
-                type="button"
-                aria-label="Trang tiếp theo"
-                disabled={bsPage >= bsMaxPage}
-                onClick={() => setBsPage((p) => p + 1)}
-                className="flex h-[34px] w-[34px] items-center justify-center rounded-full border border-line text-ink-2 transition-[border-color,color] duration-[200ms] hover:border-ink hover:text-ink disabled:pointer-events-none disabled:opacity-35"
-              >
-                <IconRight />
-              </button>
-            </div>
+            <Link
+              to="/books?sort=bestselling"
+              className="text-[12px] tracking-[0.5px] text-ink-2 transition-colors duration-[200ms] hover:text-ink"
+            >
+              Bảng xếp hạng →
+            </Link>
           </div>
 
           {isLoading ? (
@@ -395,7 +369,7 @@ export const HomePage = () => {
                 <BookCard
                   key={book.id}
                   book={book}
-                  rank={clampedBsPage * bsPageSize + i + 1}
+                  rank={i + 1}
                   className={`reveal d${i + 1}`}
                   onAddToCart={handleAddToCart}
                   isWishlisted={wishlistedIds.has(book.id)}

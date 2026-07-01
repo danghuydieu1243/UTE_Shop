@@ -148,11 +148,11 @@ describe('HomePage', () => {
     expect(ebookLink).toBeDefined();
   });
 
-  it('"Bảng xếp hạng" link points to /books?sort=bestseller', () => {
+  it('"Bảng xếp hạng" link points to /books?sort=bestselling', () => {
     mockUseGetHomeQuery.mockReturnValue({ data: sampleData, isLoading: false });
     renderPage();
     const link = screen.getByRole('link', { name: /bảng xếp hạng/i });
-    expect((link as HTMLAnchorElement).href).toContain('sort=bestseller');
+    expect((link as HTMLAnchorElement).href).toContain('sort=bestselling');
   });
 
   it('renders category rows linking to /books?category=<slug>', () => {
