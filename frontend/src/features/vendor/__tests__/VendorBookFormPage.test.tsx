@@ -296,7 +296,7 @@ describe('VendorBookFormPage — edit mode', () => {
       expect(mockUpdate).toHaveBeenCalled();
       expect(
         appendSpy.mock.calls.some(
-          ([key, value]) => key === 'existingImageUrls' && value === '/uploads/covers/react.jpg',
+          ([key, value]) => key === 'existingImageUrls' && String(value) === '/uploads/covers/react.jpg',
         ),
       ).toBe(true);
     });
