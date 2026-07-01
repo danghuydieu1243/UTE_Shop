@@ -132,14 +132,14 @@ export const SiteHeader = () => {
               />
             </div>
 
-            {/* Wishlist */}
-            <button
-              type="button"
+            {/* Wishlist — Link đến trang danh sách yêu thích của user */}
+            <Link
+              to="/user/wishlist"
               className="text-[13px] tracking-[0.2px] text-ink-2 transition-colors duration-[250ms] hover:text-ink"
               aria-label="Yêu thích"
             >
               Yêu thích
-            </button>
+            </Link>
 
             {/* Cart — Link đến /cart, hiển thị số sản phẩm thực từ API */}
             <Link
