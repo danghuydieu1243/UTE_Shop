@@ -381,4 +381,3 @@ Trong development, kiểm tra Mailtrap inbox. OTP hết hạn sau 10 phút.
 
 ---
 
-© 2025 UTEShop. Built with ❤️ by Team.
