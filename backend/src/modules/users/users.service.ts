@@ -6,7 +6,12 @@ import { toPublicUser } from '../../shared/dto/user.dto';
 const SALT_ROUNDS = 10;
 
 export const updateProfile = async (userId: number, data: { fullName?: string; phone?: string }) => {
-  await usersRepo.updateProfile(userId, data);
+  // Chỉ patch field được gửi; phone rỗng → null (xoá SĐT)
+  const patch: { fullName?: string; phone?: string | null } = {};
+  if (data.fullName !== undefined) patch.fullName = data.fullName;
+  if (data.phone !== undefined) patch.phone = data.phone === '' ? null : data.phone;
+
+  await usersRepo.updateProfile(userId, patch);
   const user = await usersRepo.findById(userId);
   if (!user) throw AppError.from('NOT_FOUND', 'Không tìm thấy người dùng');
   return toPublicUser(user);

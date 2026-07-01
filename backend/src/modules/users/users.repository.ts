@@ -8,7 +8,7 @@ export async function findByIdWithSecret(id: number): Promise<User | null> {
   return User.scope('withSecret').findOne({ where: { id } });
 }
 
-export async function updateProfile(id: number, data: { fullName?: string; phone?: string }): Promise<void> {
+export async function updateProfile(id: number, data: { fullName?: string; phone?: string | null }): Promise<void> {
   await User.update(data, { where: { id } });
 }
 

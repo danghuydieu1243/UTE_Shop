@@ -3,7 +3,7 @@ import type { User } from '../../shared/types/auth';
 
 export const profileApi = baseApi.injectEndpoints({
   endpoints: (build) => ({
-    updateProfile: build.mutation<User, { fullName?: string; phone?: string }>({
+    updateProfile: build.mutation<User, { fullName?: string; phone?: string | null }>({
       query: (data) => ({ url: '/users/me', method: 'PATCH', data }),
       invalidatesTags: ['Me'],
     }),

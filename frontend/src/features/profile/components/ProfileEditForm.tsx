@@ -4,15 +4,28 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Alert } from '../../../shared/ui';
 import { useUpdateProfileMutation } from '../profileApi';
+import { useAppDispatch } from '../../../app/hooks';
+import { setUser } from '../../../shared/auth/authSlice';
 import type { User } from '../../../shared/types/auth';
 
 interface Props {
   user: User;
 }
 
+// SĐT di động VN: 10 chữ số, bắt đầu bằng 0 (vd 0901234567)
+const VN_PHONE = /^0\d{9}$/;
+
 const profileSchema = z.object({
-  fullName: z.string().min(2, 'Tối thiểu 2 ký tự'),
-  phone: z.string().optional(),
+  fullName: z
+    .string()
+    .trim()
+    .min(2, 'Họ và tên tối thiểu 2 ký tự')
+    .max(120, 'Họ và tên tối đa 120 ký tự'),
+  // Để trống = không có/đ xoá SĐT; nếu nhập thì phải đúng định dạng VN
+  phone: z
+    .string()
+    .trim()
+    .refine((v) => v === '' || VN_PHONE.test(v), 'Số điện thoại phải gồm 10 chữ số và bắt đầu bằng 0'),
 });
 
 type FormValues = z.infer<typeof profileSchema>;
@@ -35,6 +48,7 @@ function getInitials(fullName: string, maxLen = 2): string {
 }
 
 export const ProfileEditForm = ({ user }: Props) => {
+  const dispatch = useAppDispatch();
   const [updateProfile, { isLoading }] = useUpdateProfileMutation();
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [apiError, setApiError] = useState<string | null>(null);
@@ -64,10 +78,14 @@ export const ProfileEditForm = ({ user }: Props) => {
     setApiError(null);
     setSuccessMsg(null);
     try {
-      await updateProfile({
-        fullName: values.fullName,
-        phone: values.phone || undefined,
+      // phone rỗng → gửi null để xoá; ngược lại gửi giá trị đã trim
+      const phone = values.phone?.trim() ? values.phone.trim() : null;
+      const updated = await updateProfile({
+        fullName: values.fullName.trim(),
+        phone,
       }).unwrap();
+      // Đồng bộ Redux + localStorage để header/avatar phản ánh tên mới ngay
+      dispatch(setUser(updated));
       setSuccessMsg('Cập nhật thành công!');
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string };
