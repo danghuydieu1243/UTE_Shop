@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+const imageUrlArraySchema = z.preprocess((value) => {
+  if (value == null || value === '') return undefined;
+  if (Array.isArray(value)) return value;
+  return [value];
+}, z.array(z.string().min(1)).optional());
+
 export const createBookSchema = z.object({
   title: z.string().min(1).max(255),
   description: z.string().optional(),
@@ -26,6 +32,7 @@ export const updateBookSchema = z.object({
   publishYear: z.coerce.number().int().min(1000).max(2100).optional().nullable(),
   isbn: z.string().max(20).optional().nullable(),
   status: z.enum(['published', 'draft', 'hidden']).optional(),
+  existingImageUrls: imageUrlArraySchema,
 });
 
 export const patchStatusSchema = z.object({

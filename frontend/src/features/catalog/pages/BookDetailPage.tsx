@@ -224,6 +224,16 @@ export const BookDetailPage = () => {
     }, 180);
   };
 
+  const showPrevImage = () => {
+    if (galleryItems.length <= 1) return;
+    handleThumbClick((activeThumbIndex - 1 + galleryItems.length) % galleryItems.length);
+  };
+
+  const showNextImage = () => {
+    if (galleryItems.length <= 1) return;
+    handleThumbClick((activeThumbIndex + 1) % galleryItems.length);
+  };
+
   /* ── Action handlers ── */
   const handleAddToCart = async () => {
     // Chưa đăng nhập → chuyển về trang login
@@ -388,6 +398,7 @@ export const BookDetailPage = () => {
               >
                 {activeItem.url ? (
                   <img
+                    data-testid="book-detail-main-image"
                     src={activeItem.url}
                     alt={activeItem.label}
                     className="h-full w-full object-cover"
@@ -412,6 +423,31 @@ export const BookDetailPage = () => {
                   </>
                 )}
               </div>
+
+              {galleryItems.length > 1 && (
+                <div className="pointer-events-none absolute inset-x-4 top-1/2 flex -translate-y-1/2 items-center justify-between">
+                  <button
+                    type="button"
+                    aria-label="Ảnh trước"
+                    onClick={showPrevImage}
+                    className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface/90 text-ink-2 transition-[border-color,color] duration-200 hover:border-ink hover:text-ink"
+                  >
+                    <svg width="16" height="16" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" strokeLinecap="round" fill="none" aria-hidden="true">
+                      <path d="M15 18l-6-6 6-6" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Ảnh tiếp theo"
+                    onClick={showNextImage}
+                    className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-line bg-surface/90 text-ink-2 transition-[border-color,color] duration-200 hover:border-ink hover:text-ink"
+                  >
+                    <svg width="16" height="16" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" strokeLinecap="round" fill="none" aria-hidden="true">
+                      <path d="M9 18l6-6-6-6" />
+                    </svg>
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Thumbnails */}
@@ -446,22 +482,28 @@ export const BookDetailPage = () => {
               </div>
             )}
 
-            {/* Single-image fallback thumbnails (static placeholder, matches design) */}
             {galleryItems.length === 1 && (
               <div className="mt-4 flex gap-[10px]">
-                {['Bìa', 'Sau', 'Gáy', 'Trang', 'Mục'].map((label, idx) => (
-                  <button
-                    key={label}
-                    type="button"
-                    aria-label={`Xem ${label}`}
-                    onClick={() => handleThumbClick(idx === 0 ? 0 : 0)} // all map to idx 0 in single-image mode
-                    className={`flex h-16 w-12 flex-shrink-0 items-center justify-center rounded-[2px] border bg-cover-bg text-[8px] font-semibold uppercase tracking-[.5px] text-ink-3 transition-[border-color] duration-200 hover:border-ink-3 ${
-                      idx === 0 ? 'border-ink' : 'border-line'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  aria-label={`Xem ảnh ${galleryItems[0].label}`}
+                  className="flex h-16 w-12 flex-shrink-0 items-center justify-center rounded-[2px] border border-ink bg-cover-bg text-[8px] font-semibold uppercase tracking-[.5px] text-ink-3"
+                >
+                  {galleryItems[0].url ? (
+                    <img
+                      src={galleryItems[0].url ?? undefined}
+                      alt={galleryItems[0].label}
+                      className="h-full w-full object-cover"
+                      onError={(e) => {
+                        const img = e.currentTarget;
+                        if (img.src.endsWith(COVER_PLACEHOLDER)) return;
+                        img.src = COVER_PLACEHOLDER;
+                      }}
+                    />
+                  ) : (
+                    galleryItems[0].label.slice(0, 4)
+                  )}
+                </button>
               </div>
             )}
           </div>

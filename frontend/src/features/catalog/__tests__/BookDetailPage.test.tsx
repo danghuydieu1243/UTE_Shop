@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
@@ -131,6 +131,7 @@ const setupReviewMocks = () => {
 
 describe('BookDetailPage', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     mockNavigate.mockClear();
     setupReviewMocks();
   });
@@ -251,11 +252,12 @@ describe('BookDetailPage', () => {
     it('switches main image on thumbnail click (fade state change)', () => {
       renderPage();
       const [, secondThumb] = screen.getAllByRole('button', { name: /xem ảnh/i });
-      // Click second thumbnail — should not throw
       fireEvent.click(secondThumb);
-      // after click, second thumb should become active (border-ink class)
-      // We can't await the 180ms timeout in sync tests, so just verify no crash
-      expect(secondThumb).toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(200);
+      });
+      const mainImage = screen.getByTestId('book-detail-main-image') as HTMLImageElement;
+      expect(mainImage.src).toContain('back.jpg');
     });
   });
 

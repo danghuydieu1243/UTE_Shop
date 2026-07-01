@@ -46,6 +46,11 @@ export async function createBook(
     throw AppError.from('VALIDATION', 'File E-book là bắt buộc khi tạo sách');
   }
 
+  const covers = files.covers ?? [];
+  if (covers.length === 0) {
+    throw AppError.from('VALIDATION', 'Sách phải có ít nhất 1 ảnh bìa');
+  }
+
   await assertCategoryExists(input.categoryId);
 
   const author = await repo.findOrCreateAuthor(input.authorName);
@@ -56,8 +61,7 @@ export async function createBook(
   const slug = await repo.uniqueBookSlug(input.title);
   const fileFormat = mimeToFormat(ebookFile.mimetype);
 
-  const covers = files.covers ?? [];
-  const coverImageUrl = covers.length > 0 ? coverUrlFromFile(covers[0]) : null;
+  const coverImageUrl = coverUrlFromFile(covers[0]);
 
   const isPublished = input.status === 'published';
 
@@ -90,13 +94,14 @@ export async function createBook(
     version: 1,
   });
 
-  // Save cover images
-  if (covers.length > 0) {
-    await repo.createBookImages(
-      book.id,
-      covers.map((f, i) => ({ url: coverUrlFromFile(f), sortOrder: i })),
-    );
-  }
+  await repo.createBookImages(
+    book.id,
+    covers.map((f, i) => ({
+      url: coverUrlFromFile(f),
+      alt: i === 0 ? 'Bìa sách' : `Ảnh sách ${i + 1}`,
+      sortOrder: i,
+    })),
+  );
 
   return { id: book.id, slug: book.slug, status: book.status };
 }
@@ -213,6 +218,20 @@ export async function updateBook(
     }
   }
 
+  const currentImages = ((book as any).images as any[] | undefined) ?? [];
+  const retainedImageUrls =
+    input.existingImageUrls === undefined
+      ? currentImages.map((img) => img.url)
+      : input.existingImageUrls;
+
+  const retainedImages = retainedImageUrls.map((url) => {
+    const match = currentImages.find((img) => img.url === url);
+    if (!match) {
+      throw AppError.from('VALIDATION', 'Danh sách ảnh sách không hợp lệ');
+    }
+    return match;
+  });
+
   // Handle new e-book file
   const newEbookFile = files.ebookFile?.[0];
   if (newEbookFile) {
@@ -232,14 +251,32 @@ export async function updateBook(
 
   // Handle new covers
   const newCovers = files.covers ?? [];
-  if (newCovers.length > 0) {
-    await repo.deleteBookImages(bookId);
-    await repo.createBookImages(
-      bookId,
-      newCovers.map((f, i) => ({ url: coverUrlFromFile(f), sortOrder: i })),
-    );
-    updateData.coverImageUrl = coverUrlFromFile(newCovers[0]);
+  const nextImages = [
+    ...retainedImages.map((img, index) => ({
+      url: img.url,
+      alt: img.alt ?? (index === 0 ? 'Bìa sách' : `Ảnh sách ${index + 1}`),
+      sortOrder: index,
+    })),
+    ...newCovers.map((f, index) => {
+      const sortOrder = retainedImages.length + index;
+      return {
+        url: coverUrlFromFile(f),
+        alt: sortOrder === 0 ? 'Bìa sách' : `Ảnh sách ${sortOrder + 1}`,
+        sortOrder,
+      };
+    }),
+  ];
+
+  if (nextImages.length === 0) {
+    throw AppError.from('VALIDATION', 'Sách phải có ít nhất 1 ảnh bìa');
   }
+
+  if (input.existingImageUrls !== undefined || newCovers.length > 0) {
+    await repo.deleteBookImages(bookId);
+    await repo.createBookImages(bookId, nextImages);
+  }
+
+  updateData.coverImageUrl = nextImages[0].url;
 
   // Set publishedAt on first publish
   if (input.status === 'published' && !book.publishedAt) {

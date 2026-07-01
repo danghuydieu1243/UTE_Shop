@@ -114,7 +114,7 @@ describe('vendor-books service', () => {
         authorName: 'Test Author',
         status: 'published',
       },
-      { ebookFile: [ebookFile] },
+      { covers: [makeFakeCoverFile()], ebookFile: [ebookFile] },
     );
     expect(result.id).toBeDefined();
     expect(result.status).toBe('published');
@@ -135,7 +135,7 @@ describe('vendor-books service', () => {
         authorName: 'Test Author',
         status: 'draft',
       },
-      { ebookFile: [ebookFile] },
+      { covers: [makeFakeCoverFile()], ebookFile: [ebookFile] },
     );
     const book = await Book.findByPk(result.id);
     expect(book!.publishedAt).toBeNull();
@@ -153,7 +153,7 @@ describe('vendor-books service', () => {
         authorName: 'Author A',
         status: 'draft',
       },
-      { ebookFile: [ebookFile] },
+      { covers: [makeFakeCoverFile()], ebookFile: [ebookFile] },
     );
 
     await expect(service.getVendorBook(otherVendor.id, result.id)).rejects.toMatchObject({
@@ -168,15 +168,59 @@ describe('vendor-books service', () => {
     const r1 = await service.createBook(
       vendorUser.id,
       { title: 'Slug Test Book', categoryId: category.id, price: 10000, authorName: 'Auth', status: 'draft' },
-      { ebookFile: [ebookFile1] },
+      { covers: [makeFakeCoverFile()], ebookFile: [ebookFile1] },
     );
     const r2 = await service.createBook(
       vendorUser.id,
       { title: 'Slug Test Book', categoryId: category.id, price: 10000, authorName: 'Auth', status: 'draft' },
-      { ebookFile: [ebookFile2] },
+      { covers: [makeFakeCoverFile()], ebookFile: [ebookFile2] },
     );
     expect(r1.slug).not.toBe(r2.slug);
     expect(r2.slug).toMatch(/-2$/);
+  });
+
+  it('create: requires at least one cover image', async () => {
+    await expect(
+      service.createBook(
+        vendorUser.id,
+        {
+          title: 'Book Missing Cover',
+          categoryId: category.id,
+          price: 15000,
+          authorName: 'Auth',
+          status: 'draft',
+        },
+        { ebookFile: [makeFakeEbookFile()] },
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+  });
+
+  it('create: stores all uploaded cover images and uses first as coverImageUrl', async () => {
+    const firstCover = makeFakeCoverFile();
+    const secondCover = makeFakeCoverFile();
+
+    const result = await service.createBook(
+      vendorUser.id,
+      {
+        title: 'Multi Image Book',
+        categoryId: category.id,
+        price: 55000,
+        authorName: 'Gallery Author',
+        status: 'published',
+      },
+      {
+        covers: [firstCover, secondCover],
+        ebookFile: [makeFakeEbookFile()],
+      },
+    );
+
+    const book = await service.getVendorBook(vendorUser.id, result.id);
+    expect(book.coverImageUrl).toBe(`/uploads/covers/${path.basename(firstCover.path)}`);
+    expect(book.images).toHaveLength(2);
+    expect(book.images.map((img) => img.url)).toEqual([
+      `/uploads/covers/${path.basename(firstCover.path)}`,
+      `/uploads/covers/${path.basename(secondCover.path)}`,
+    ]);
   });
 
   // ── Test 5: CATEGORY_NOT_FOUND ───────────────────────────────────────────────
@@ -186,7 +230,7 @@ describe('vendor-books service', () => {
       service.createBook(
         vendorUser.id,
         { title: 'No Cat Book', categoryId: 999999, price: 10000, authorName: 'Auth', status: 'draft' },
-        { ebookFile: [ebookFile] },
+        { covers: [makeFakeCoverFile()], ebookFile: [ebookFile] },
       ),
     ).rejects.toMatchObject({ code: 'CATEGORY_NOT_FOUND' });
   });
@@ -205,7 +249,7 @@ describe('vendor-books service', () => {
         isbn: '978-604-1-23456',
         status: 'draft',
       },
-      { ebookFile: [makeFakeEbookFile()] },
+      { covers: [makeFakeCoverFile()], ebookFile: [makeFakeEbookFile()] },
     );
 
     const created = await service.getVendorBook(vendorUser.id, r.id);
@@ -246,7 +290,7 @@ describe('vendor-books service', () => {
     const r = await service.createBook(
       vendorUser.id,
       { title: 'Status Patch Book', categoryId: category.id, price: 20000, authorName: 'Auth', status: 'draft' },
-      { ebookFile: [ebookFile] },
+      { covers: [makeFakeCoverFile()], ebookFile: [ebookFile] },
     );
     expect((await Book.findByPk(r.id))!.publishedAt).toBeNull();
 
@@ -261,7 +305,7 @@ describe('vendor-books service', () => {
     const r = await service.createBook(
       vendorUser.id,
       { title: 'Book to Delete', categoryId: category.id, price: 20000, authorName: 'Auth', status: 'published' },
-      { ebookFile: [ebookFile] },
+      { covers: [makeFakeCoverFile()], ebookFile: [ebookFile] },
     );
 
     await service.deleteBook(vendorUser.id, r.id);
@@ -275,7 +319,7 @@ describe('vendor-books service', () => {
     const r = await service.createBook(
       vendorUser.id,
       { title: 'Version Test Book', categoryId: category.id, price: 20000, authorName: 'Auth', status: 'draft' },
-      { ebookFile: [ebookFile1] },
+      { covers: [makeFakeCoverFile()], ebookFile: [ebookFile1] },
     );
 
     const ebookFile2 = makeFakeEbookFile();
@@ -287,6 +331,65 @@ describe('vendor-books service', () => {
     expect(files[1].version).toBe(2);
   });
 
+  it('updateBook: preserves retained images and appends new uploaded images', async () => {
+    const initialCover = makeFakeCoverFile();
+    const created = await service.createBook(
+      vendorUser.id,
+      {
+        title: 'Append Images Book',
+        categoryId: category.id,
+        price: 25000,
+        authorName: 'Auth',
+        status: 'draft',
+      },
+      {
+        covers: [initialCover],
+        ebookFile: [makeFakeEbookFile()],
+      },
+    );
+
+    const secondCover = makeFakeCoverFile();
+    await service.updateBook(
+      vendorUser.id,
+      created.id,
+      { existingImageUrls: [`/uploads/covers/${path.basename(initialCover.path)}`] } as any,
+      { covers: [secondCover] },
+    );
+
+    const updated = await service.getVendorBook(vendorUser.id, created.id);
+    expect(updated.coverImageUrl).toBe(`/uploads/covers/${path.basename(initialCover.path)}`);
+    expect(updated.images.map((img) => img.url)).toEqual([
+      `/uploads/covers/${path.basename(initialCover.path)}`,
+      `/uploads/covers/${path.basename(secondCover.path)}`,
+    ]);
+  });
+
+  it('updateBook: rejects removing the final remaining cover image', async () => {
+    const created = await service.createBook(
+      vendorUser.id,
+      {
+        title: 'Cannot Remove Last Cover',
+        categoryId: category.id,
+        price: 25000,
+        authorName: 'Auth',
+        status: 'draft',
+      },
+      {
+        covers: [makeFakeCoverFile()],
+        ebookFile: [makeFakeEbookFile()],
+      },
+    );
+
+    await expect(
+      service.updateBook(
+        vendorUser.id,
+        created.id,
+        { existingImageUrls: [] } as any,
+        {},
+      ),
+    ).rejects.toMatchObject({ code: 'VALIDATION_ERROR' });
+  });
+
   // ── Test 10: list returns only vendor's own books ─────────────────────────────
   it('listVendorBooks: does not return books from other vendors', async () => {
     const otherEbook = makeFakeEbookFile();
@@ -294,7 +397,7 @@ describe('vendor-books service', () => {
     await service.createBook(
       otherVendor.id,
       { title: 'Other Vendor Book', categoryId: otherBookCat.id, price: 10000, authorName: 'Other', status: 'published' },
-      { ebookFile: [otherEbook] },
+      { covers: [makeFakeCoverFile()], ebookFile: [otherEbook] },
     );
 
     const { data } = await service.listVendorBooks(vendorUser.id, { page: 1, limit: 100 });
@@ -330,6 +433,7 @@ describe('vendor-books routes (supertest)', () => {
       .field('categoryId', String(category.id))
       .field('authorName', 'Route Author')
       .field('status', 'published')
+      .attach('covers', TINY_PNG, { filename: 'cover.png', contentType: 'image/png' })
       .attach('ebookFile', TINY_PDF, { filename: 'test.pdf', contentType: 'application/pdf' });
 
     expect(res.status).toBe(201);

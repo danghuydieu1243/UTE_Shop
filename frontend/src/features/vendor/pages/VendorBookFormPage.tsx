@@ -354,7 +354,12 @@ export const VendorBookFormPage = () => {
   }, []);
 
   const removeCover = useCallback((idx: number) => {
+    setApiError(null);
     setCoverItems((prev) => {
+      if (prev.length === 1) {
+        setApiError('Sách phải có ít nhất 1 ảnh bìa.');
+        return prev;
+      }
       const item = prev[idx];
       if (item?.file) URL.revokeObjectURL(item.previewUrl);
       return prev.filter((_, i) => i !== idx);
@@ -377,11 +382,12 @@ export const VendorBookFormPage = () => {
     const status = statusOverride ?? values.status;
 
     // Validation for create mode
+    if (coverItems.length === 0) {
+      setApiError('Vui lòng tải lên ít nhất 1 ảnh bìa.');
+      return;
+    }
+
     if (!isEdit) {
-      if (coverItems.length === 0) {
-        setApiError('Vui lòng tải lên ít nhất 1 ảnh bìa.');
-        return;
-      }
       if (!ebookFile) {
         setApiError('Vui lòng tải lên file E-book (PDF hoặc EPUB).');
         return;
@@ -402,6 +408,10 @@ export const VendorBookFormPage = () => {
       fd.append('publishYear', String(values.publishYear));
     if (values.isbn) fd.append('isbn', values.isbn);
     fd.append('status', status);
+
+    coverItems
+      .filter((item) => item.isExisting)
+      .forEach((item) => fd.append('existingImageUrls', item.previewUrl));
 
     // Append new cover files (skip existing-only items)
     coverItems.forEach((item) => {

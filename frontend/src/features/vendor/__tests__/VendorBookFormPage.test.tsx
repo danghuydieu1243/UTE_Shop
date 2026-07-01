@@ -275,6 +275,50 @@ describe('VendorBookFormPage — edit mode', () => {
     });
   });
 
+  it('keeps existing image urls in FormData when updating without changing gallery', async () => {
+    const appendSpy = vi.spyOn(FormData.prototype, 'append');
+    const mockUpdate = vi.fn().mockReturnValue({
+      unwrap: () => Promise.resolve(sampleBook),
+    });
+    mockUpdateMutation.mockReturnValue([mockUpdate, { isLoading: false }]);
+
+    renderEdit(42);
+
+    await waitFor(() => {
+      expect(
+        (screen.getByPlaceholderText('Nhập tên E-book...') as HTMLInputElement).value,
+      ).toBe('React từ A đến Z');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /đăng sách/i }));
+
+    await waitFor(() => {
+      expect(mockUpdate).toHaveBeenCalled();
+      expect(
+        appendSpy.mock.calls.some(
+          ([key, value]) => key === 'existingImageUrls' && value === '/uploads/covers/react.jpg',
+        ),
+      ).toBe(true);
+    });
+
+    appendSpy.mockRestore();
+  });
+
+  it('blocks removing the final remaining cover image in edit mode', async () => {
+    renderEdit(42);
+
+    await waitFor(() => {
+      expect(screen.getByText(/react\.jpg/i)).toBeInTheDocument();
+    });
+
+    const removeButtons = screen.getAllByRole('button', { name: /xóa/i });
+    fireEvent.click(removeButtons[0]);
+
+    await waitFor(() => {
+      expect(screen.getByText(/sách phải có ít nhất 1 ảnh/i)).toBeInTheDocument();
+    });
+  });
+
   it('shows existing file name with "(đã tải)" label', async () => {
     renderEdit(42);
 
