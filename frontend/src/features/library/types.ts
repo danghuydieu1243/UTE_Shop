@@ -6,8 +6,8 @@ export interface Ebook {
   title: string;
   author: string | null;
   coverImageUrl: string | null;
-  fileFormat: string;
-  fileSizeBytes: number;
+  fileFormat: string | null; // null khi sách chưa có BookFile (vd sách seeder mẫu)
+  fileSizeBytes: number | null;
   grantedAt: string; // ISO date string
   orderCode: string;
 }

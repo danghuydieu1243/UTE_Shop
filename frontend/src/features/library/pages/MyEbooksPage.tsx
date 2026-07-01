@@ -18,8 +18,9 @@ function formatDate(iso: string): string {
 }
 
 // ── Badge định dạng file — PDF → warning, EPUB → info (token Tailwind v2.0) ──
-const FormatBadge = ({ format }: { format: string }) => {
-  const upper = format.toUpperCase();
+// format có thể null khi sách chưa có BookFile → hiển thị "N/A"
+const FormatBadge = ({ format }: { format: string | null }) => {
+  const upper = format ? format.toUpperCase() : 'N/A';
   let cls = 'bg-surface text-ink-2';
   if (upper === 'PDF') cls = 'bg-warning-bg text-warning-fg';
   else if (upper === 'EPUB') cls = 'bg-info-bg text-info-fg';
@@ -52,7 +53,7 @@ const EbookCard = ({
   onDownload: (bookId: number) => void;
   isDownloading: boolean;
 }) => {
-  const upper = ebook.fileFormat.toUpperCase();
+  const upper = ebook.fileFormat ? ebook.fileFormat.toUpperCase() : 'N/A';
 
   return (
     <div className="flex flex-col">
@@ -94,7 +95,9 @@ const EbookCard = ({
       {/* Meta row: format tag + dung lượng (không lặp format 2 lần) */}
       <div className="flex items-center gap-1.5 mb-1.5">
         <FormatBadge format={upper} />
-        <span className="text-[11px] text-ink-3">{formatBytes(ebook.fileSizeBytes)}</span>
+        {ebook.fileSizeBytes != null && (
+          <span className="text-[11px] text-ink-3">{formatBytes(ebook.fileSizeBytes)}</span>
+        )}
       </div>
 
       {/* Ngày mua */}
@@ -178,8 +181,8 @@ export default function MyEbooksPage() {
         (a, b) => new Date(b.grantedAt).getTime() - new Date(a.grantedAt).getTime(),
       );
     } else {
-      // format
-      list.sort((a, b) => a.fileFormat.localeCompare(b.fileFormat));
+      // format — fileFormat có thể null (sách chưa có file) → đẩy xuống cuối
+      list.sort((a, b) => (a.fileFormat ?? '').localeCompare(b.fileFormat ?? ''));
     }
 
     return list;

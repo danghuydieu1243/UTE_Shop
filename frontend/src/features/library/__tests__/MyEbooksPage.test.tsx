@@ -174,6 +174,31 @@ describe('MyEbooksPage', () => {
     });
   });
 
+  it('không crash khi e-book không có file (fileFormat/fileSizeBytes = null)', () => {
+    // Sách seeder mẫu KHÔNG có BookFile → backend trả null (xem TC-P11)
+    const ebooksNoFile = [
+      {
+        bookId: 3,
+        slug: 'sach-mau',
+        title: 'Sách Mẫu Không File',
+        author: 'Tác Giả',
+        coverImageUrl: null,
+        fileFormat: null,
+        fileSizeBytes: null,
+        grantedAt: '2024-03-01T10:00:00Z',
+        orderCode: 'ATHENA-003',
+      },
+    ];
+    mockUseGetMyEbooksQuery.mockReturnValue({
+      data: { ebooks: ebooksNoFile, pagination: { page: 1, limit: 12, total: 1, totalPages: 1 } },
+      isLoading: false,
+    });
+    renderPage();
+
+    // Trang phải render được tên sách thay vì crash
+    expect(screen.getAllByText('Sách Mẫu Không File').length).toBeGreaterThanOrEqual(1);
+  });
+
   it('sắp xếp "Tên A→Z" đặt Atomic Habits trước Đắc Nhân Tâm', () => {
     mockUseGetMyEbooksQuery.mockReturnValue({
       data: { ebooks: mockEbooks, pagination: defaultPagination },
