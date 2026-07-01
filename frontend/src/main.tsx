@@ -28,7 +28,8 @@ import { OrderDetailPage } from './features/orders/pages/OrderDetailPage';
 import MyEbooksPage from './features/library/pages/MyEbooksPage';
 import WishlistPage from './features/wishlist/pages/WishlistPage';
 import NotificationsPage from './features/notifications/pages/NotificationsPage';
-import { RequireAuth, RequireRole } from './shared/auth/guards';
+import { RequireAuth, RequireRole, RedirectIfAuthenticated } from './shared/auth/guards';
+import { ScrollToTop } from './shared/ui/ScrollToTop';
 import { AdminShell } from './features/admin/components/AdminShell';
 import { AdminDashboardPage } from './features/admin/pages/AdminDashboardPage';
 import { AdminPermissionsPage } from './features/admin/pages/AdminPermissionsPage';
@@ -60,18 +61,21 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <Provider store={store}>
       <SocketBridge />
       <BrowserRouter>
+        <ScrollToTop />
         <Routes>
           {/* Public: Home (guests + logged-in users) */}
           <Route path="/" element={<HomePage />} />
           <Route path="/books" element={<CatalogPage />} />
           <Route path="/books/:idOrSlug" element={<BookDetailPage />} />
 
-          {/* Auth routes (guest only) */}
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-          <Route path="/verify-otp" element={<VerifyOtpPage />} />
-          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          {/* Auth routes (guest only) — đã đăng nhập sẽ tự redirect về trang theo role */}
+          <Route element={<RedirectIfAuthenticated />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/verify-otp" element={<VerifyOtpPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/reset-password" element={<ResetPasswordPage />} />
+          </Route>
 
           {/* Protected: any authenticated user */}
           <Route element={<RequireAuth />}>

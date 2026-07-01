@@ -29,6 +29,11 @@ const authSlice = createSlice({
       state.refreshToken = action.payload.refreshToken;
       storage.setTokens(action.payload.accessToken, action.payload.refreshToken);
     },
+    // Cập nhật thông tin user (vd sau khi sửa hồ sơ) — giữ nguyên token
+    setUser: (state, action: PayloadAction<User>) => {
+      state.user = action.payload;
+      storage.setUser(action.payload);
+    },
     clearCredentials: (state) => {
       state.accessToken = null;
       state.refreshToken = null;
@@ -38,5 +43,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, setTokens, clearCredentials } = authSlice.actions;
+export const { setCredentials, setTokens, setUser, clearCredentials } = authSlice.actions;
 export default authSlice.reducer;

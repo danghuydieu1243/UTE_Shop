@@ -15,6 +15,16 @@ export const RequireRole = ({ roles }: { roles: Role[] }) => {
   return <Outlet />;
 };
 
+/**
+ * Guard cho các route auth (login/register/forgot-password...).
+ * Nếu đã đăng nhập → chuyển hướng về trang phù hợp với role (không cho xem lại màn auth).
+ */
+export const RedirectIfAuthenticated = () => {
+  const user = useAppSelector((s) => s.auth.user);
+  if (user) return <Navigate to={redirectForRole(user.role)} replace />;
+  return <Outlet />;
+};
+
 export const redirectForRole = (role: Role): string => {
   if (role === 'vendor') return '/vendor/dashboard';
   if (role === 'admin' || role === 'manager') return '/admin/dashboard';

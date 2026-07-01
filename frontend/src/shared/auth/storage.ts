@@ -20,6 +20,9 @@ export const storage = {
     localStorage.setItem(ACCESS, access);
     localStorage.setItem(REFRESH, refresh);
   },
+  setUser: (user: User): void => {
+    localStorage.setItem(USER, JSON.stringify(user));
+  },
   clear: (): void => {
     localStorage.removeItem(ACCESS);
     localStorage.removeItem(REFRESH);
