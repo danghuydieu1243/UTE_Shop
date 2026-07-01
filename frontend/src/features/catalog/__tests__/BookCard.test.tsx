@@ -171,6 +171,15 @@ describe('BookCard', () => {
       expect(screen.queryByRole('button', { name: /Thêm vào giỏ/i })).not.toBeInTheDocument();
     });
 
+    it('hides the wishlist heart when owned', () => {
+      render(
+        <MemoryRouter>
+          <BookCard book={baseBook} owned />
+        </MemoryRouter>,
+      );
+      expect(screen.queryByRole('button', { name: /yêu thích/i })).not.toBeInTheDocument();
+    });
+
     it('navigates to /user/ebooks when "Đọc ngay" clicked (does not call onAddToCart)', () => {
       const onAddToCart = vi.fn();
       render(

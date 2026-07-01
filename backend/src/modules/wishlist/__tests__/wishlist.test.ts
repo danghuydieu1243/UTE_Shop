@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { createApp } from '../../../app';
-import { User, Vendor, Book, Wishlist } from '../../../db/models';
+import { User, Vendor, Book, Wishlist, Entitlement, Order } from '../../../db/models';
 import { signAccessToken } from '../../auth/token.service';
 
 const app = createApp();
@@ -106,6 +106,38 @@ describe('Wishlist API', () => {
         .send({ bookId: draftBook.id });
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('BOOK_NOT_PUBLISHED');
+    });
+
+    it('3b. thêm sách đã sở hữu → 409 ALREADY_OWNED', async () => {
+      const owner = await seedUser('user', 'wl-owned');
+      const token = makeToken(owner.id, 'user');
+      const ownedBook = await seedBook(vendorUser.id, { price: 99000 });
+      const order = await Order.create({
+        userId: owner.id,
+        code: `ATH-WL-${Date.now()}`,
+        status: 'COMPLETED',
+        subtotal: 99000,
+        total: 99000,
+        currency: 'VND',
+        completedAt: new Date(),
+      });
+      await Entitlement.create({
+        userId: owner.id,
+        bookId: Number(ownedBook.id),
+        orderId: Number(order.id),
+        grantedAt: new Date(),
+      });
+
+      const res = await request(app)
+        .post('/api/v1/me/wishlist')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ bookId: ownedBook.id });
+      expect(res.status).toBe(409);
+      expect(res.body.error.code).toBe('ALREADY_OWNED');
+
+      // Không tạo row wishlist
+      const rows = await Wishlist.count({ where: { userId: owner.id, bookId: ownedBook.id } });
+      expect(rows).toBe(0);
     });
   });
 

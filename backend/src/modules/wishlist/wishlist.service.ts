@@ -1,4 +1,4 @@
-import { Book } from '../../db/models';
+import { Book, Entitlement } from '../../db/models';
 import { AppError } from '../../shared/errors/AppError';
 import * as repo from './wishlist.repository';
 import { WishlistItemDTO, PaginationMeta } from './wishlist.schema';
@@ -14,6 +14,10 @@ export async function addItem(userId: number, bookId: number): Promise<WishlistI
   if (book.status !== 'published') {
     throw AppError.from('BOOK_NOT_PUBLISHED', 'Sách chưa được xuất bản');
   }
+
+  // Sách đã sở hữu thì không cho thêm vào wishlist
+  const entitlement = await Entitlement.findOne({ where: { userId, bookId } });
+  if (entitlement) throw AppError.from('ALREADY_OWNED', 'Bạn đã sở hữu sách này');
 
   // Idempotent: findOrCreate — trả về WishlistItemDTO đầy đủ từ repository
   const { item } = await repo.findOrCreateItem(userId, bookId);

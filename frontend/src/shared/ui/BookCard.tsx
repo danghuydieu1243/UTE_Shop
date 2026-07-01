@@ -121,8 +121,8 @@ export const BookCard = ({ book, className = '', rank, onAddToCart, highlightQue
   };
 
   // Chỉ hiển thị heart cho user đã đăng nhập với role 'user', hoặc cho guest (→ redirect login)
-  // vendor/admin: ẩn hoàn toàn
-  const showHeart = !user || user.role === 'user';
+  // vendor/admin: ẩn hoàn toàn. Sách đã sở hữu: ẩn (không cho thêm wishlist nữa).
+  const showHeart = (!user || user.role === 'user') && !owned;
 
   return (
     <article
@@ -236,7 +236,7 @@ export const BookCard = ({ book, className = '', rank, onAddToCart, highlightQue
       {owned ? (
         <button
           type="button"
-          className="btn-cart mt-3 w-full border border-ink bg-ink py-2 text-[11px] font-semibold uppercase tracking-[1px] text-bg transition-colors duration-150 hover:bg-transparent hover:text-ink"
+          className="btn-cart mt-3 w-full border border-ink bg-ink py-2 text-[11px] font-semibold uppercase tracking-[1px] text-paper transition-colors duration-150 hover:bg-transparent hover:text-ink"
           onClick={(e) => {
             e.stopPropagation();
             navigate('/user/ebooks');
@@ -247,7 +247,7 @@ export const BookCard = ({ book, className = '', rank, onAddToCart, highlightQue
       ) : (
         <button
           type="button"
-          className="btn-cart mt-3 w-full border border-ink py-2 text-[11px] font-semibold uppercase tracking-[1px] text-ink transition-colors duration-150 hover:bg-ink hover:text-bg"
+          className="btn-cart mt-3 w-full border border-ink py-2 text-[11px] font-semibold uppercase tracking-[1px] text-ink transition-colors duration-150 hover:bg-ink hover:text-paper"
           onClick={(e) => {
             e.stopPropagation();
             onAddToCart?.(book);
