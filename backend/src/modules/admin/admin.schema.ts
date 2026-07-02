@@ -190,3 +190,15 @@ export interface AdminProductDTO {
   fileFormat: string;
   createdAt: Date;
 }
+
+// ─── Commission Setting ─────────────────────────────────────────────────────
+
+export const patchCommissionBodySchema = z.object({
+  ratePercent: z.number().min(0).max(100),
+});
+export type PatchCommissionBody = z.infer<typeof patchCommissionBodySchema>;
+
+export interface CommissionDTO {
+  rateBps: number;
+  ratePercent: number;
+}

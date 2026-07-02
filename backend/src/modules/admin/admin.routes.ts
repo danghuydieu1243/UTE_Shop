@@ -5,6 +5,9 @@ import * as usersCtrl from './admin-users.controller';
 import * as vendorsCtrl from './admin-vendors.controller';
 import * as ordersCtrl from './admin-orders.controller';
 import * as productsCtrl from './admin-products.controller';
+import * as settingsCtrl from './admin-settings.controller';
+import { validate } from '../../shared/middleware/validate';
+import { patchCommissionBodySchema } from './admin.schema';
 
 export const adminRouter = Router();
 
@@ -23,3 +26,13 @@ adminRouter.get('/orders/:code', auth, requireRole('admin', 'manager'), ordersCt
 // Products — admin or manager
 adminRouter.get('/products', auth, requireRole('admin', 'manager'), productsCtrl.listAdminProducts);
 adminRouter.patch('/products/:id/status', auth, requireRole('admin', 'manager'), productsCtrl.updateProductStatus);
+
+// Settings — admin only
+adminRouter.get('/settings/commission', auth, requireRole('admin'), settingsCtrl.getCommission);
+adminRouter.patch(
+  '/settings/commission',
+  auth,
+  requireRole('admin'),
+  validate(patchCommissionBodySchema),
+  settingsCtrl.updateCommission,
+);
