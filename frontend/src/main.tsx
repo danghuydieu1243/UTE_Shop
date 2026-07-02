@@ -38,6 +38,7 @@ import { AdminUsersPage } from './features/admin/pages/AdminUsersPage';
 import { AdminVendorsPage } from './features/admin/pages/AdminVendorsPage';
 import { AdminOrdersPage } from './features/admin/pages/AdminOrdersPage';
 import { AdminProductsPage } from './features/admin/pages/AdminProductsPage';
+import { AdminSettingsPage } from './features/admin/pages/AdminSettingsPage';
 import { VendorDashboardPage } from './features/analytics/pages/VendorDashboardPage';
 import { VendorWalletPage } from './features/wallet/pages/VendorWalletPage';
 import { VendorSettingsPage } from './features/wallet/pages/VendorSettingsPage';
@@ -123,6 +124,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
               <Route element={<RequireRole roles={['admin']} />}>
                 <Route path="/admin/users" element={<AdminUsersPage />} />
                 <Route path="/admin/permissions" element={<AdminPermissionsPage />} />
+                <Route path="/admin/settings" element={<AdminSettingsPage />} />
               </Route>
             </Route>
           </Route>

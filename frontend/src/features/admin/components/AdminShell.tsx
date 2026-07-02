@@ -10,6 +10,7 @@ const ALL_NAV_ITEMS = [
   { href: '/admin/products',  label: 'Sản phẩm', adminOnly: false },
   { href: '/admin/orders',    label: 'Đơn hàng', adminOnly: false },
   { href: '/admin/permissions', label: 'Cài đặt hệ thống', adminOnly: true },
+  { href: '/admin/settings',    label: 'Cấu hình', adminOnly: true },
 ] as const;
 
 export const AdminShell = () => {

@@ -225,6 +225,13 @@ export const transformAdminProductsResponse = (
   pagination: meta?.pagination ?? { page: 1, limit: 20, total: 0, totalPages: 0 },
 });
 
+// ── Commission setting types ────────────────────────────────────────────────
+
+export interface CommissionSetting {
+  rateBps: number;
+  ratePercent: number;
+}
+
 // ── API ───────────────────────────────────────────────────────────────────────
 
 export const adminApi = baseApi.injectEndpoints({
@@ -350,6 +357,23 @@ export const adminApi = baseApi.injectEndpoints({
         { type: 'AdminProduct', id: 'LIST' },
       ],
     }),
+
+    /**
+     * GET /api/v1/admin/settings/commission — tỉ lệ phí sàn hiện hành (admin only).
+     */
+    getCommission: build.query<CommissionSetting, void>({
+      query: () => ({ url: '/admin/settings/commission', method: 'GET' }),
+      providesTags: ['CommissionSetting'],
+    }),
+
+    /**
+     * PATCH /api/v1/admin/settings/commission — đổi tỉ lệ phí sàn (admin only).
+     * Áp dụng cho đơn thanh toán từ sau khi lưu; đơn cũ không đổi.
+     */
+    updateCommission: build.mutation<CommissionSetting, { ratePercent: number }>({
+      query: (body) => ({ url: '/admin/settings/commission', method: 'PATCH', data: body }),
+      invalidatesTags: ['CommissionSetting'],
+    }),
   }),
   overrideExisting: false,
 });
@@ -363,4 +387,6 @@ export const {
   useGetAdminOrderDetailQuery,
   useGetAdminProductsQuery,
   useUpdateProductStatusMutation,
+  useGetCommissionQuery,
+  useUpdateCommissionMutation,
 } = adminApi;
