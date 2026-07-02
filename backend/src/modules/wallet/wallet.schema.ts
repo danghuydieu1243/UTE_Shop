@@ -25,6 +25,9 @@ export interface WalletTxDTO {
   description: string;
   status: string;
   createdAt: string;
+  grossAmount?: number | null;
+  feeAmount?: number | null;
+  commissionRateBps?: number | null;
 }
 
 export interface PaginationMeta {
