@@ -11,6 +11,7 @@ import { mapOrderDetailDTO } from '../orders/orders.repository';
 import { OrderDetailDTO } from '../orders/orders.schema';
 import * as notificationsService from '../notifications/notifications.service';
 import * as walletService from '../wallet/wallet.service';
+import * as settingsService from '../settings/settings.service';
 
 // ── Tải lại order đầy đủ (items + book + payments) để build DTO ──────────────
 
@@ -182,15 +183,16 @@ export async function completePayment(
       await Coupon.increment('usedCount', { by: 1, where: { id: Number(order.couponId) }, transaction: t });
     }
 
-    // 6c: cộng ví Vendor (mỗi vendor 1 lần, gross) — CHỈ tính sách chưa sở hữu để
-    // không cộng trùng khi user đặt cùng 1 cuốn ở nhiều đơn.
+    // 6c: cộng ví Vendor (mỗi vendor 1 lần, NET = gross − phí sàn) — CHỈ tính sách chưa
+    // sở hữu để không cộng trùng khi user đặt cùng 1 cuốn ở nhiều đơn.
+    const commissionRateBps = await settingsService.getCommissionRateBps();
     const byVendor = new Map<number, number>();
     for (const item of newItems) {
       const v = Number(item.vendorUserId);
       byVendor.set(v, (byVendor.get(v) ?? 0) + Number(item.unitPrice));
     }
-    for (const [vendorUserId, amount] of byVendor) {
-      await walletService.creditSale(vendorUserId, amount, Number(order.id), t);
+    for (const [vendorUserId, gross] of byVendor) {
+      await walletService.creditSale(vendorUserId, gross, Number(order.id), t, commissionRateBps);
     }
 
     // 11. Load lại order đầy đủ để build DTO

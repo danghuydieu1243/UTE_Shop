@@ -81,7 +81,7 @@ async function createPendingOrder(
 // ── W1: completePayment → vendor wallet credited correctly ────────────────────
 
 describe('W1: completePayment → ví vendor được cộng đúng', () => {
-  it('W1. availableBalance = unitPrice của vendor; 1 sale_credit trong wallet_transactions', async () => {
+  it('W1. availableBalance = unitPrice của vendor trừ phí sàn (net); 1 sale_credit trong wallet_transactions', async () => {
     const buyer = await seedUser('user', `w1b-${Date.now()}`);
     const vendor = await seedUser('vendor', `w1v-${Date.now()}`);
     const book = await seedBook(vendor.id, { price: 120000 });
@@ -89,16 +89,20 @@ describe('W1: completePayment → ví vendor được cộng đúng', () => {
     const { payment } = await createPendingOrder(buyer.id, vendor.id, book.id, 120000);
     await completePayment(payment.id, { userId: buyer.id });
 
+    // Mặc định commission 10% (1000 bps) → net = 120000 - 12000 = 108000
     const wallet = await VendorWallet.findOne({ where: { vendorUserId: vendor.id } });
     expect(wallet).not.toBeNull();
-    expect(Number(wallet!.availableBalance)).toBe(120000);
+    expect(Number(wallet!.availableBalance)).toBe(108000);
 
     const txns = await WalletTransaction.findAll({
       where: { vendorUserId: vendor.id, type: 'sale_credit' },
     });
     expect(txns).toHaveLength(1);
-    expect(Number(txns[0].amount)).toBe(120000);
-    expect(Number(txns[0].balanceAfter)).toBe(120000);
+    expect(Number(txns[0].amount)).toBe(108000);
+    expect(Number(txns[0].balanceAfter)).toBe(108000);
+    expect(Number(txns[0].grossAmount)).toBe(120000);
+    expect(Number(txns[0].feeAmount)).toBe(12000);
+    expect(txns[0].commissionRateBps).toBe(1000);
   });
 });
 
@@ -117,8 +121,9 @@ describe('W2: idempotency — gọi completePayment 2 lần → balance không c
     // Lần 2 — idempotent (payment đã PAID → return sớm, không chạy credit block)
     await completePayment(payment.id, { userId: buyer.id });
 
+    // Mặc định commission 10% (1000 bps) → net = 85000 - 8500 = 76500
     const wallet = await VendorWallet.findOne({ where: { vendorUserId: vendor.id } });
-    expect(Number(wallet!.availableBalance)).toBe(85000);
+    expect(Number(wallet!.availableBalance)).toBe(76500);
 
     const txns = await WalletTransaction.findAll({
       where: { vendorUserId: vendor.id, type: 'sale_credit' },
@@ -175,8 +180,9 @@ describe('W3: đơn 2 vendor → mỗi ví cộng đúng phần của mình', ()
     const walletA = await VendorWallet.findOne({ where: { vendorUserId: vendorA.id } });
     const walletB = await VendorWallet.findOne({ where: { vendorUserId: vendorB.id } });
 
-    expect(Number(walletA!.availableBalance)).toBe(70000);
-    expect(Number(walletB!.availableBalance)).toBe(50000);
+    // Mặc định commission 10% (1000 bps) → net = gross * 0.9
+    expect(Number(walletA!.availableBalance)).toBe(63000);
+    expect(Number(walletB!.availableBalance)).toBe(45000);
 
     const txnsA = await WalletTransaction.findAll({ where: { vendorUserId: vendorA.id, type: 'sale_credit' } });
     const txnsB = await WalletTransaction.findAll({ where: { vendorUserId: vendorB.id, type: 'sale_credit' } });
@@ -230,7 +236,8 @@ describe('W4: GET /api/v1/vendor/wallet → data đúng shape', () => {
     expect(res.body.success).toBe(true);
 
     const d = res.body.data;
-    expect(d.availableBalance).toBe(60000);
+    // Mặc định commission 10% (1000 bps) → net = 60000 - 6000 = 54000
+    expect(d.availableBalance).toBe(54000);
     expect(d.pendingBalance).toBe(30000);
     expect(d.totalWithdrawn).toBe(0);
     expect(Array.isArray(d.monthlySeries)).toBe(true);

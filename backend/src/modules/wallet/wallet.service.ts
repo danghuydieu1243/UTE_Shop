@@ -2,18 +2,29 @@ import { Transaction } from 'sequelize';
 import { WalletTransaction } from '../../db/models';
 import * as repo from './wallet.repository';
 import { WalletDTO } from './wallet.schema';
+import { computeCommission } from '../settings/settings.service';
 
+/**
+ * Cộng NET (= gross − phí sàn) vào ví vendor và ghi breakdown
+ * (grossAmount/feeAmount/commissionRateBps) vào wallet_transactions.
+ */
 export async function creditSale(
   vendorUserId: number,
-  amount: number,
+  gross: number,
   orderId: number,
   t: Transaction,
+  bps: number,
 ): Promise<void> {
+  const { fee, net } = computeCommission(gross, bps);
   const wallet = await repo.findOrCreateWallet(vendorUserId, t);
-  const newBalance = Number(wallet.availableBalance) + amount;
+  const newBalance = Number(wallet.availableBalance) + net;
   await wallet.update({ availableBalance: newBalance }, { transaction: t });
   await WalletTransaction.create(
-    { vendorUserId, type: 'sale_credit', amount, orderId, balanceAfter: newBalance },
+    {
+      vendorUserId, type: 'sale_credit', amount: net, orderId,
+      balanceAfter: newBalance,
+      grossAmount: gross, feeAmount: fee, commissionRateBps: bps,
+    },
     { transaction: t },
   );
 }
