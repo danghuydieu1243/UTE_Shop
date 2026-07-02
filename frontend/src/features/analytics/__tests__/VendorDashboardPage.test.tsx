@@ -39,6 +39,9 @@ vi.mock('../../vendor/components/VendorShell', () => ({
 const MOCK_DATA = {
   kpis: {
     revenue: 4_500_000,
+    grossRevenue: 4_600_000,
+    totalFee: 460_000,
+    netRevenue: 4_140_000,
     orders: 37,
     productsOnSale: 12,
     avgRating: 4.3,
@@ -110,6 +113,14 @@ describe('VendorDashboardPage', () => {
   it('renders avgRating KPI formatted as "x.x / 5"', () => {
     renderPage();
     expect(screen.getByText('4.3 / 5')).toBeInTheDocument();
+  });
+
+  it('renders gross/fee/net breakdown KPIs', () => {
+    renderPage();
+    // grossRevenue → "4.600.000đ", totalFee → "460.000đ", netRevenue → "4.140.000đ"
+    expect(screen.getByText('4.600.000đ')).toBeInTheDocument();
+    expect(screen.getByText('460.000đ')).toBeInTheDocument();
+    expect(screen.getByText('4.140.000đ')).toBeInTheDocument();
   });
 
   it('renders chart SVG with a path element', () => {

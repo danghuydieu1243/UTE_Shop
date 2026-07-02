@@ -309,3 +309,35 @@ it('VA10: kpis có grossRevenue/totalFee/netRevenue nhất quán', async () => {
   expect(kpis.netRevenue).toBe(kpis.grossRevenue - kpis.totalFee);
   expect(kpis.totalFee).toBeGreaterThanOrEqual(0);
 });
+
+// ─── VA11: row sale_credit cũ (grossAmount/feeAmount NULL) → gross = net, fee = 0 ──
+it('VA11: sale_credit cũ (breakdown NULL) tính gross=net=amount, fee=0, KHÔNG để net > gross', async () => {
+  const vendor = await makeVendor();
+  const now = new Date();
+
+  // Row "cũ" trước migration commission: chỉ có amount, grossAmount/feeAmount NULL.
+  await WalletTransaction.create({
+    vendorUserId: vendor.id,
+    type: 'sale_credit',
+    amount: 80000,
+    grossAmount: null,
+    feeAmount: null,
+    created_at: now,
+  } as any);
+
+  const res = await request(app)
+    .get('/api/v1/vendor/stats/dashboard?period=30d')
+    .set('Authorization', `Bearer ${vendor.token}`);
+
+  expect(res.status).toBe(200);
+  const { kpis } = res.body.data;
+  // Kỳ vọng tính độc lập: gross = net = amount cũ, fee = 0.
+  const expectedGross = 80000;
+  const expectedFee = 0;
+  const expectedNet = 80000;
+  expect(kpis.grossRevenue).toBe(expectedGross);
+  expect(kpis.totalFee).toBe(expectedFee);
+  expect(kpis.netRevenue).toBe(expectedNet);
+  expect(kpis.grossRevenue).toBe(kpis.netRevenue);
+  expect(kpis.grossRevenue).toBeGreaterThan(0);
+});

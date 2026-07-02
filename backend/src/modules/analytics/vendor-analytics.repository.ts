@@ -71,8 +71,10 @@ export async function saleTotalsForVendor(
   });
   let gross = 0, fee = 0, net = 0;
   for (const r of rows as any[]) {
-    gross += Number(r.gross_amount ?? r.grossAmount ?? 0);
-    fee += Number(r.fee_amount ?? r.feeAmount ?? 0);
+    // Row cũ (trước migration commission) có grossAmount/feeAmount NULL — coi như
+    // gross = net = amount, fee = 0 (không có hoa hồng), tránh netRevenue > grossRevenue.
+    gross += Number(r.grossAmount ?? r.amount ?? 0);
+    fee += Number(r.feeAmount ?? 0);
     net += Number(r.amount ?? 0);
   }
   return { gross, fee, net };

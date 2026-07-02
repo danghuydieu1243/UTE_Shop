@@ -4,7 +4,15 @@ export interface SeriesPoint { date: string; value: number }
 export interface NewUsersPoint { date: string; count: number }
 
 export interface VendorDashboard {
-  kpis: { revenue: number; orders: number; productsOnSale: number; avgRating: number };
+  kpis: {
+    revenue: number;
+    grossRevenue: number;
+    totalFee: number;
+    netRevenue: number;
+    orders: number;
+    productsOnSale: number;
+    avgRating: number;
+  };
   revenueSeries: SeriesPoint[];
   topBooks: { bookId: number; title: string; author: string | null; sold: number; revenue: number }[];
   recentOrders: { code: string; title: string; total: number }[];

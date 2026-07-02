@@ -189,6 +189,23 @@ export const VendorDashboardPage = () => {
             />
           </div>
 
+          {/* ── Breakdown: doanh thu (giá bán) → phí sàn → thực nhận ── */}
+          <div
+            style={{
+              fontSize: '12px',
+              color: '#6B6B73',
+              fontVariantNumeric: 'tabular-nums',
+              display: 'flex',
+              flexWrap: 'wrap',
+              alignItems: 'baseline',
+              gap: '6px',
+            }}
+          >
+            <span>Doanh thu (giá bán) <strong style={{ color: '#16161A' }}>{formatVND(data.kpis.grossRevenue)}</strong></span>
+            <span>→ − Phí sàn <strong style={{ color: '#16161A' }}>{formatVND(data.kpis.totalFee)}</strong></span>
+            <span>→ = Thực nhận <strong style={{ color: '#2E7D4F' }}>{formatVND(data.kpis.netRevenue)}</strong></span>
+          </div>
+
           {/* ── Row 2: Revenue chart + Recent orders ── */}
           <div
             style={{

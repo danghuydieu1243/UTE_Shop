@@ -7,7 +7,15 @@ import { transformVendorDashboard, transformAdminDashboard } from '../analyticsA
 import type { VendorDashboard, AdminDashboard } from '../types';
 
 const VENDOR_FIXTURE: VendorDashboard = {
-  kpis: { revenue: 1_200_000, orders: 42, productsOnSale: 5, avgRating: 4.3 },
+  kpis: {
+    revenue: 1_200_000,
+    grossRevenue: 1_200_000,
+    totalFee: 120_000,
+    netRevenue: 1_080_000,
+    orders: 42,
+    productsOnSale: 5,
+    avgRating: 4.3,
+  },
   revenueSeries: [
     { date: '2026-05-01', value: 300_000 },
     { date: '2026-05-15', value: 900_000 },
