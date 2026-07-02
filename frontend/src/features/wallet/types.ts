@@ -12,6 +12,9 @@ export interface WalletTx {
   description: string;
   status: string;
   createdAt: string;
+  grossAmount?: number | null;
+  feeAmount?: number | null;
+  commissionRateBps?: number | null;
 }
 
 export interface WalletPagination {

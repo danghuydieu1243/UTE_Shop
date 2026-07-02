@@ -15,6 +15,9 @@ interface WalletRaw {
     description: string;
     status: string;
     createdAt: string;
+    grossAmount?: number | null;
+    feeAmount?: number | null;
+    commissionRateBps?: number | null;
   }>;
 }
 
@@ -25,7 +28,19 @@ export function transformWalletResponse(data: WalletRaw, meta: EnvelopeMeta): Wa
     pendingBalance: data.pendingBalance,
     totalWithdrawn: data.totalWithdrawn,
     monthlySeries: Array.isArray(data.monthlySeries) ? data.monthlySeries : [],
-    transactions: Array.isArray(data.transactions) ? data.transactions : [],
+    transactions: Array.isArray(data.transactions)
+      ? data.transactions.map((tx) => ({
+          id: tx.id,
+          type: tx.type,
+          amount: tx.amount,
+          description: tx.description,
+          status: tx.status,
+          createdAt: tx.createdAt,
+          grossAmount: tx.grossAmount ?? null,
+          feeAmount: tx.feeAmount ?? null,
+          commissionRateBps: tx.commissionRateBps ?? null,
+        }))
+      : [],
     pagination: meta?.pagination ?? { page: 1, limit: 10, total: 0, totalPages: 0 },
   };
 }

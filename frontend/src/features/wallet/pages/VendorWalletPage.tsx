@@ -366,6 +366,23 @@ export function VendorWalletPage() {
                         }}
                       >
                         {txSign(tx)}{formatVND(Math.abs(Number(tx.amount)))}
+                        {tx.type === 'sale_credit' && tx.grossAmount != null && (
+                          <div
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 400,
+                              color: '#AAAAAE',
+                              whiteSpace: 'nowrap',
+                              marginTop: '2px',
+                            }}
+                          >
+                            Giá bán {formatVND(tx.grossAmount)} − Phí sàn
+                            {tx.commissionRateBps != null
+                              ? ` (${tx.commissionRateBps / 100}%)`
+                              : ''}{' '}
+                            {formatVND(tx.feeAmount ?? 0)} = Thực nhận {formatVND(tx.amount)}
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: '10px 0', textAlign: 'center' }}>
                         <span
