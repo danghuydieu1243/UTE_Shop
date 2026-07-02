@@ -1,5 +1,5 @@
 import { Op } from 'sequelize';
-import { User, Vendor, Order, OrderItem, Book } from '../../db/models';
+import { User, Vendor, Order, OrderItem, Book, WalletTransaction } from '../../db/models';
 
 const COMPLETED = 'COMPLETED';
 
@@ -75,4 +75,12 @@ export async function recentOrders(limit = 5) {
     order: [['id', 'DESC']],
     limit,
   });
+}
+
+/** Tổng phí sàn (Σ fee_amount) toàn sàn từ sale_credit trong [from,to]. */
+export async function platformFeeInPeriod(from: Date, to: Date): Promise<number> {
+  const total = await WalletTransaction.sum('feeAmount', {
+    where: { type: 'sale_credit', created_at: { [Op.between]: [from, to] } },
+  });
+  return Number(total ?? 0);
 }

@@ -11,7 +11,7 @@ export interface VendorDashboardDTO {
 }
 
 export interface AdminDashboardDTO {
-  kpis: { totalUsers: number; totalVendors: number; orders: number; revenue: number | null };
+  kpis: { totalUsers: number; totalVendors: number; orders: number; revenue: number | null; platformFeeRevenue: number | null };
   revenueSeries: { date: string; value: number }[] | null;
   newUsersSeries: { date: string; count: number }[];
   topBooks: { bookId: number; title: string; vendorShop: string; fileFormat: string; revenue: number | null; sold: number }[];

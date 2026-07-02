@@ -8,7 +8,7 @@ export async function getAdminDashboard(period: string, role: string): Promise<A
   // newUsersSeries luôn là cửa sổ 7 ngày gần nhất (độc lập với period KPI) — fetch đúng khoảng đó.
   const wk = resolvePeriod('7d');
 
-  const [totalUsers, totalVendors, orders, completed, newU, items, recent] = await Promise.all([
+  const [totalUsers, totalVendors, orders, completed, newU, items, recent, platformFee] = await Promise.all([
     repo.countUsers(),
     repo.countActiveVendors(),
     repo.countOrdersInPeriod(from, to),
@@ -16,6 +16,7 @@ export async function getAdminDashboard(period: string, role: string): Promise<A
     repo.newUsers(wk.from, wk.to),
     repo.completedItems(from, to),
     repo.recentOrders(5),
+    repo.platformFeeInPeriod(from, to),
   ]);
 
   const revenue = completed.reduce((s, o) => s + Number(o.total), 0);
@@ -73,7 +74,7 @@ export async function getAdminDashboard(period: string, role: string): Promise<A
   }));
 
   return {
-    kpis: { totalUsers, totalVendors, orders, revenue: isAdmin ? revenue : null },
+    kpis: { totalUsers, totalVendors, orders, revenue: isAdmin ? revenue : null, platformFeeRevenue: isAdmin ? platformFee : null },
     revenueSeries: isAdmin ? revenueSeries : null,
     newUsersSeries,
     topBooks: isAdmin ? topBooks : topBooks.map((t) => ({ ...t, revenue: null })),

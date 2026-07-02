@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { createApp } from '../../../app';
-import { User, Vendor, Book, Order, OrderItem, Author } from '../../../db/models';
+import { User, Vendor, Book, Order, OrderItem, Author, WalletTransaction } from '../../../db/models';
 import { signAccessToken } from '../../auth/token.service';
 
 const app = createApp();
@@ -76,6 +76,14 @@ async function makeOrder(
     } as any);
   }
   return o;
+}
+
+async function makeFeeTxn(vendorUserId: number, gross: number, fee: number, createdAt: Date) {
+  return WalletTransaction.create({
+    vendorUserId, type: 'sale_credit', amount: gross - fee, orderId: null,
+    balanceAfter: gross - fee, grossAmount: gross, feeAmount: fee,
+    commissionRateBps: 1000, created_at: createdAt,
+  } as any);
 }
 
 // ─── AA1: KPI totalUsers/totalVendors ────────────────────────────────────────
@@ -289,4 +297,35 @@ it('AA7: role user → 403; admin → 200; manager → 200', async () => {
     .get('/api/v1/admin/stats/dashboard')
     .set('Authorization', `Bearer ${manager.token}`);
   expect(resManager.status).toBe(200);
+});
+
+// ─── AA8: platformFeeRevenue = Σ fee_amount toàn sàn trong kỳ (admin-only) ────
+it('kpis.platformFeeRevenue = tổng fee toàn sàn trong kỳ (admin-only)', async () => {
+  const admin = await makeUser('admin');
+  const v1 = await makeVendorUser();
+  const v2 = await makeVendorUser();
+  const now = new Date();
+  const old = new Date(Date.now() - 400 * 24 * 3600 * 1000); // ngoài kỳ 30d
+
+  const resBefore = await request(app)
+    .get('/api/v1/admin/stats/dashboard?period=30d')
+    .set('Authorization', `Bearer ${admin.token}`);
+  const feeBefore = resBefore.body.data.kpis.platformFeeRevenue as number;
+
+  await makeFeeTxn(v1.userId, 100000, 10000, now);
+  await makeFeeTxn(v2.userId, 50000, 5000, now);
+  await makeFeeTxn(v1.userId, 0, 0, now);          // row breakdown 0
+  await makeFeeTxn(v1.userId, 80000, 8000, old);   // ngoài kỳ → không tính
+
+  const res = await request(app)
+    .get('/api/v1/admin/stats/dashboard?period=30d')
+    .set('Authorization', `Bearer ${admin.token}`);
+  expect(res.status).toBe(200);
+  expect(res.body.data.kpis.platformFeeRevenue).toBe(feeBefore + 15000); // 10000 + 5000
+
+  const mgr = await makeUser('manager');
+  const res2 = await request(app)
+    .get('/api/v1/admin/stats/dashboard?period=30d')
+    .set('Authorization', `Bearer ${mgr.token}`);
+  expect(res2.body.data.kpis.platformFeeRevenue).toBeNull();
 });
