@@ -5,6 +5,7 @@ import { z } from 'zod';
 export const createOrderBodySchema = z.object({
   couponCode: z.string().optional(),
   pointsToUse: z.number().int().min(0).optional(),
+  selectedCartItemIds: z.array(z.number().int().positive()).min(1).optional(),
 });
 export type CreateOrderBody = z.infer<typeof createOrderBodySchema>;
 

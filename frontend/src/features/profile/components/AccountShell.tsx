@@ -149,13 +149,21 @@ export const AccountShell = ({ breadcrumbLabel, activeNav, children, userData }:
               />
             </div>
             {/* Heart icon */}
-            <button className="text-ink-2 hover:text-ink border-none bg-transparent p-1 cursor-pointer" aria-label="Yêu thích">
+            <Link
+              to="/user/wishlist"
+              className="text-ink-2 hover:text-ink border-none bg-transparent p-1 cursor-pointer"
+              aria-label="Yêu thích"
+            >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
               </svg>
-            </button>
+            </Link>
             {/* Cart icon */}
-            <button className="relative text-ink-2 hover:text-ink border-none bg-transparent p-1 cursor-pointer" aria-label="Giỏ hàng">
+            <Link
+              to="/cart"
+              className="relative text-ink-2 hover:text-ink border-none bg-transparent p-1 cursor-pointer"
+              aria-label="Giỏ hàng"
+            >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z" />
                 <line x1="3" y1="6" x2="21" y2="6" />
@@ -164,7 +172,7 @@ export const AccountShell = ({ breadcrumbLabel, activeNav, children, userData }:
               <span className="absolute -top-1 -right-1 w-[16px] h-[16px] rounded-full bg-ink text-paper text-[10px] font-semibold flex items-center justify-center leading-none">
                 0
               </span>
-            </button>
+            </Link>
             {/* Separator */}
             <span className="w-px h-[20px] bg-line flex-shrink-0" />
             {/* Avatar */}

@@ -171,6 +171,46 @@ describe('CartPage', () => {
     renderPage();
     const checkoutBtn = screen.getByRole('button', { name: /tiến hành thanh toán/i });
     fireEvent.click(checkoutBtn);
-    expect(mockNavigate).toHaveBeenCalledWith('/checkout');
+    expect(mockNavigate).toHaveBeenCalledWith('/checkout', {
+      state: { selectedCartItemIds: [1, 2] },
+    });
+  });
+
+  it('updates summary totals from the selected items only', () => {
+    mockUseGetCartQuery.mockReturnValue({ data: sampleCart, isLoading: false });
+    renderPage();
+
+    const nhaGiaKimCheckbox = screen.getByRole('checkbox', { name: /chọn nhà giả kim/i });
+    fireEvent.click(nhaGiaKimCheckbox);
+
+    expect(screen.getByText('(1 sản phẩm)')).toBeInTheDocument();
+    expect(screen.getAllByText(/89\.000đ/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/164\.000đ/)).not.toBeInTheDocument();
+  });
+
+  it('supports select all toggle', () => {
+    mockUseGetCartQuery.mockReturnValue({ data: sampleCart, isLoading: false });
+    renderPage();
+
+    const selectAll = screen.getByRole('checkbox', { name: /chọn tất cả/i });
+    fireEvent.click(selectAll);
+
+    expect(screen.getByText('(0 sản phẩm)')).toBeInTheDocument();
+    expect(screen.getAllByText(/0đ/).length).toBeGreaterThan(0);
+
+    fireEvent.click(selectAll);
+    expect(screen.getByText('(2 sản phẩm)')).toBeInTheDocument();
+    expect(screen.getAllByText(/164\.000đ/).length).toBeGreaterThan(0);
+  });
+
+  it('blocks checkout when no cart items are selected', () => {
+    mockUseGetCartQuery.mockReturnValue({ data: sampleCart, isLoading: false });
+    renderPage();
+
+    fireEvent.click(screen.getByRole('checkbox', { name: /chọn tất cả/i }));
+    fireEvent.click(screen.getByRole('button', { name: /tiến hành thanh toán/i }));
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+    expect(screen.getByText(/hãy chọn ít nhất một sách để thanh toán/i)).toBeInTheDocument();
   });
 });

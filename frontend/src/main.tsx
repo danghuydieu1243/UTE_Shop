@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { store } from './app/store';
 import { useAppSelector } from './app/hooks';
 import { connectSocket, disconnectSocket } from './features/notifications/socket';
+import { NotificationToastBridge } from './features/notifications/NotificationToastBridge';
 import { LoginPage } from './features/auth/pages/LoginPage';
 import { RegisterPage } from './features/auth/pages/RegisterPage';
 import { VerifyOtpPage } from './features/auth/pages/VerifyOtpPage';
@@ -61,6 +62,7 @@ ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <Provider store={store}>
       <SocketBridge />
       <BrowserRouter>
+        <NotificationToastBridge />
         <ScrollToTop />
         <Routes>
           {/* Public: Home (guests + logged-in users) */}

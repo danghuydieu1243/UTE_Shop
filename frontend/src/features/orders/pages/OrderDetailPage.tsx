@@ -3,6 +3,7 @@ import { Link, useParams, useNavigate } from 'react-router-dom';
 import { formatVND, formatDateTime } from '../../../shared/format';
 import { COVER_PLACEHOLDER } from '../../../shared/ui/BookCard';
 import { useGetOrderQuery, useCancelOrderMutation } from '../ordersApi';
+import { useAddToCartMutation } from '../../cart/cartApi';
 import { useToast } from '../../../shared/hooks/useToast';
 import { useGetMeQuery } from '../../auth/authApi';
 import { AccountShell } from '../../profile/components/AccountShell';
@@ -75,6 +76,7 @@ export const OrderDetailPage = () => {
 
   const { data: order, isLoading, isError } = useGetOrderQuery(code ?? '');
   const [cancelOrder, { isLoading: isCancelling }] = useCancelOrderMutation();
+  const [addToCart] = useAddToCartMutation();
 
   /* ── Lấy userData để truyền vào AccountShell ── */
   const { data: meData } = useGetMeQuery();
@@ -90,6 +92,26 @@ export const OrderDetailPage = () => {
       const e = err as { message?: string };
       show(e?.message || 'Không thể hủy đơn hàng');
       setShowCancelModal(false);
+    }
+  };
+
+  const handleRepurchase = async () => {
+    if (!order) return;
+    try {
+      for (const item of order.items) {
+        try {
+          await addToCart({ bookId: item.bookId }).unwrap();
+        } catch (err) {
+          const e = err as { message?: string };
+          const msg = e?.message?.toLowerCase() ?? '';
+          if (!msg.includes('already') && !msg.includes('đã có')) {
+            throw err;
+          }
+        }
+      }
+      navigate('/checkout');
+    } catch {
+      show('Không thể thêm lại sản phẩm vào giỏ hàng');
     }
   };
 
@@ -398,12 +420,13 @@ export const OrderDetailPage = () => {
                   >
                     Đã hủy
                   </div>
-                  <Link
-                    to="/books"
+                  <button
+                    type="button"
+                    onClick={handleRepurchase}
                     className="flex h-10 w-full items-center justify-center rounded-[2px] border border-line text-[11px] font-semibold uppercase tracking-[1px] text-ink transition-[border-color] duration-200 hover:border-ink"
                   >
                     Mua lại
-                  </Link>
+                  </button>
                 </>
               )}
             </div>

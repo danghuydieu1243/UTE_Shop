@@ -292,6 +292,35 @@ describe('Orders API', () => {
       expect(res.status).toBe(409);
       expect(res.body.error.code).toBe('CART_EMPTY');
     });
+
+    it('3e. checkout từ selectedCartItemIds chỉ tạo order cho subset được chọn và giữ item còn lại trong giỏ', async () => {
+      const userSubset = await seedUser('user', `subset-${Date.now()}`);
+      const tokenSubset = makeToken(userSubset.id, 'user');
+      const book1 = await seedBook(vendorUser.id, { price: 89000 });
+      const book2 = await seedBook(vendorUser.id, { price: 45000 });
+
+      const [cart] = await Cart.findOrCreate({
+        where: { userId: userSubset.id },
+        defaults: { userId: userSubset.id },
+      });
+      const cartItem1 = await CartItem.create({ cartId: cart.id, bookId: book1.id, unitPrice: 89000 });
+      await CartItem.create({ cartId: cart.id, bookId: book2.id, unitPrice: 45000 });
+
+      const res = await request(app)
+        .post('/api/v1/orders')
+        .set('Authorization', `Bearer ${tokenSubset}`)
+        .send({ selectedCartItemIds: [cartItem1.id] });
+
+      expect(res.status).toBe(201);
+      expect(res.body.data.items).toHaveLength(1);
+      expect(res.body.data.items[0].bookId).toBe(book1.id);
+      expect(res.body.data.subtotal).toBe(89000);
+      expect(res.body.data.total).toBe(89000);
+
+      const remainingCartItems = await CartItem.findAll({ where: { cartId: cart.id } });
+      expect(remainingCartItems).toHaveLength(1);
+      expect(Number(remainingCartItems[0].bookId)).toBe(book2.id);
+    });
   });
 
   // ── Test 4: GET /orders list + pagination + filter status ─────────────────

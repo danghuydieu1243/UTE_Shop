@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useGetCartQuery } from '../../cart/cartApi';
 import { useCreateOrderMutation } from '../ordersApi';
 import { useValidateCouponMutation } from '../../coupons/couponsApi';
@@ -49,6 +49,7 @@ const XIcon = () => (
 /* ─────────────────────────────────────────── */
 export const CheckoutPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { show, ToastLayer } = useToast();
   const user = useAppSelector((s) => s.auth.user);
 
@@ -66,7 +67,12 @@ export const CheckoutPage = () => {
   const [usePoints, setUsePoints] = useState(false);
 
   const items = cart?.items ?? [];
-  const subtotal = cart?.subtotal ?? 0;
+  const selectedCartItemIds =
+    ((location.state as { selectedCartItemIds?: number[] } | null)?.selectedCartItemIds ?? []);
+  const selectedItems = selectedCartItemIds.length > 0
+    ? items.filter((item) => selectedCartItemIds.includes(item.id))
+    : items;
+  const subtotal = selectedItems.reduce((sum, item) => sum + item.unitPrice, 0);
   const isEmpty = items.length === 0;
 
   /* ── Pricing (D9 formula) ── */
@@ -87,7 +93,7 @@ export const CheckoutPage = () => {
     if (!couponInput.trim()) return;
     setCouponError('');
     try {
-      const bookIds = items.map((i) => i.book.id);
+      const bookIds = selectedItems.map((i) => i.book.id);
       const result = await validateCoupon({ code: couponInput.trim(), bookIds }).unwrap();
       setAppliedCoupon({ code: couponInput.trim(), discount: result.discount });
       setCouponInput('');
@@ -111,6 +117,7 @@ export const CheckoutPage = () => {
       const order = await createOrder({
         couponCode: appliedCoupon?.code,
         pointsToUse: usePoints ? pointsToUse : 0,
+        selectedCartItemIds: selectedCartItemIds.length > 0 ? selectedCartItemIds : undefined,
       }).unwrap();
       navigate('/checkout/' + order.code);
     } catch (err) {
@@ -185,10 +192,10 @@ export const CheckoutPage = () => {
                 <div className="h-60 rounded bg-line" />
               </div>
             </div>
-          ) : isEmpty ? (
+          ) : isEmpty || selectedItems.length === 0 ? (
             <div className="flex flex-col items-center py-24 text-center">
               <p className="mb-3 text-[22px] font-semibold text-ink">Giỏ hàng trống</p>
-              <p className="mb-8 text-[14px] text-ink-2">Bạn chưa có sách nào trong giỏ hàng.</p>
+              <p className="mb-8 text-[14px] text-ink-2">Bạn chưa có sách nào được chọn để thanh toán.</p>
               <Link
                 to="/cart"
                 className="inline-flex h-11 items-center rounded-[2px] border border-ink px-6 text-[12px] font-semibold uppercase tracking-[1.5px] text-ink transition-[background,color] duration-200 hover:bg-ink hover:text-paper"
@@ -358,7 +365,7 @@ export const CheckoutPage = () => {
                 <div className="p-6">
                   {/* Danh sách items */}
                   <div className="mb-4 flex flex-col gap-3">
-                    {items.map((item) => {
+                    {selectedItems.map((item) => {
                       const { book } = item;
                       return (
                         <div key={item.id} className="flex items-start gap-3">

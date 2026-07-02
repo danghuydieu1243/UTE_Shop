@@ -15,7 +15,9 @@ interface ToastAction {
 interface ToastItem {
   id: number;
   msg: string;
+  description?: string;
   action?: ToastAction;
+  onClick?: () => void;
 }
 
 type ToastPosition = 'bottom-center' | 'top-right';
@@ -34,11 +36,14 @@ export const useToast = (options?: UseToastOptions) => {
   const counter = useRef(0);
   const position = options?.position ?? 'bottom-center';
 
-  const show = (msg: string, opts?: { action?: ToastAction }) => {
+  const show = (msg: string, opts?: { action?: ToastAction; description?: string; onClick?: () => void }) => {
     const id = ++counter.current;
     // Giới hạn tối đa 3 toast: khi spam, giữ 2 toast mới nhất + toast vừa thêm,
     // bỏ những toast cũ hơn để không tràn màn hình.
-    setToasts((prev) => [...prev.slice(-2), { id, msg, action: opts?.action }]);
+    setToasts((prev) => [
+      ...prev.slice(-2),
+      { id, msg, description: opts?.description, action: opts?.action, onClick: opts?.onClick },
+    ]);
     setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 3000);
   };
 
@@ -56,14 +61,34 @@ export const useToast = (options?: UseToastOptions) => {
         {toasts.map((t) => (
         <div
           key={t.id}
-          className="flex items-center gap-3 animate-[toastIn_.4s_ease_forwards] bg-ink px-5 py-3 text-[13px] tracking-[.2px] text-paper pointer-events-auto"
+          className={`animate-[toastIn_.4s_ease_forwards] bg-ink px-5 py-3 text-[13px] tracking-[.2px] text-paper pointer-events-auto ${
+            t.onClick ? 'cursor-pointer' : ''
+          }`}
           style={{ borderRadius: 0 }}
+          onClick={() => {
+            t.onClick?.();
+            dismiss(t.id);
+          }}
+          role={t.onClick ? 'button' : undefined}
+          tabIndex={t.onClick ? 0 : undefined}
+          onKeyDown={(e) => {
+            if (!t.onClick) return;
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              t.onClick();
+              dismiss(t.id);
+            }
+          }}
         >
-          <span>{t.msg}</span>
+          <div className="min-w-0">
+            <p className="font-medium leading-5">{t.msg}</p>
+            {t.description && <p className="mt-1 text-[12px] leading-4 text-paper/80">{t.description}</p>}
+          </div>
           {t.action && (
             <button
               type="button"
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 t.action!.onClick();
                 dismiss(t.id);
               }}

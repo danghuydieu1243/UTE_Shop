@@ -87,10 +87,10 @@ const makeStore = () =>
     middleware: (getDefault) => getDefault().concat(baseApi.middleware),
   });
 
-const renderPage = () =>
+const renderPage = (selectedCartItemIds?: number[]) =>
   render(
     <Provider store={makeStore()}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={[{ pathname: '/checkout', state: selectedCartItemIds ? { selectedCartItemIds } : null }]}>
         <CheckoutPage />
       </MemoryRouter>
     </Provider>,
@@ -127,12 +127,16 @@ describe('CheckoutPage', () => {
     const mockCreateFn = vi.fn().mockReturnValue({ unwrap: vi.fn().mockResolvedValue({ code: 'ATHENA123' }) });
     mockUseCreateOrderMutation.mockReturnValue([mockCreateFn, { isLoading: false }]);
     mockUseGetCartQuery.mockReturnValue({ data: sampleCart, isLoading: false });
-    renderPage();
+    renderPage([1, 2]);
 
     const submitBtn = screen.getByRole('button', { name: /đặt đơn & thanh toán/i });
     fireEvent.click(submitBtn);
 
-    expect(mockCreateFn).toHaveBeenCalled();
+    expect(mockCreateFn).toHaveBeenCalledWith({
+      couponCode: undefined,
+      pointsToUse: 0,
+      selectedCartItemIds: [1, 2],
+    });
     await waitFor(() => expect(mockNavigate).toHaveBeenCalledWith('/checkout/ATHENA123'));
   });
 
@@ -218,7 +222,7 @@ describe('CheckoutPage', () => {
     mockUseValidateCouponMutation.mockReturnValue([mockValidateFn, { isLoading: false }]);
     mockUseGetLoyaltyQuery.mockReturnValue({ data: { balance: 100, transactions: [] }, isLoading: false });
 
-    renderPage();
+    renderPage([1, 2]);
 
     // Apply coupon
     const input = screen.getByPlaceholderText(/nhập mã giảm giá/i);
@@ -235,7 +239,17 @@ describe('CheckoutPage', () => {
 
     await waitFor(() => {
       // subtotal=164000, coupon=10000, remaining=154000; pointsToUse=min(100,ceil(154000/100))=100; loyalty=min(100*100,154000)=10000
-      expect(mockCreateFn).toHaveBeenCalledWith({ couponCode: 'PROMO10K', pointsToUse: 100 });
+      expect(mockCreateFn).toHaveBeenCalledWith({ couponCode: 'PROMO10K', pointsToUse: 100, selectedCartItemIds: [1, 2] });
     });
+  });
+
+  it('renders only selected cart items from router state', () => {
+    mockUseGetCartQuery.mockReturnValue({ data: sampleCart, isLoading: false });
+    renderPage([1]);
+
+    expect(screen.getByText('Đắc Nhân Tâm')).toBeInTheDocument();
+    expect(screen.queryByText('Nhà Giả Kim')).not.toBeInTheDocument();
+    expect(screen.getAllByText(/89\.000đ/).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/164\.000đ/)).not.toBeInTheDocument();
   });
 });

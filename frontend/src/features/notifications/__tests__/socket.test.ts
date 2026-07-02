@@ -3,13 +3,21 @@
  * Test trực tiếp handler (không mở socket thật): seed cache getNotifications trang đầu,
  * bắn 1 notification → list được prepend + unreadCount/total tăng.
  */
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { configureStore } from '@reduxjs/toolkit';
 import { baseApi } from '../../../shared/api/baseApi';
 import authReducer from '../../../shared/auth/authSlice';
 import { notificationsApi, NOTIFICATIONS_LIST_ARGS } from '../notificationsApi';
 import { handleIncomingNotification } from '../socket';
 import type { NotificationRow } from '../types';
+
+const { enqueueNotificationToast } = vi.hoisted(() => ({
+  enqueueNotificationToast: vi.fn(),
+}));
+
+vi.mock('../toastBus', () => ({
+  enqueueNotificationToast,
+}));
 
 const makeStore = () =>
   configureStore({
@@ -50,5 +58,10 @@ describe('handleIncomingNotification', () => {
     expect(entry.data!.notifications).toHaveLength(2);
     expect(entry.data!.pagination.total).toBe(2);
     expect(entry.data!.unreadCount).toBe(1);
+  });
+
+  it('enqueue toast để hiện thông báo nổi cho user', () => {
+    handleIncomingNotification(INCOMING, store.dispatch);
+    expect(enqueueNotificationToast).toHaveBeenCalledWith(INCOMING);
   });
 });

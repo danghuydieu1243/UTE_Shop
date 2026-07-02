@@ -1,6 +1,7 @@
 import { io, type Socket } from 'socket.io-client';
 import { store } from '../../app/store';
 import { notificationsApi, NOTIFICATIONS_LIST_ARGS } from './notificationsApi';
+import { enqueueNotificationToast } from './toastBus';
 import type { NotificationRow } from './types';
 
 let socket: Socket | null = null;
@@ -22,6 +23,7 @@ export function handleIncomingNotification(
   );
   // Primitive number draft không mutatable — dùng invalidateTags để refetch unread badge
   dispatch(notificationsApi.util.invalidateTags([{ type: 'Notification', id: 'UNREAD' }]));
+  enqueueNotificationToast(n);
 }
 
 export function connectSocket(token: string): void {

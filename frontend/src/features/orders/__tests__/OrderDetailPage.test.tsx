@@ -7,6 +7,10 @@ import { OrderDetailPage } from '../pages/OrderDetailPage';
 import { baseApi } from '../../../shared/api/baseApi';
 import authReducer from '../../../shared/auth/authSlice';
 
+vi.mock('../../cart/cartApi', () => ({
+  useAddToCartMutation: vi.fn(),
+}));
+
 /* ── Mock ordersApi ── */
 vi.mock('../ordersApi', () => ({
   useGetOrderQuery: vi.fn(),
@@ -20,9 +24,11 @@ vi.mock('../../auth/authApi', () => ({
 }));
 
 import { useGetOrderQuery, useCancelOrderMutation } from '../ordersApi';
+import { useAddToCartMutation } from '../../cart/cartApi';
 
 const mockUseGetOrderQuery = useGetOrderQuery as ReturnType<typeof vi.fn>;
 const mockUseCancelOrderMutation = useCancelOrderMutation as ReturnType<typeof vi.fn>;
+const mockUseAddToCartMutation = useAddToCartMutation as ReturnType<typeof vi.fn>;
 
 /* ── Mock useNavigate + useParams ── */
 const mockNavigate = vi.fn();
@@ -88,6 +94,9 @@ describe('OrderDetailPage', () => {
       vi.fn().mockReturnValue({ unwrap: vi.fn().mockResolvedValue({}) }),
       { isLoading: false },
     ]);
+    mockUseAddToCartMutation.mockReturnValue([
+      vi.fn().mockReturnValue({ unwrap: vi.fn().mockResolvedValue({}) }),
+    ]);
   });
 
   it('renders order items and total', () => {
@@ -137,5 +146,53 @@ describe('OrderDetailPage', () => {
     renderPage();
     const downloadLink = screen.getByRole('link', { name: /tải e-book/i });
     expect(downloadLink).toHaveAttribute('href', '/user/ebooks');
+  });
+
+  it('repurchase on CANCELLED re-adds all order items and navigates to checkout', async () => {
+    const addToCartFn = vi
+      .fn()
+      .mockReturnValueOnce({ unwrap: vi.fn().mockResolvedValue({}) })
+      .mockReturnValueOnce({ unwrap: vi.fn().mockResolvedValue({}) });
+    mockUseAddToCartMutation.mockReturnValue([addToCartFn]);
+    mockUseGetOrderQuery.mockReturnValue({
+      data: {
+        ...sampleOrderDetail,
+        status: 'CANCELLED' as const,
+        cancelledAt: '2024-01-01T05:00:00Z',
+      },
+      isLoading: false,
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /mua lại/i }));
+
+    await waitFor(() => {
+      expect(addToCartFn).toHaveBeenNthCalledWith(1, { bookId: 101 });
+      expect(addToCartFn).toHaveBeenNthCalledWith(2, { bookId: 102 });
+      expect(mockNavigate).toHaveBeenCalledWith('/checkout');
+    });
+  });
+
+  it('repurchase still navigates to checkout when items are already in cart', async () => {
+    const addToCartFn = vi.fn().mockReturnValue({
+      unwrap: vi.fn().mockRejectedValue({ message: 'Sách đã có trong giỏ' }),
+    });
+    mockUseAddToCartMutation.mockReturnValue([addToCartFn]);
+    mockUseGetOrderQuery.mockReturnValue({
+      data: {
+        ...sampleOrderDetail,
+        status: 'CANCELLED' as const,
+        cancelledAt: '2024-01-01T05:00:00Z',
+      },
+      isLoading: false,
+    });
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: /mua lại/i }));
+
+    await waitFor(() => {
+      expect(addToCartFn).toHaveBeenNthCalledWith(1, { bookId: 101 });
+      expect(mockNavigate).toHaveBeenCalledWith('/checkout');
+    });
   });
 });

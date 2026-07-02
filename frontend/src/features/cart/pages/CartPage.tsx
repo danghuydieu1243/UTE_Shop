@@ -1,4 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
+import { useEffect, useMemo, useState } from 'react';
 import { SiteHeader, SiteFooter } from '../../../shared/ui';
 import { COVER_PLACEHOLDER } from '../../../shared/ui/BookCard';
 import { formatVND } from '../../../shared/format';
@@ -65,6 +66,7 @@ const LockIcon = () => (
 export const CartPage = () => {
   const navigate = useNavigate();
   const { show, ToastLayer } = useToast();
+  const [selectedItemIds, setSelectedItemIds] = useState<number[]>([]);
 
   const { data: cart, isLoading } = useGetCartQuery();
   const [removeFromCart] = useRemoveFromCartMutation();
@@ -108,9 +110,35 @@ export const CartPage = () => {
   }
 
   const items = cart?.items ?? [];
-  const subtotal = cart?.subtotal ?? 0;
-  const itemCount = cart?.itemCount ?? 0;
   const isEmpty = items.length === 0;
+  const allItemIds = useMemo(() => items.map((item) => item.id), [items]);
+
+  useEffect(() => {
+    setSelectedItemIds(allItemIds);
+  }, [allItemIds]);
+
+  const selectedItems = items.filter((item) => selectedItemIds.includes(item.id));
+  const selectedSubtotal = selectedItems.reduce((sum, item) => sum + item.unitPrice, 0);
+  const selectedCount = selectedItems.length;
+  const allSelected = items.length > 0 && selectedItemIds.length === items.length;
+
+  const toggleItem = (itemId: number) => {
+    setSelectedItemIds((prev) =>
+      prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId],
+    );
+  };
+
+  const toggleSelectAll = () => {
+    setSelectedItemIds((prev) => (prev.length === items.length ? [] : allItemIds));
+  };
+
+  const handleCheckout = () => {
+    if (selectedItemIds.length === 0) {
+      show('Hãy chọn ít nhất một sách để thanh toán');
+      return;
+    }
+    navigate('/checkout', { state: { selectedCartItemIds: selectedItemIds } });
+  };
 
   return (
     <div className="min-h-screen bg-paper">
@@ -177,11 +205,18 @@ export const CartPage = () => {
 
               {/* Toolbar */}
               <div className="flex items-center gap-4 border-b border-line px-6 py-4">
-                <span className="text-[13px] font-medium text-ink">
-                  Chọn tất cả
-                </span>
+                <label className="flex items-center gap-3 text-[13px] font-medium text-ink">
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    onChange={toggleSelectAll}
+                    aria-label="Chọn tất cả"
+                    className="h-4 w-4 cursor-pointer accent-ink"
+                  />
+                  <span>Chọn tất cả</span>
+                </label>
                 <span className="text-[13px] text-ink-3">
-                  ({itemCount} sản phẩm)
+                  ({selectedCount} sản phẩm)
                 </span>
                 <button
                   type="button"
@@ -201,6 +236,13 @@ export const CartPage = () => {
                     data-testid="cart-item"
                     className="flex items-start gap-4 border-b border-line px-6 py-5 last:border-b-0"
                   >
+                    <input
+                      type="checkbox"
+                      checked={selectedItemIds.includes(item.id)}
+                      onChange={() => toggleItem(item.id)}
+                      aria-label={`Chọn ${book.title}`}
+                      className="mt-10 h-4 w-4 flex-shrink-0 cursor-pointer accent-ink"
+                    />
                     {/* Ảnh bìa */}
                     <div className="flex h-[100px] w-[72px] flex-shrink-0 items-center justify-center overflow-hidden rounded-[2px] border border-line bg-cover-bg p-2">
                       <img
@@ -263,8 +305,8 @@ export const CartPage = () => {
 
               {/* Tạm tính */}
               <div className="flex items-baseline justify-between text-[13px]">
-                <span className="text-ink-2">Tạm tính ({itemCount} sản phẩm)</span>
-                <span className="font-medium tabular-nums text-ink">{formatVND(subtotal)}</span>
+                <span className="text-ink-2">Tạm tính ({selectedCount} sản phẩm)</span>
+                <span className="font-medium tabular-nums text-ink">{formatVND(selectedSubtotal)}</span>
               </div>
 
               {/* Divider */}
@@ -273,13 +315,13 @@ export const CartPage = () => {
               {/* Tổng cộng */}
               <div className="flex items-baseline justify-between">
                 <span className="text-[13px] font-semibold text-ink">Tổng cộng</span>
-                <span className="text-[20px] font-bold tabular-nums text-ink">{formatVND(subtotal)}</span>
+                <span className="text-[20px] font-bold tabular-nums text-ink">{formatVND(selectedSubtotal)}</span>
               </div>
 
               {/* Nút thanh toán */}
               <button
                 type="button"
-                onClick={() => navigate('/checkout')}
+                onClick={handleCheckout}
                 className="mt-5 flex h-12 w-full items-center justify-center rounded-[2px] bg-ink text-[11px] font-semibold uppercase tracking-[1.5px] text-paper transition-opacity duration-200 hover:opacity-[0.85]"
               >
                 Tiến hành thanh toán →

@@ -38,7 +38,7 @@ export async function createOrder(userId: number, input: CreateOrderBody = {}): 
     }
 
     // 2. Lấy tất cả cart items kèm book
-    const cartItems = await CartItem.findAll({
+    const allCartItems = await CartItem.findAll({
       where: { cartId: cart.id },
       include: [
         {
@@ -49,6 +49,11 @@ export async function createOrder(userId: number, input: CreateOrderBody = {}): 
       ],
       transaction: t,
     });
+
+    const selectedCartItemIds = new Set((input.selectedCartItemIds ?? []).map(Number));
+    const cartItems = selectedCartItemIds.size > 0
+      ? allCartItems.filter((item) => selectedCartItemIds.has(Number(item.id)))
+      : allCartItems;
 
     if (cartItems.length === 0) {
       throw AppError.from('CART_EMPTY', 'Giỏ hàng trống, không thể đặt đơn');
@@ -211,9 +216,9 @@ export async function createOrder(userId: number, input: CreateOrderBody = {}): 
     );
 
     // 8. Xóa các cart_items vừa đặt (chỉ những sách eligible)
-    const eligibleBookIds = eligibleItems.map((ci) => Number((ci as any).book?.id ?? ci.bookId));
+    const eligibleCartItemIds = eligibleItems.map((ci) => Number(ci.id));
     await CartItem.destroy({
-      where: { cartId: cart.id, bookId: eligibleBookIds },
+      where: { cartId: cart.id, id: eligibleCartItemIds },
       transaction: t,
     });
 
