@@ -19,7 +19,7 @@ export interface VendorDashboard {
 }
 
 export interface AdminDashboard {
-  kpis: { totalUsers: number; totalVendors: number; orders: number; revenue: number | null };
+  kpis: { totalUsers: number; totalVendors: number; orders: number; revenue: number | null; platformFeeRevenue: number | null };
   revenueSeries: SeriesPoint[] | null;
   newUsersSeries: NewUsersPoint[];
   topBooks: { bookId: number; title: string; vendorShop: string; fileFormat: string; revenue: number | null; sold: number }[];

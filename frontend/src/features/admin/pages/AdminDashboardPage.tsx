@@ -305,6 +305,13 @@ export const AdminDashboardPage = () => {
                 accentColor={DS.accent}
               />
             )}
+            {isAdmin && (
+              <KpiCard
+                label="Doanh thu phí sàn (kỳ)"
+                value={formatVND(data.kpis.platformFeeRevenue ?? 0)}
+                accentColor={DS.info}
+              />
+            )}
           </div>
 
           {/* ── Row 2: Charts ── */}

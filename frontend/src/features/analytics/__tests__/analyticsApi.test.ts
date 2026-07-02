@@ -31,7 +31,7 @@ const VENDOR_FIXTURE: VendorDashboard = {
 };
 
 const ADMIN_FIXTURE: AdminDashboard = {
-  kpis: { totalUsers: 500, totalVendors: 30, orders: 200, revenue: null },
+  kpis: { totalUsers: 500, totalVendors: 30, orders: 200, revenue: null, platformFeeRevenue: null },
   revenueSeries: null,
   newUsersSeries: [
     { date: '2026-06-01', count: 12 },

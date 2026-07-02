@@ -31,6 +31,7 @@ const ADMIN_DATA: AdminDashboard = {
     totalVendors: 37,
     orders: 412,
     revenue: 18_450_000,
+    platformFeeRevenue: 15000,
   },
   revenueSeries: [
     { date: '2026-06-01', value: 2_000_000 },
@@ -85,6 +86,7 @@ const MANAGER_DATA: AdminDashboard = {
     totalVendors: 37,
     orders: 412,
     revenue: null,
+    platformFeeRevenue: null,
   },
   revenueSeries: null,
   newUsersSeries: [
@@ -262,6 +264,12 @@ describe('AdminDashboardPage', () => {
     it('renders newUsersSeries BarChart SVG', () => {
       const { container } = renderAs('admin');
       expect(container.querySelector('svg[aria-label="Bar chart"]')).not.toBeNull();
+    });
+
+    it('hiển thị KPI doanh thu phí sàn cho admin', async () => {
+      renderAs('admin');
+      expect(await screen.findByText('Doanh thu phí sàn (kỳ)')).toBeInTheDocument();
+      expect(screen.getByText('15.000đ')).toBeInTheDocument();
     });
   });
 
