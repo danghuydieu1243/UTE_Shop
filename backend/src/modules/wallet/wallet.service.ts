@@ -76,6 +76,9 @@ export async function getWallet(vendorUserId: number, page: number, limit: numbe
           ? 'credited'
           : ((tx as any).withdrawal?.status ?? 'processing'),
       createdAt: new Date(tx.created_at).toISOString(),
+      grossAmount: tx.grossAmount == null ? null : Number(tx.grossAmount),
+      feeAmount: tx.feeAmount == null ? null : Number(tx.feeAmount),
+      commissionRateBps: tx.commissionRateBps ?? null,
     })),
     pagination: {
       page,

@@ -1,5 +1,5 @@
 import { Op } from 'sequelize';
-import { Book, Order, OrderItem, Review, Author } from '../../db/models';
+import { Book, Order, OrderItem, Review, Author, WalletTransaction } from '../../db/models';
 
 const COMPLETED = 'COMPLETED';
 
@@ -52,4 +52,28 @@ export async function recentNewOrdersForVendor(vendorUserId: number, limit = 5) 
     if (out.length >= limit) break;
   }
   return out;
+}
+
+/** Tổng gross/fee/net từ wallet_transactions (type='sale_credit') của vendor trong [from,to]. */
+export async function saleTotalsForVendor(
+  vendorUserId: number,
+  from: Date,
+  to: Date,
+): Promise<{ gross: number; fee: number; net: number }> {
+  const rows = await WalletTransaction.findAll({
+    where: {
+      vendorUserId,
+      type: 'sale_credit',
+      created_at: { [Op.between]: [from, to] },
+    },
+    attributes: ['grossAmount', 'feeAmount', 'amount'],
+    raw: true,
+  });
+  let gross = 0, fee = 0, net = 0;
+  for (const r of rows as any[]) {
+    gross += Number(r.gross_amount ?? r.grossAmount ?? 0);
+    fee += Number(r.fee_amount ?? r.feeAmount ?? 0);
+    net += Number(r.amount ?? 0);
+  }
+  return { gross, fee, net };
 }

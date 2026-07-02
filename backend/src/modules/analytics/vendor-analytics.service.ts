@@ -33,14 +33,23 @@ export async function getVendorDashboard(vendorUserId: number, period: string): 
     .sort((a, b) => b.sold - a.sold)
     .slice(0, 5);
 
-  const [productsOnSaleN, avgRating, recentOrders] = await Promise.all([
+  const [productsOnSaleN, avgRating, recentOrders, saleTotals] = await Promise.all([
     repo.productsOnSale(vendorUserId),
     repo.avgRatingForVendor(vendorUserId),
     repo.recentNewOrdersForVendor(vendorUserId, 5),
+    repo.saleTotalsForVendor(vendorUserId, from, to),
   ]);
 
   return {
-    kpis: { revenue, orders: orderIds.size, productsOnSale: productsOnSaleN, avgRating },
+    kpis: {
+      revenue,
+      grossRevenue: saleTotals.gross,
+      totalFee: saleTotals.fee,
+      netRevenue: saleTotals.net,
+      orders: orderIds.size,
+      productsOnSale: productsOnSaleN,
+      avgRating,
+    },
     revenueSeries: bucketByDay(seriesRows, from, to),
     topBooks,
     recentOrders,

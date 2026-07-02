@@ -1,7 +1,8 @@
 import request from 'supertest';
 import { createApp } from '../../../app';
-import { User, Book, Order, OrderItem, Review, Author } from '../../../db/models';
+import { User, Book, Order, OrderItem, Review, Author, sequelize, WalletTransaction } from '../../../db/models';
 import { signAccessToken } from '../../auth/token.service';
+import * as walletService from '../../wallet/wallet.service';
 
 const app = createApp();
 
@@ -276,4 +277,35 @@ it('VA9: role user → 403', async () => {
     .get('/api/v1/vendor/stats/dashboard')
     .set('Authorization', `Bearer ${user.token}`);
   expect(res.status).toBe(403);
+});
+
+// ─── VA10: kpis gross/fee/net nhất quán từ wallet_transactions ──────────────
+it('VA10: kpis có grossRevenue/totalFee/netRevenue nhất quán', async () => {
+  const vendor = await makeVendor();
+  const buyer = await makeUser();
+  const book = await makeBook(vendor.id);
+
+  const now = new Date();
+  await makeOrder(buyer.id, 'COMPLETED', now, [
+    { bookId: book.id, vendorUserId: vendor.id, unitPrice: 100000, titleSnapshot: 'Book A' },
+  ]);
+  // Mặc định commission 10% (1000 bps): net = 90000
+  await sequelize.transaction((t) => walletService.creditSale(vendor.id, 100000, 1, t, 1000));
+  // sqlite test DB không áp DEFAULT CURRENT_TIMESTAMP của MySQL cho created_at → set thủ công
+  // để rơi trong khoảng [from,to] mà saleTotalsForVendor lọc theo.
+  await WalletTransaction.update(
+    { created_at: now },
+    { where: { vendorUserId: vendor.id, type: 'sale_credit' } },
+  );
+
+  const res = await request(app)
+    .get('/api/v1/vendor/stats/dashboard?period=30d')
+    .set('Authorization', `Bearer ${vendor.token}`);
+
+  expect(res.status).toBe(200);
+  const { kpis } = res.body.data;
+  expect(kpis.grossRevenue).toBe(100000);
+  expect(kpis.totalFee).toBe(Math.floor((kpis.grossRevenue * 1000) / 10000));
+  expect(kpis.netRevenue).toBe(kpis.grossRevenue - kpis.totalFee);
+  expect(kpis.totalFee).toBeGreaterThanOrEqual(0);
 });
