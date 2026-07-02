@@ -28,6 +28,7 @@ import { VendorWallet } from './VendorWallet';
 import { WalletTransaction } from './WalletTransaction';
 import { Withdrawal } from './Withdrawal';
 import { VendorBankAccount } from './VendorBankAccount';
+import { Setting } from './Setting';
 
 // ── Phase 1 Associations ────────────────────────────────────────────────────
 User.hasOne(Vendor, { foreignKey: 'user_id', as: 'vendor', onDelete: 'RESTRICT' });
@@ -163,4 +164,5 @@ export {
   Review, Wishlist, Coupon, CouponRedemption, LoyaltyAccount, LoyaltyTransaction,
   Notification,
   VendorWallet, WalletTransaction, Withdrawal, VendorBankAccount,
+  Setting,
 };
